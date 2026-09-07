@@ -276,31 +276,6 @@
             box-shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
         }
 
-        /* Section accent top-border strip */
-        .md-chart-card::before {
-            z-index: 1;
-            position: absolute;
-            top: 0;
-            right: 0;
-            left: 0;
-            height: 3px;
-            border-radius: 16px 16px 0 0;
-            content: '';
-            pointer-events: none;
-        }
-        .md-chart-card[data-chart-section='overview']::before {
-            background: linear-gradient(90deg, #e54f38, #a855f7);
-        }
-        .md-chart-card[data-chart-section='attendance']::before {
-            background: linear-gradient(90deg, #22c55e, #06b6d4);
-        }
-        .md-chart-card[data-chart-section='recruitment']::before {
-            background: linear-gradient(90deg, #f59e0b, #ef4444);
-        }
-        .md-chart-card[data-chart-section='leave']::before {
-            background: linear-gradient(90deg, #3b82f6, #e54f38);
-        }
-
         .md-chart-card--wide {
             grid-column: span 2;
         }
