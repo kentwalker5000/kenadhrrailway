@@ -15,9 +15,9 @@ from horilla.models import HorillaModel
 
 THEMES_DATA = [
     {
-        "name": "Coral Red Theme (Default)",
+        "name": "Coral Red Theme",
         "description": "Warm coral-red based theme",
-        "is_default": True,
+        "is_default": False,
         "primary_50": "#f6f6f6",
         "primary_100": "#FFF5F1",  # f0f0f0
         "primary_200": "#FEF6F5",
@@ -327,31 +327,32 @@ THEMES_DATA = [
     },
     {
         "name": "Navy Steel Theme",
-        "description": "Professional and strong with navy and steel blues",
-        "primary_50": "#f0f9ff",
-        "primary_100": "#f0f9ff",
-        "primary_200": "#e0f2fe",
-        "primary_300": "#bae6fd",
-        "primary_400": "#7dd3fc",
-        "primary_500": "#38bdf8",
-        "primary_600": "#0ea5e9",
-        "primary_700": "#0284c7",
-        "primary_800": "#0369a1",
-        "primary_900": "#075985",
+        "description": "KenadHR's professional navy-blue brand theme",
+        "is_default": True,
+        "primary_50": "#f8fafc",
+        "primary_100": "#eff6ff",
+        "primary_200": "#dbeafe",
+        "primary_300": "#bfdbfe",
+        "primary_400": "#93c5fd",
+        "primary_500": "#3b82f6",
+        "primary_600": "#1d4ed8",
+        "primary_700": "#1e3a8a",
+        "primary_800": "#172554",
+        "primary_900": "#0f172a",
         "dark_50": "#E6E6E6",
         "dark_100": "#E6E6E6",
         "dark_200": "#515151",
         "dark_300": "#515151",
-        "dark_400": "#1e3a5f",
+        "dark_400": "#172554",
         "dark_500": "#64748B",
-        "dark_600": "#0c1821",
+        "dark_600": "#0f172a",
         "secondary_50": "#f8fafc",
         "secondary_100": "#f8fafc",
         "secondary_200": "#f1f5f9",
         "secondary_300": "#e2e8f0",
-        "secondary_400": "#7dd3fc",
-        "secondary_500": "#38bdf8",
-        "secondary_600": "#0ea5e9",
+        "secondary_400": "#93c5fd",
+        "secondary_500": "#3b82f6",
+        "secondary_600": "#1d4ed8",
         "secondary_700": "#475569",
         "secondary_800": "#334155",
         "secondary_900": "#1e293b",
@@ -577,7 +578,7 @@ class HorillaColorTheme(HorillaModel):
         default_theme = cls.objects.filter(is_default=True).first()
         if default_theme:
             return default_theme
-        return cls.objects.filter(name="Coral Red Theme (Default)").first()
+        return cls.objects.filter(name="Navy Steel Theme").first()
 
 
 class CompanyTheme(HorillaModel):
