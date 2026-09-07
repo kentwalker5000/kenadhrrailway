@@ -137,19 +137,6 @@
             cursor: pointer;
             transition: all 0.25s ease;
         }
-        .ess-kpi-card::after {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            width: 80px;
-            height: 80px;
-            transform: translate(20px, 20px);
-            border-radius: 50%;
-            background: currentColor;
-            content: '';
-            opacity: 0.06;
-            pointer-events: none;
-        }
         .ess-kpi-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
@@ -269,34 +256,6 @@
         }
         .dark .ess-chart-card:hover {
             box-shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
-        }
-
-        /* Colored top border strip */
-        .ess-chart-card::before {
-            z-index: 1;
-            position: absolute;
-            top: 0;
-            right: 0;
-            left: 0;
-            height: 3px;
-            border-radius: 16px 16px 0 0;
-            content: '';
-            pointer-events: none;
-        }
-        .ess-chart-card[data-section='leave']::before {
-            background: linear-gradient(90deg, #e54f38, #a855f7);
-        }
-        .ess-chart-card[data-section='attendance']::before {
-            background: linear-gradient(90deg, #22c55e, #06b6d4);
-        }
-        .ess-chart-card[data-section='payroll']::before {
-            background: linear-gradient(90deg, #f59e0b, #ef4444);
-        }
-        .ess-chart-card[data-section='goals']::before {
-            background: linear-gradient(90deg, #3b82f6, #e54f38);
-        }
-        .ess-chart-card[data-section='calendar']::before {
-            background: linear-gradient(90deg, #22c55e, #06b6d4);
         }
 
         .ess-chart-card--wide {

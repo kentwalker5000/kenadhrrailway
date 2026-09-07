@@ -79,19 +79,6 @@
             text-decoration: none;
             transition: all 0.25s ease;
         }
-        .em-kpi-card::after {
-            position: absolute;
-            right: 0;
-            bottom: 0;
-            width: 80px;
-            height: 80px;
-            transform: translate(20px, 20px);
-            border-radius: 50%;
-            background: currentColor;
-            content: '';
-            opacity: 0.06;
-            pointer-events: none;
-        }
         .em-kpi-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
@@ -191,27 +178,6 @@
             border-color: rgba(255, 255, 255, 0.07);
             background: #242424;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        }
-        .em-chart-card::before {
-            position: absolute;
-            top: 0;
-            right: 0;
-            left: 0;
-            height: 3px;
-            border-radius: 16px 16px 0 0;
-            content: '';
-        }
-        .em-chart-card[data-accent='indigo']::before {
-            background: linear-gradient(90deg, #E54F38, #a855f7);
-        }
-        .em-chart-card[data-accent='green']::before {
-            background: linear-gradient(90deg, #22c55e, #06b6d4);
-        }
-        .em-chart-card[data-accent='amber']::before {
-            background: linear-gradient(90deg, #f59e0b, #ef4444);
-        }
-        .em-chart-card[data-accent='blue']::before {
-            background: linear-gradient(90deg, #3b82f6, #E54F38);
         }
         .em-chart-card--wide {
             grid-column: span 2;
