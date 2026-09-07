@@ -1,7 +1,7 @@
 {
-    "name": "Horilla",
-    "short_name": "Horilla",
-    "description": "Free and Open Source HR Software",
+    "name": "Kenad HR",
+    "short_name": "Kenad HR",
+    "description": "Kenad HR management software",
     "start_url": "/",
     "display": "standalone",
     "background_color": "orangered",
