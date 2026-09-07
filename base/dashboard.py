@@ -212,7 +212,7 @@ def _get_setup_checklist_context(request):
             "key": "mail_server",
             "title": _("Mail Server"),
             "description": _(
-                "Configure an outgoing mail server so Horilla can send emails."
+                "Configure an outgoing mail server so Kenad HR can send emails."
             ),
             "url": _safe_url("mail-server-conf"),
             "done": _has_mail_server(),
