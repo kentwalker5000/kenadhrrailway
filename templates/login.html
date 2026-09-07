@@ -154,6 +154,11 @@
                     {% endif %}
                 </div>
             </main>
+            <footer style="padding: 0 24px 24px; color: #6b7280; font-size: 12px; text-align: center;">
+                <a href="{% url 'open-source-notices' %}" style="color: inherit; text-decoration: underline;">
+                    {% trans "Open-source notices" %}
+                </a>
+            </footer>
         </div>
         <script src="{% static '/build/js/web.frontend.min.js' %}"></script>
         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>

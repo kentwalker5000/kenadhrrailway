@@ -66,6 +66,16 @@ from horilla_audit.models import AuditTag
 
 urlpatterns = [
     path("", views.home, name="home-page"),
+    path(
+        "legal/open-source-notices/",
+        views.open_source_notices,
+        name="open-source-notices",
+    ),
+    path(
+        "legal/licenses/lgpl-2.1/",
+        views.lgpl_2_1_license,
+        name="lgpl-2.1-license",
+    ),
     path("dashboard/", dashboard_module.main_dashboard_view, name="dashboard"),
     path(
         "dashboard/api/kpi/",

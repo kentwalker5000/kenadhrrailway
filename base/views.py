@@ -1191,6 +1191,23 @@ def home(request):
     return redirect("ess-dashboard")
 
 
+@require_http_methods(["GET"])
+def open_source_notices(request):
+    """Show the public open-source attribution notice for this product."""
+    return render(request, "legal/open_source_notices.html")
+
+
+@require_http_methods(["GET"])
+def lgpl_2_1_license(request):
+    """Serve the LGPL-2.1 text bundled with this distribution."""
+    license_path = path.join(settings.BASE_DIR, "LICENSE")
+    return FileResponse(
+        open(license_path, "rb"),
+        content_type="text/plain; charset=utf-8",
+        filename="LGPL-2.1.txt",
+    )
+
+
 @login_required
 @manager_can_enter("employee.view_employeeworkinformation")
 def employee_workinfo_complete(request):

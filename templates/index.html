@@ -227,6 +227,15 @@
         </div>
     </div>
 
+    <footer
+        style="padding: 14px 24px; color: #6b7280; font-size: 12px; text-align: center;"
+        aria-label="Legal information"
+    >
+        <a href="{% url 'open-source-notices' %}" style="color: inherit; text-decoration: underline;">
+            {% trans "Open-source notices" %}
+        </a>
+    </footer>
+
     <script src="{% url 'javascript-catalog' %}"></script>
     <!--htmx script -->
     <script src="{% static 'build/js/web.frontend.min.js' %}"></script>
