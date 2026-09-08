@@ -1670,13 +1670,27 @@ input[type="checkbox"].custom-checkbox:hover {
   color: #1e3a8a !important;
 }
 
-.swal2-icon.swal2-success {
-  border-color: var(--primary-600, #1d4ed8) !important;
-  color: var(--primary-600, #1d4ed8) !important;
+.oh-alert--success::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%231d4ed8'/%3E%3Cpath d='m7.5 12.25 2.9 2.9 6.2-6.4' fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.2'/%3E%3C/svg%3E") !important;
 }
 
+.swal2-icon.swal2-success {
+  width: 4em !important;
+  height: 4em !important;
+  border: 0 !important;
+  border-color: var(--primary-600, #1d4ed8) !important;
+  color: var(--primary-600, #1d4ed8) !important;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' fill='%231d4ed8'/%3E%3Cpath d='m7.5 12.25 2.9 2.9 6.2-6.4' fill='none' stroke='%23fff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.2'/%3E%3C/svg%3E") center / contain no-repeat !important;
+}
+
+.swal2-success-circular-line-left,
+.swal2-success-circular-line-right,
+.swal2-success-fix,
 .swal2-success-line-tip,
-.swal2-success-line-long,
+.swal2-success-line-long {
+  display: none !important;
+}
+
 .swal2-timer-progress-bar,
 .swal2-styled.swal2-confirm {
   background-color: var(--primary-600, #1d4ed8) !important;
