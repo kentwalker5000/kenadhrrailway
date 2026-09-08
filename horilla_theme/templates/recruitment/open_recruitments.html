@@ -223,7 +223,7 @@
                 <div id="jobCardGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {% for recruitment in recruitments %}
                         <div
-                            class="job-card border border-secondary-200 rounded-2xl p-6 hover:border-primary-600 hover:shadow-lg [transition:.2s]"
+                            class="job-card border border-secondary-200 rounded-2xl p-6 shadow-sm hover:border-primary-600 hover:shadow-lg [transition:.2s]"
                             data-search="{{ recruitment.title|lower }} {{ recruitment.company_id|lower }} {% for job_position in recruitment.open_positions.all %}{{ job_position.job_position|lower }} {% endfor %}"
                             data-status="{% if recruitment|is_closing_soon %}closing{% else %}open{% endif %}"
                         >

@@ -81,7 +81,7 @@
         </div>
 
         {% if perms.recruitment.view_recruitment %}
-            <div class="bg-primary-100 border border-primary-300 rounded-xl p-4 mt-5">
+            <div class="bg-primary-100 border border-primary-300 rounded-xl p-4 mt-5 shadow-sm">
                 <div class="flex items-center justify-between text-xs text-dark-200 mb-2">
                     <span>
                         {% blocktrans with applied=recruitment.candidate.all|length capacity=recruitment.vacancy %}{{ applied }} applied of {{ capacity }} capacity{% endblocktrans %}
