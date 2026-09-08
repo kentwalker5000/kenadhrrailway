@@ -1656,6 +1656,7 @@ input[type="checkbox"].custom-checkbox:hover {
 .active--dot,
 .approved--dot,
 .approved-request--dot,
+.paid--dot,
 .oh-dot--approved {
   background-color: var(--primary-600, #1d4ed8) !important;
 }
