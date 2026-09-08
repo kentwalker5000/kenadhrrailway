@@ -1,5 +1,4 @@
 <div class="oh-main__org-chart-container" id="chart-container"></div>
-</div >
 
 <script>
     var datascource = {{ act_datasource| safe}}
@@ -54,8 +53,8 @@
         if (event.which === 13) {
             filterNodes(this.value);
         } else if (event.which === 8 && this.value.length === 0) {
-            if ($('#mangerSelect').length) {
-                htmx.trigger('#mangerSelect', 'change'); // Manually trigger HTMX event
+            if ($('#managerSelect').length) {
+                htmx.trigger('#managerSelect', 'change'); // Manually trigger HTMX event
             }
         }
     });

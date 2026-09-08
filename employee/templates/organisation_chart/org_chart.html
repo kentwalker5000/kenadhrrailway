@@ -5,23 +5,25 @@
     <main :class="sidebarOpen ? 'oh-main__sidebar-visible' : ''">
         <section class="oh-wrapper oh-main__topbar" x-data="{searchShow: false}">
             <div class="oh-main__titlebar oh-main__titlebar--left">
-                <div style="display: flow">
+                <div class="oh-org-chart__heading">
                     <h1 class="oh-main__titlebar-title fw-bold">{% trans "Organization Chart" %}</h1>
-                    <select
-                        id="mangerSelect"
-                        class="oh-select {% if not reporting_manager_dict %} d-none {% endif %}"
-                        style="align-items: center; background-color: #fff; border: 1px solid #aaa; border-radius: 2px"
-                        name="manager_id"
-                        title="{% trans 'Reporting Managers' %}"
-                        hx-post="{% url 'organisation-chart' %}"
-                        hx-target="#chart_target"
-                    >
-                        {% for manager_id, values in reporting_manager_dict.items %}
-                            <option value="{{ manager_id }}" {% if act_manager_id == manager_id %}selected{% endif %}>
-                                {{ values }}
-                            </option>
-                        {% endfor %}
-                    </select>
+                    <div class="oh-org-chart__manager-select">
+                        <label class="oh-org-chart__manager-select-label" for="managerSelect">{% trans "Reporting Managers" %}</label>
+                        <select
+                            id="managerSelect"
+                            class="oh-select {% if not reporting_manager_dict %} d-none {% endif %}"
+                            name="manager_id"
+                            title="{% trans 'Reporting Managers' %}"
+                            hx-post="{% url 'organisation-chart' %}"
+                            hx-target="#chart_target"
+                        >
+                            {% for manager_id, values in reporting_manager_dict.items %}
+                                <option value="{{ manager_id }}" {% if act_manager_id == manager_id %}selected{% endif %}>
+                                    {{ values }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <a
                     class="oh-main__titlebar-search-toggle"
@@ -52,7 +54,7 @@
     </main>
     <script>
         $(document).ready(function(e) {
-            htmx.trigger('#mangerSelect', 'change');
+            htmx.trigger('#managerSelect', 'change');
         })
     </script>
 {% endblock %}
