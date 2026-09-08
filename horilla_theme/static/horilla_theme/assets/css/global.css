@@ -1649,3 +1649,13 @@ input[type="checkbox"].custom-checkbox:hover {
   background-color: #242424;
   border-color: hsl(0, 0%, 25%);
 }
+
+/* Approval and active-state dots use the product's primary navy blue.
+   Individual modules may define these status helpers locally, so this shared
+   rule intentionally takes precedence. */
+.oh-dot.active--dot,
+.oh-dot.approved--dot,
+.oh-dot.approved-request--dot,
+.oh-dot--approved {
+  background-color: var(--primary-600, #1d4ed8) !important;
+}
