@@ -1,8 +1,8 @@
 """
 Employee Self-Service (ESS) dashboard views.
 
-Accessible at /ess/ — shows personal data only for the logged-in employee.
-All data is scoped to request.user.employee_get; no cross-employee access.
+Accessible at /ess/ — personal data is scoped to request.user.employee_get.
+Aggregate workforce metrics are included only for users allowed to view employees.
 """
 
 from datetime import date, timedelta
@@ -71,7 +71,7 @@ def ess_dashboard(request):
 
 @login_required
 def ess_kpi_data(request):
-    """GET /ess/api/kpi/?year=&month= — four personal KPI cards.
+    """GET /ess/api/kpi/?year=&month= — personal and authorized workforce KPIs.
 
     Attendance counts honor the picker month; balances/objectives/payslip
     are current-state and ignore the picker.
@@ -81,6 +81,14 @@ def ess_kpi_data(request):
     employee = _get_employee(request)
     if not employee:
         return JsonResponse({"error": "no employee"}, status=403)
+
+    from employee.workforce import workforce_summary
+
+    workforce = (
+        workforce_summary()
+        if request.user.has_perm("employee.view_employee")
+        else None
+    )
 
     from_date, to_date = _parse_period(request)
     # Don't count attendance in future days of the selected month
@@ -179,6 +187,7 @@ def ess_kpi_data(request):
             "open_objectives": open_objectives,
             "latest_net_pay": latest_net_pay,
             "latest_payslip_period": latest_payslip_period,
+            "workforce": workforce,
         }
     )
 

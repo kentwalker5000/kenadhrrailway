@@ -2,11 +2,14 @@
 
 import json
 
+from django.contrib.auth.models import Permission
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from base.models import EmployeeType
-from employee.dashboard import _employee_type_category, employee_kpi_data
+from base.ess_dashboard import ess_kpi_data
+from employee.dashboard import employee_kpi_data
 from employee.models import Employee, EmployeeWorkInformation
+from employee.workforce import employee_type_category
 from horilla.testkit import CompanyFilterTestMixin, make_company, make_employee
 
 
@@ -23,11 +26,11 @@ class EmployeeTypeCategoryTests(SimpleTestCase):
 
         for label, expected in aliases.items():
             with self.subTest(label=label):
-                self.assertEqual(_employee_type_category(label), expected)
+                self.assertEqual(employee_type_category(label), expected)
 
     def test_unrelated_employee_type_is_not_classified(self):
-        self.assertIsNone(_employee_type_category("Permanent"))
-        self.assertIsNone(_employee_type_category(None))
+        self.assertIsNone(employee_type_category("Permanent"))
+        self.assertIsNone(employee_type_category(None))
 
 
 class EmployeeDashboardKpiTests(CompanyFilterTestMixin, TestCase):
@@ -39,6 +42,12 @@ class EmployeeDashboardKpiTests(CompanyFilterTestMixin, TestCase):
             email="dashboard-viewer@test.horilla",
             first_name="Dashboard",
             last_name="Viewer",
+        )
+        cls.viewer.employee_user_id.user_permissions.add(
+            Permission.objects.get(
+                content_type__app_label="employee",
+                codename="view_employee",
+            )
         )
 
         employee_types = {
@@ -97,6 +106,7 @@ class EmployeeDashboardKpiTests(CompanyFilterTestMixin, TestCase):
         )
 
         cls.employee_types = employee_types
+        cls.unprivileged_employee = typed_employees[0]
 
     def setUp(self):
         self.factory = RequestFactory()
@@ -121,3 +131,25 @@ class EmployeeDashboardKpiTests(CompanyFilterTestMixin, TestCase):
                 self.employee_types["NSS"].pk,
             ],
         )
+
+    def test_ess_kpi_exposes_the_same_workforce_summary(self):
+        request = self.factory.get("/ess/api/kpi/")
+        request.user = self.viewer.employee_user_id
+
+        response = ess_kpi_data(request)
+        workforce = json.loads(response.content)["workforce"]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(workforce["headcount"], 6)
+        self.assertEqual(workforce["contractual"], 1)
+        self.assertEqual(workforce["internships"], 1)
+        self.assertEqual(workforce["national_service"], 2)
+
+    def test_ess_kpi_hides_workforce_summary_without_employee_permission(self):
+        request = self.factory.get("/ess/api/kpi/")
+        request.user = self.unprivileged_employee.employee_user_id
+
+        response = ess_kpi_data(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(json.loads(response.content)["workforce"])
