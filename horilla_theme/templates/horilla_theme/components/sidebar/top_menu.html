@@ -1,18 +1,13 @@
 {% load i18n static %}
 {% comment %}
-  Dashboard (top-level icon, no submenu panel). We attach the same
-  htmx boost params used by submenu links so clicking Dashboard swaps
-  only the main content region instead of doing a full page reload.
+  Dashboard is deliberately a normal navigation link. The dashboard has its
+  own data-loading lifecycle, so a full document navigation prevents stale
+  chart requests or duplicate HTMX swaps from competing with one another.
 {% endcomment %}
 <a
     href="{% url 'dashboard' %}"
     class="sideboxmain group flex items-center gap-3 px-3 py-2.5 rounded-lg w-full transition duration-300"
     data-menu="Dashboard"
-    hx-get="{% url 'dashboard' %}"
-    hx-target="#ohMainContent"
-    hx-select="#ohMainContent > *"
-    hx-swap="innerHTML show:window:top"
-    hx-push-url="true"
 >
     <img
         src="{% static 'images/ui/dashboard.svg' %}"

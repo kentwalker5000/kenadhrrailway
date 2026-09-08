@@ -1027,35 +1027,9 @@
             });
           }, true);
 
-          // Bubble phase: top-level dashboard link + module button accordion toggles
+          // Bubble phase: module button accordion toggles. Dashboard is a
+          // normal link so its full page lifecycle stays isolated from HTMX.
           navContainer.addEventListener("click", function (e) {
-            var link = e.target.closest("a");
-            var isLeftClick = !e.button || e.button === 0;
-            var isModified = e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
-
-            if (link && !isModified && isLeftClick) {
-              var href = link.getAttribute("href") || link.getAttribute("hx-get");
-              var isTopDashboard = link.matches("a.sideboxmain");
-
-              if (isTopDashboard) {
-                e.preventDefault();
-                e.stopPropagation();
-                hideFlyout();
-                setActiveSidebarMenu(link);
-                if (isStandaloneUrl(href)) { window.location.href = href || "/"; return; }
-                var target = document.getElementById("ohMainContent");
-                if (!target || !window.htmx) { window.location.href = href || "/"; return; }
-                bumpGrace(1500);
-                window.history.pushState({}, "", href);
-                htmx.ajax("GET", href, {
-                  source: link, target: "#ohMainContent",
-                  select: "#ohMainContent > *", swap: "innerHTML show:window:top",
-                  headers: { "HX-Sidebar-Nav": "true" },
-                });
-                return;
-              }
-            }
-
             // Clicks inside subnav are already handled in capture phase above
             if (e.target.closest(".sidebar-subnav")) return;
             if (e.target.closest("a")) return;

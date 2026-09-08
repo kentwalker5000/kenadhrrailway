@@ -1480,6 +1480,7 @@
                     {% endif %}
 
                     {% if perms.attendance.view_attendance or request.user.is_superuser or home_role == "manager" %}
+                        {% if perms.attendance.view_attendance or request.user.is_superuser %}
                         <!-- Attendance Overview -->
                         <div
                             class="md-chart-card md-chart-card--wide"
@@ -1517,6 +1518,7 @@
                             <div class="md-chart-card__body"><div id="chart-overtime"></div></div>
                         </div>
 
+                        {% endif %}
                         <!-- Attendance Trend -->
                         <div
                             class="md-chart-card md-chart-card--wide"
@@ -2197,6 +2199,9 @@
                 const prefs = getCustomizeState();
                 savePrefs(prefs);
                 applyPrefs(prefs);
+                // Hidden charts load only when shown. Refresh the visible set
+                // so a newly enabled chart receives data without a page reload.
+                refreshAllData();
                 closeCustomize();
                 // Persist to DB
                 fetch("{% url 'dashboard-save-prefs' %}", {
@@ -2222,8 +2227,74 @@
                 location.assign(newUrl);
             }
 
+            // Dashboard charts have a mix of aggregate and legacy endpoints.
+            // Starting all of them at once can starve the web workers, so keep
+            // a short queue and fail a stuck request instead of blocking the
+            // rest of the dashboard indefinitely.
+            const DASHBOARD_REQUEST_LIMIT = 4;
+            const DASHBOARD_REQUEST_TIMEOUT = 30000;
+            const dashboardRequestQueue = [];
+            const activeDashboardRequests = new Map();
+            let dashboardRequestsInFlight = 0;
+
+            function drainDashboardRequestQueue() {
+                while (
+                    dashboardRequestsInFlight < DASHBOARD_REQUEST_LIMIT &&
+                    dashboardRequestQueue.length
+                ) {
+                    const request = dashboardRequestQueue.shift();
+                    const controller = new AbortController();
+                    const timeout = window.setTimeout(
+                        () => controller.abort(),
+                        DASHBOARD_REQUEST_TIMEOUT,
+                    );
+                    dashboardRequestsInFlight += 1;
+
+                    fetch(request.url, { ...request.options, signal: controller.signal })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`Dashboard request failed (${response.status})`);
+                            }
+                            return response;
+                        })
+                        .then(request.resolve, request.reject)
+                        .finally(() => {
+                            window.clearTimeout(timeout);
+                            dashboardRequestsInFlight -= 1;
+                            drainDashboardRequestQueue();
+                        });
+                }
+            }
+
+            function dashboardFetch(url, options = {}) {
+                const method = (options.method || 'GET').toUpperCase();
+                const requestKey = `${method}:${url.replace(/([?&])_t=\d+(?=&|$)/, '$1')}`;
+                let request = activeDashboardRequests.get(requestKey);
+
+                if (!request) {
+                    request = new Promise((resolve, reject) => {
+                        dashboardRequestQueue.push({ url, options, resolve, reject });
+                        drainDashboardRequestQueue();
+                    });
+                    activeDashboardRequests.set(requestKey, request);
+                    request.then(
+                        () => activeDashboardRequests.delete(requestKey),
+                        () => activeDashboardRequests.delete(requestKey),
+                    );
+                }
+
+                // A Response body can be read once. Each chart gets a clone
+                // while identical in-flight dashboard requests share the work.
+                return request.then(response => response.clone());
+            }
+
+            function isChartVisible(id) {
+                const card = document.querySelector(`[data-chart-id="${id}"]`);
+                return Boolean(card) && !card.classList.contains('md-chart-card--hidden');
+            }
+
             // Helper: fetch with period params for period-sensitive endpoints
-            function fetchP(url) { return fetch(urlWithPeriod(url)); }
+            function fetchP(url) { return dashboardFetch(urlWithPeriod(url)); }
 
             // ── Chart instance registry ──
             // ApexCharts.render() always appends a new SVG into the target
@@ -2316,13 +2387,16 @@
                             kpiCard("{% url 'attendance-view' %}?attendance_date={% now 'Y-m-d' %}&filter_applied=on",  PERM.attendance,  'md-kpi-card__icon--green',  attSvg,   '{% trans "Present Today" %}',     data.present_today,     '<span class="md-badge ' + (data.attendance_rate >= 80 ? 'md-badge--green' : 'md-badge--amber') + '">' + data.attendance_rate + '% {% trans "of expected" %}</span>' + (data.not_checked_in > 0 ? ' <span class="md-badge md-badge--amber">' + data.not_checked_in + ' {% trans "not checked in" %}</span>' : '')) +
                             kpiCard(`{% url 'request-view' %}?status=approved&today_leave=true&filter_applied=on`,     PERM.leave,       'md-kpi-card__icon--amber',  leaveSvg, '{% trans "On Leave" %}',           data.on_leave,          data.pending_leaves > 0 ? '<a href="{% url "request-view" %}?status=requested&filter_applied=on" class="md-badge md-badge--amber">' + data.pending_leaves + ' {% trans "pending" %}</a>' : '<span style="opacity:0.5">{% trans "No pending" %}</span>') +
                             (PERM.recruitment ? kpiCard("{% url 'recruitment-view' %}?closed=false&filter_applied=on", true, 'md-kpi-card__icon--purple', recruSvg, '{% trans "Open Recruitments" %}', data.open_recruitments, '<span style="opacity:0.5">{% trans "Active hiring" %}</span>') : '');
+                    }).catch(() => {
+                        const grid = document.getElementById('md-kpi-grid');
+                        if (grid) grid.innerHTML = emptyHtml('{% trans "Unable to load dashboard summary" %}');
                     });
             }
             loadKpiCards();
 
             // ─── ANNOUNCEMENTS ───
             function loadAnnouncements() {
-                fetch("{% url 'dashboard-announcements' %}")
+                dashboardFetch("{% url 'dashboard-announcements' %}")
                     .then(r => r.json())
                     .then(data => {
                         const el = document.getElementById('md-announcements');
@@ -2354,7 +2428,7 @@
 
             // ─── TODAY'S LEAVE ───
             function loadTodaysLeave() {
-                fetch("{% url 'dashboard-todays-leave' %}")
+                dashboardFetch("{% url 'dashboard-todays-leave' %}")
                 .then(r => r.json())
                 .then(data => {
                     const el = document.getElementById('md-todays-leave');
@@ -2417,9 +2491,10 @@
             }
             loadTodaysLeave();
 
-            {% if perms.attendance.view_attendance or request.user.is_superuser %}
+            {% if perms.attendance.view_attendance or request.user.is_superuser or home_role == "manager" %}
             // ─── ATTENDANCE TREND ───
             function loadAttendanceTrend() {
+                if (!isChartVisible('attendance_trend')) return;
                 fetchP("{% url 'dashboard-attendance-trend' %}")
                 .then(r => r.json())
                 .then(data => {
@@ -2442,14 +2517,18 @@
                         grid: GRID,
                         tooltip: { ...TOOLTIP_STYLE, y: { formatter: v => v + '% {% trans "attendance" %}' } },
                     });
-                });
+                    }).catch(() => {
+                        const el = document.querySelector("#chart-attendance-trend");
+                        if (el) el.innerHTML = emptyHtml('{% trans "Unable to load attendance trend" %}');
+                    });
             }
             loadAttendanceTrend();
             {% endif %}
 
             // ─── DEPARTMENT HEADCOUNT ───
             function loadDepartmentHeadcount() {
-                fetch("{% url 'dashboard-department-headcount' %}")
+                if (!isChartVisible('department_headcount')) return;
+                dashboardFetch("{% url 'dashboard-department-headcount' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (!data.departments.length) { document.querySelector("#chart-departments").innerHTML = emptyHtml('{% trans "No department data" %}'); return; }
@@ -2474,13 +2553,17 @@
                         legend: { ...LEGEND_STYLE },
                         tooltip: { ...TOOLTIP_STYLE },
                     });
-                });
+                    }).catch(() => {
+                        const el = document.querySelector("#chart-departments");
+                        if (el) el.innerHTML = emptyHtml('{% trans "Unable to load department data" %}');
+                    });
             }
             loadDepartmentHeadcount();
 
             // ─── GENDER ───
             function loadGenderSplit() {
-                fetch("{% url 'dashboard-gender-split' %}")
+                if (!isChartVisible('gender_distribution')) return;
+                dashboardFetch("{% url 'dashboard-gender-split' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (!data.genders.length) { document.querySelector("#chart-gender").innerHTML = emptyHtml('{% trans "No data" %}'); return; }
@@ -2510,13 +2593,17 @@
                         legend: { ...LEGEND_STYLE },
                         tooltip: { ...TOOLTIP_STYLE, y: { formatter: v => v + ' {% trans "employees" %}' } },
                     });
-                });
+                    }).catch(() => {
+                        const el = document.querySelector("#chart-gender");
+                        if (el) el.innerHTML = emptyHtml('{% trans "Unable to load gender data" %}');
+                    });
             }
             loadGenderSplit();
 
             {% if perms.leave.view_leaverequest or request.user.is_superuser %}
             // ─── LEAVE BREAKDOWN ───
             function loadLeaveBreakdown() {
+                if (!isChartVisible('leave_breakdown')) return;
                 fetchP("{% url 'dashboard-leave-breakdown' %}")
                 .then(r => r.json())
                 .then(data => {
@@ -2542,7 +2629,10 @@
                         tooltip: { ...TOOLTIP_STYLE, y: { formatter: v => v + ' {% trans "requests" %}' } },
                         states: { hover: { filter: { type: 'darken', value: 0.85 } } },
                     });
-                });
+                    }).catch(() => {
+                        const el = document.querySelector("#chart-leave");
+                        if (el) el.innerHTML = emptyHtml('{% trans "Unable to load leave data" %}');
+                    });
             }
             loadLeaveBreakdown();
             {% endif %}
@@ -2550,7 +2640,8 @@
             // ─── EMPLOYEE STATUS ───
             // Donut (not radialBar): API returns absolute headcounts; radialBar treats series as 0–100%.
             function loadEmployeeStatus() {
-                fetch("{% url 'dashboard-employee-status' %}")
+                if (!isChartVisible('employee_status')) return;
+                dashboardFetch("{% url 'dashboard-employee-status' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (!data.dataSet || !data.dataSet.length) { document.querySelector("#chart-employee-status").innerHTML = emptyHtml('{% trans "No data" %}'); return; }
@@ -2579,14 +2670,18 @@
                         legend: { ...LEGEND_STYLE, show: true },
                         tooltip: { ...TOOLTIP_STYLE, y: { formatter: v => v + ' {% trans "employees" %}' } },
                     });
-                });
+                    }).catch(() => {
+                        const el = document.querySelector("#chart-employee-status");
+                        if (el) el.innerHTML = emptyHtml('{% trans "Unable to load employee data" %}');
+                    });
             }
             loadEmployeeStatus();
 
             {% if perms.attendance.view_attendance or request.user.is_superuser %}
             // ─── ATTENDANCE OVERVIEW ───
             function loadAttendanceOverview() {
-                fetch("{% url 'dashboard-attendance-overview' %}")
+                if (!isChartVisible('attendance_overview')) return;
+                dashboardFetch("{% url 'dashboard-attendance-overview' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (data.no_permission) { hideCard('attendance_overview'); return; }
@@ -2622,7 +2717,8 @@
 
             // ─── DEPARTMENT OVERTIME ───
             function loadDepartmentOvertime() {
-                fetch("{% url 'dashboard-department-overtime' %}")
+                if (!isChartVisible('department_overtime')) return;
+                dashboardFetch("{% url 'dashboard-department-overtime' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (data.no_permission) { hideCard('department_overtime'); return; }
@@ -2647,7 +2743,8 @@
             {% if perms.leave.view_leaverequest or request.user.is_superuser %}
             // ─── LEAVE OVER PERIOD ───
             function loadLeaveOverPeriod() {
-                fetch("{% url 'dashboard-leave-trends' %}")
+                if (!isChartVisible('leave_trends')) return;
+                dashboardFetch("{% url 'dashboard-leave-trends' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (data.no_permission) { hideCard('leave_trends'); return; }
@@ -2675,7 +2772,8 @@
             {% if perms.recruitment.view_recruitment or request.user.is_superuser %}
             // ─── RECRUITMENT PIPELINE ───
             function loadRecruitmentPipeline() {
-                fetch("{% url 'dashboard-recruitment-by-stage' %}?_t=" + Date.now())
+                if (!isChartVisible('recruitment_pipeline')) return;
+                dashboardFetch("{% url 'dashboard-recruitment-by-stage' %}?_t=" + Date.now())
                 .then(r => {
                     const ct = r.headers.get('content-type') || '';
                     if (!r.ok || !ct.includes('application/json')) {
@@ -2721,7 +2819,8 @@
 
             // ─── HIRING TIMELINE ───
             function loadHiringTimeline() {
-                fetch("{% url 'dashboard-hiring-timeline' %}")
+                if (!isChartVisible('hiring_timeline')) return;
+                dashboardFetch("{% url 'dashboard-hiring-timeline' %}")
                 .then(r => {
                     const ct = r.headers.get('content-type') || '';
                     if (!r.ok || !ct.includes('application/json')) {
@@ -2769,6 +2868,7 @@
             {% if perms.leave.view_leaverequest or request.user.is_superuser %}
             // ─── LEAVE BY DEPARTMENT ───
             function loadLeaveCoverage() {
+                if (!isChartVisible('leave_coverage')) return;
                 const el = document.querySelector("#chart-leave-coverage");
                 if (!el) return;
                 fetchP("{% url 'dashboard-leave-coverage' %}")
@@ -2803,7 +2903,8 @@
             loadLeaveCoverage();
 
             function loadLeaveByDepartment() {
-                fetch("{% url 'dashboard-leave-by-department' %}")
+                if (!isChartVisible('leave_by_department')) return;
+                dashboardFetch("{% url 'dashboard-leave-by-department' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (data.no_permission) { hideCard('leave_by_department'); return; }
@@ -2833,7 +2934,8 @@
 
             // ─── DEPARTMENT LEAVE DAYS ───
             function loadDepartmentLeaveDays() {
-                fetch("{% url 'dashboard-department-leave-days' %}")
+                if (!isChartVisible('department_leave_days')) return;
+                dashboardFetch("{% url 'dashboard-department-leave-days' %}")
                 .then(r => r.json())
                 .then(data => {
                     if (data.no_permission) { hideCard('department_leave_days'); return; }
@@ -2858,7 +2960,7 @@
 
             // ─── UPCOMING HOLIDAYS ───
             function loadUpcomingHolidays() {
-                fetch("{% url 'dashboard-upcoming-holidays' %}")
+                dashboardFetch("{% url 'dashboard-upcoming-holidays' %}")
                 .then(r => r.json())
                 .then(data => {
                     const el = document.getElementById('md-holidays');
@@ -2891,7 +2993,7 @@
 
             // ─── BIRTHDAYS & ANNIVERSARIES ───
             function loadBirthdaysAnniversaries() {
-                fetch("{% url 'dashboard-birthdays-anniversaries' %}")
+                dashboardFetch("{% url 'dashboard-birthdays-anniversaries' %}")
                 .then(r => r.json())
                 .then(data => {
                     const el = document.getElementById('md-birthdays');
@@ -2995,7 +3097,8 @@
             {% if perms.recruitment.view_recruitment or request.user.is_superuser %}
             // ─── RECRUITMENT FUNNEL (HTML stage funnel — share of candidates) ───
             function loadRecruitmentFunnel() {
-                fetch("{% url 'dashboard-recruitment-pipeline' %}?_t=" + Date.now())
+                if (!isChartVisible('recruitment_funnel')) return;
+                dashboardFetch("{% url 'dashboard-recruitment-pipeline' %}?_t=" + Date.now())
                 .then(r => r.json())
                 .then(data => {
                     const el = document.querySelector("#chart-recruitment-funnel");
@@ -3040,6 +3143,7 @@
             {% if perms.employee.view_employee or request.user.is_superuser %}
             // ─── EMPLOYEE TURNOVER ───
             function loadEmployeeTurnover() {
+                if (!isChartVisible('employee_turnover')) return;
                 fetchP("{% url 'dashboard-turnover' %}")
                 .then(r => r.json())
                 .then(data => {
@@ -3076,6 +3180,7 @@
             {% if request.user.is_superuser or perms.payroll.view_payslip and request.user.is_staff or perms.payroll.view_payslip and perms.payroll.change_payslip %}
             // ─── PAYROLL SUMMARY ───
             function loadPayrollSummary() {
+                if (!isChartVisible('payroll_summary')) return;
                 fetchP("{% url 'dashboard-payroll-summary' %}")
                 .then(r => r.json())
                 .then(data => {

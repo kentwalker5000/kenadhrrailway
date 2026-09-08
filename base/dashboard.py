@@ -1584,9 +1584,65 @@ def dashboard_attendance_overview(request):
 
 @login_required
 def dashboard_department_overtime(request):
-    from attendance.views.dashboard import department_overtime_chart
+    """Return today's approved overtime by department with one aggregate query.
 
-    return _call_module_json(department_overtime_chart, request)
+    The legacy dashboard helper builds a django-filter with a plain ``dict``.
+    Recent django-filter versions expect a QueryDict there, causing this widget
+    to fail on every modern dashboard load. Keeping the aggregation here also
+    avoids its previous Python-level department and attendance loops.
+    """
+    if not (
+        request.user.is_superuser
+        or request.user.has_perm("attendance.view_attendance")
+    ):
+        return JsonResponse({"no_permission": True})
+
+    from django.db.models import Sum
+
+    from attendance.methods.utils import strtime_seconds
+    from attendance.models import Attendance, AttendanceValidationCondition
+
+    condition = AttendanceValidationCondition.objects.first()
+    minimum_overtime = strtime_seconds("00:00")
+    if condition and condition.minimum_overtime_to_approve is not None:
+        minimum_overtime = strtime_seconds(condition.minimum_overtime_to_approve)
+
+    rows = (
+        Attendance.objects.filter(
+            attendance_date=date.today(),
+            overtime_second__gte=minimum_overtime,
+            attendance_validated=True,
+            attendance_overtime_approve=True,
+            employee_id__is_active=True,
+            employee_id__employee_work_info__department_id__isnull=False,
+        )
+        .values("employee_id__employee_work_info__department_id__department")
+        .annotate(total_seconds=Sum("approved_overtime_second"))
+        .order_by(
+            "-total_seconds",
+            "employee_id__employee_work_info__department_id__department",
+        )
+    )
+
+    labels = []
+    hours = []
+    department_total = []
+    for row in rows:
+        department = row["employee_id__employee_work_info__department_id__department"]
+        overtime_hours = round((row["total_seconds"] or 0) / 3600, 2)
+        labels.append(department)
+        hours.append(overtime_hours)
+        department_total.append({"department": department, "ot_hours": overtime_hours})
+
+    return JsonResponse(
+        {
+            "dataset": [{"label": "", "data": hours}],
+            "labels": labels,
+            "department_total": department_total,
+            "message": _("No validated Overtimes were found"),
+            "emptyImageSrc": "/static/images/ui/overtime-icon.png",
+        }
+    )
 
 
 @login_required
