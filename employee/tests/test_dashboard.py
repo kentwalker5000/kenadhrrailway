@@ -1,10 +1,13 @@
 """Employee dashboard workforce KPI tests."""
 
 import json
+from pathlib import Path
 
 from django.contrib.auth.models import Permission
+from django.template import Engine
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
+from attendance.models import AttendanceGeneralSetting
 from base.models import EmployeeType
 from base.ess_dashboard import ess_kpi_data
 from employee.dashboard import employee_kpi_data
@@ -33,10 +36,63 @@ class EmployeeTypeCategoryTests(SimpleTestCase):
         self.assertIsNone(employee_type_category(None))
 
 
+class EssDashboardCustomizerTemplateTests(SimpleTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.template_source = (
+            Path(__file__).resolve().parents[2]
+            / "base"
+            / "templates"
+            / "base"
+            / "ess_dashboard.html"
+        ).read_text(encoding="utf-8")
+
+    def test_employee_dashboard_template_compiles(self):
+        self.assertIsNotNone(Engine.get_default().from_string(self.template_source))
+
+    def test_customizer_exposes_all_dashboard_sections(self):
+        self.assertIn('id="essOpenCustomize"', self.template_source)
+        self.assertIn('id="essCustomizePanel"', self.template_source)
+
+        widget_ids = {
+            "workforce_overview",
+            "personal_overview",
+            "leave_balance",
+            "work_hours",
+            "attendance_calendar",
+            "recent_payslips",
+            "goals",
+            "recent_leave_requests",
+            "announcements",
+            "upcoming",
+        }
+        for widget_id in widget_ids:
+            with self.subTest(widget_id=widget_id):
+                self.assertEqual(
+                    self.template_source.count(
+                        f'data-ess-widget-id="{widget_id}"'
+                    ),
+                    1,
+                )
+
+    def test_preferences_are_versioned_and_scoped_to_the_signed_in_user(self):
+        self.assertIn(
+            "ess_dashboard_prefs_v1_{{ request.user.pk|escapejs }}",
+            self.template_source,
+        )
+        self.assertIn("normalizeWidgetPrefs", self.template_source)
+        self.assertNotIn("dashboard-save-prefs", self.template_source)
+
+
 class EmployeeDashboardKpiTests(CompanyFilterTestMixin, TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.company = make_company("Dashboard Co")
+        cls.attendance_settings = AttendanceGeneralSetting.objects.create(
+            company_id=cls.company,
+            enable_check_in=True,
+        )
         cls.viewer = make_employee(
             company=cls.company,
             email="dashboard-viewer@test.horilla",
@@ -153,3 +209,43 @@ class EmployeeDashboardKpiTests(CompanyFilterTestMixin, TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(json.loads(response.content)["workforce"])
+
+    def test_ess_customizer_only_lists_workforce_for_authorized_users(self):
+        common_widget = 'data-ess-widget-id="personal_overview"'
+        workforce_widget = 'data-ess-widget-id="workforce_overview"'
+        work_hours_widget = 'data-ess-widget-id="work_hours"'
+
+        for employee, workforce_is_visible in (
+            (self.viewer, True),
+            (self.unprivileged_employee, False),
+        ):
+            with self.subTest(workforce_is_visible=workforce_is_visible):
+                user = employee.employee_user_id
+                user.is_new_employee = False
+                user.save(update_fields=["is_new_employee"])
+                self.client.force_login(user)
+                session = self.client.session
+                session["selected_company"] = str(self.company.pk)
+                session.save()
+                response = self.client.get("/ess/", HTTP_HOST="localhost")
+                html = response.content.decode()
+
+                self.assertEqual(
+                    response.status_code,
+                    200,
+                    response.headers.get("Location", "unexpected response"),
+                )
+                self.assertIn('id="essOpenCustomize"', html)
+                self.assertIn(common_widget, html)
+                self.assertIn(work_hours_widget, html)
+                self.assertEqual(workforce_widget in html, workforce_is_visible)
+                self.assertIn(f"ess_dashboard_prefs_v1_{user.pk}", html)
+
+        AttendanceGeneralSetting._base_manager.all().update(enable_check_in=False)
+        self.client.force_login(self.viewer.employee_user_id)
+        response = self.client.get("/ess/", HTTP_HOST="localhost")
+        html = response.content.decode()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(work_hours_widget, html)
+        self.assertIn('data-ess-widget-id="attendance_calendar"', html)

@@ -727,6 +727,244 @@
             color: var(--ess-purple);
         }
 
+        /* ── Dashboard customizer ── */
+        .ess-customize-trigger,
+        .ess-customize-save {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            gap: 7px;
+            border: 1px solid var(--primary-700, #1e3a8a);
+            border-radius: 8px;
+            background: var(--primary-700, #1e3a8a);
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 13px;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease;
+        }
+        .ess-customize-trigger:hover,
+        .ess-customize-trigger:focus-visible,
+        .ess-customize-save:hover,
+        .ess-customize-save:focus-visible {
+            border-color: var(--primary-900, #172554);
+            background: var(--primary-900, #172554);
+            color: #ffffff;
+        }
+        .ess-customize-trigger:focus-visible,
+        .ess-customize-save:focus-visible,
+        .ess-customize-close:focus-visible,
+        .ess-customize-reset:focus-visible,
+        .ess-customize-item input:focus-visible {
+            outline: 3px solid var(--primary-300, #93c5fd);
+            outline-offset: 2px;
+        }
+
+        .ess-dashboard [data-ess-widget-id][hidden],
+        .ess-dashboard [data-ess-widget-row][hidden],
+        .ess-dashboard .ess-main[hidden],
+        .ess-dashboard .ess-sidebar[hidden],
+        .ess-dashboard .ess-layout[hidden] {
+            display: none !important;
+        }
+        .ess-chart-grid--single {
+            grid-template-columns: minmax(0, 1fr);
+        }
+        .ess-layout--single-column {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        body.ess-customize-open {
+            overflow: hidden;
+        }
+        .ess-customize-overlay {
+            z-index: 1050;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.36);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        .ess-customize-overlay--open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .ess-customize-panel {
+            display: flex;
+            z-index: 1051;
+            position: fixed;
+            top: 0;
+            right: 0;
+            flex-direction: column;
+            width: min(400px, 100vw);
+            height: 100vh;
+            height: 100dvh;
+            border-left: 1px solid rgba(128, 128, 128, 0.12);
+            background: #ffffff;
+            box-shadow: -8px 0 30px rgba(15, 23, 42, 0.14);
+            transform: translateX(105%);
+            transition: transform 0.24s ease;
+        }
+        .dark .ess-customize-panel {
+            border-left-color: rgba(255, 255, 255, 0.08);
+            background: #242424;
+        }
+        .ess-customize-panel--open {
+            transform: translateX(0);
+        }
+        .ess-customize-panel__header {
+            display: flex;
+            flex-shrink: 0;
+            align-items: flex-start;
+            justify-content: space-between;
+            padding: 20px;
+            gap: 16px;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+        }
+        .ess-customize-panel__header h2 {
+            margin: 0;
+            color: var(--primary-900, #172554);
+            font-weight: 700;
+            font-size: 18px;
+        }
+        .dark .ess-customize-panel__header h2 {
+            color: #f8fafc;
+        }
+        .ess-customize-panel__header p {
+            margin: 5px 0 0;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .dark .ess-customize-panel__header p {
+            color: #94a3b8;
+        }
+        .ess-customize-close {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            padding: 0;
+            border: 1px solid rgba(128, 128, 128, 0.16);
+            border-radius: 8px;
+            background: transparent;
+            color: inherit;
+            cursor: pointer;
+        }
+        .ess-customize-close:hover {
+            border-color: rgba(128, 128, 128, 0.28);
+            background: rgba(128, 128, 128, 0.08);
+        }
+        .ess-customize-panel__body {
+            flex: 1;
+            padding: 18px 20px;
+            overflow-y: auto;
+        }
+        .ess-customize-group + .ess-customize-group {
+            margin-top: 20px;
+        }
+        .ess-customize-group {
+            min-width: 0;
+            margin-inline: 0;
+            padding: 0;
+            border: 0;
+        }
+        .ess-customize-group__title {
+            margin-bottom: 7px;
+            color: #64748b;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .dark .ess-customize-group__title {
+            color: #94a3b8;
+        }
+        .ess-customize-item {
+            display: flex;
+            align-items: center;
+            min-height: 44px;
+            margin-bottom: 7px;
+            padding: 10px 12px;
+            gap: 12px;
+            border: 1px solid rgba(128, 128, 128, 0.12);
+            border-radius: 8px;
+            background: rgba(148, 163, 184, 0.035);
+            cursor: pointer;
+        }
+        .ess-customize-item:hover {
+            border-color: var(--primary-300, #93c5fd);
+            background: rgba(30, 58, 138, 0.035);
+        }
+        .dark .ess-customize-item {
+            border-color: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.025);
+        }
+        .ess-customize-item input {
+            width: 18px;
+            height: 18px;
+            margin: 0;
+            accent-color: var(--primary-700, #1e3a8a);
+            cursor: pointer;
+        }
+        .ess-customize-item__label {
+            flex: 1;
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .ess-customize-panel__footer {
+            display: flex;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            gap: 12px;
+            border-top: 1px solid rgba(128, 128, 128, 0.12);
+        }
+        .ess-customize-reset {
+            padding: 8px 0;
+            border: 0;
+            background: transparent;
+            color: var(--primary-700, #1e3a8a);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+        .dark .ess-customize-reset {
+            color: #93c5fd;
+        }
+        .ess-customize-status {
+            min-height: 18px;
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 11px;
+        }
+        .dark .ess-customize-status {
+            color: #94a3b8;
+        }
+
+        @media (max-width: 480px) {
+            .ess-customize-trigger {
+                width: 100%;
+            }
+            .ess-header__actions {
+                width: 100%;
+            }
+            .ess-customize-panel__footer {
+                align-items: stretch;
+                flex-direction: column;
+            }
+            .ess-customize-save,
+            .ess-customize-reset {
+                width: 100%;
+            }
+        }
+
         /* Empty / skeleton */
         .ess-empty {
             padding: 28px 16px;
@@ -759,7 +997,9 @@
         }
         @media (prefers-reduced-motion: reduce) {
             .ess-kpi-card,
-            .ess-chart-card {
+            .ess-chart-card,
+            .ess-customize-overlay,
+            .ess-customize-panel {
                 transition: none;
             }
             .ess-skeleton {
@@ -783,10 +1023,31 @@
                     <span class="ess-period-picker__sep">&rarr;</span>
                     <input type="date" id="essToDate" title="{% trans 'To' %}">
                 </div>
+                <button
+                    type="button"
+                    class="ess-customize-trigger"
+                    id="essOpenCustomize"
+                    aria-controls="essCustomizePanel"
+                    aria-expanded="false"
+                    title="{% trans 'Customize dashboard' %}"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                    {% trans "Customize" %}
+                </button>
             </div>
         </div>
 
         {% if perms.employee.view_employee %}
+        <section
+            data-ess-widget-id="workforce_overview"
+            data-ess-widget-label="{% trans 'Workforce Overview' %}"
+            data-ess-widget-group="overview"
+        >
             <div class="ess-section-heading">
                 <div>
                     <h2 id="essWorkforceHeading">{% trans "Workforce Overview" %}</h2>
@@ -860,8 +1121,14 @@
                     <div class="ess-kpi-card__sub" id="essWorkforceNationalServiceShare">{% trans "Active employees by type" %}</div>
                 </article>
             </div>
+        </section>
         {% endif %}
 
+        <section
+            data-ess-widget-id="personal_overview"
+            data-ess-widget-label="{% trans 'My Overview' %}"
+            data-ess-widget-group="overview"
+        >
         <div class="ess-section-heading">
             <div>
                 <h2 id="essPersonalHeading">{% trans "My Overview" %}</h2>
@@ -883,14 +1150,21 @@
                 <div class="ess-skeleton ess-skeleton--kpi"></div>
             {% endif %}
         </div>
+        </section>
 
         <!-- Main layout -->
-        <div class="ess-layout">
+        <div class="ess-layout" id="essDashboardLayout">
             <!-- Left: charts -->
-            <div class="ess-main">
+            <div class="ess-main" id="essMainWidgets">
                 <!-- Row 1: Leave balance + Work hours -->
-                <div class="ess-chart-grid">
-                    <div class="ess-chart-card" data-section="leave">
+                <div class="ess-chart-grid" data-ess-widget-row>
+                    <div
+                        class="ess-chart-card"
+                        data-section="leave"
+                        data-ess-widget-id="leave_balance"
+                        data-ess-widget-label="{% trans 'Leave Balance' %}"
+                        data-ess-widget-group="activity"
+                    >
                         <div class="ess-chart-card__header">
                             <div>
                                 <div class="ess-chart-card__title">{% trans "Leave Balance" %}</div>
@@ -903,7 +1177,13 @@
                     </div>
 
                     {% if request|is_check_in_enabled %}
-                        <div class="ess-chart-card" data-section="attendance">
+                        <div
+                            class="ess-chart-card"
+                            data-section="attendance"
+                            data-ess-widget-id="work_hours"
+                            data-ess-widget-label="{% trans 'Work Hours This Week' %}"
+                            data-ess-widget-group="activity"
+                        >
                             <div class="ess-chart-card__header">
                                 <div>
                                     <div class="ess-chart-card__title">{% trans "Work Hours This Week" %}</div>
@@ -918,7 +1198,13 @@
                 </div>
 
                 <!-- Row 2: Attendance calendar -->
-                <div class="ess-chart-card ess-chart-card--wide" data-section="calendar">
+                <div
+                    class="ess-chart-card ess-chart-card--wide"
+                    data-section="calendar"
+                    data-ess-widget-id="attendance_calendar"
+                    data-ess-widget-label="{% trans 'My Attendance' %}"
+                    data-ess-widget-group="activity"
+                >
                     <div class="ess-chart-card__header">
                         <div>
                             <div class="ess-chart-card__title">{% trans "My Attendance" %}</div>
@@ -956,8 +1242,14 @@
                 </div>
 
                 <!-- Row 3: Payslips + Goals -->
-                <div class="ess-chart-grid">
-                    <div class="ess-chart-card" data-section="payroll">
+                <div class="ess-chart-grid" data-ess-widget-row>
+                    <div
+                        class="ess-chart-card"
+                        data-section="payroll"
+                        data-ess-widget-id="recent_payslips"
+                        data-ess-widget-label="{% trans 'Recent Payslips' %}"
+                        data-ess-widget-group="activity"
+                    >
                         <div class="ess-chart-card__header">
                             <div>
                                 <div class="ess-chart-card__title">{% trans "Recent Payslips" %}</div>
@@ -971,7 +1263,13 @@
                         </div>
                     </div>
 
-                    <div class="ess-chart-card" data-section="goals">
+                    <div
+                        class="ess-chart-card"
+                        data-section="goals"
+                        data-ess-widget-id="goals"
+                        data-ess-widget-label="{% trans 'My Goals' %}"
+                        data-ess-widget-group="activity"
+                    >
                         <div class="ess-chart-card__header">
                             <div>
                                 <div class="ess-chart-card__title">{% trans "My Goals" %}</div>
@@ -985,9 +1283,14 @@
             <!-- /ess-main -->
 
             <!-- Right sidebar -->
-            <div class="ess-sidebar">
+            <div class="ess-sidebar" id="essSidebarWidgets">
                 <!-- Recent Leave Requests -->
-                <div class="ess-info-panel">
+                <div
+                    class="ess-info-panel"
+                    data-ess-widget-id="recent_leave_requests"
+                    data-ess-widget-label="{% trans 'Recent Leave Requests' %}"
+                    data-ess-widget-group="updates"
+                >
                     <div class="ess-info-panel__header">{% trans "Recent Leave Requests" %}</div>
                     <div id="essLeaveRequestsList" class="ess-info-panel__body">
                         <div class="ess-empty-sm">{% trans "Loading..." %}</div>
@@ -998,7 +1301,12 @@
                 </div>
 
                 <!-- Announcements -->
-                <div class="ess-info-panel">
+                <div
+                    class="ess-info-panel"
+                    data-ess-widget-id="announcements"
+                    data-ess-widget-label="{% trans 'Announcements' %}"
+                    data-ess-widget-group="updates"
+                >
                     <div class="ess-info-panel__header">{% trans "Announcements" %}</div>
                     <div id="essAnnouncementsList" class="ess-info-panel__body">
                         <div class="ess-empty-sm">{% trans "Loading..." %}</div>
@@ -1006,7 +1314,12 @@
                 </div>
 
                 <!-- Upcoming -->
-                <div class="ess-info-panel">
+                <div
+                    class="ess-info-panel"
+                    data-ess-widget-id="upcoming"
+                    data-ess-widget-label="{% trans 'Upcoming' %}"
+                    data-ess-widget-group="updates"
+                >
                     <div class="ess-info-panel__header">{% trans "Upcoming" %}</div>
                     <div id="essUpcomingList" class="ess-info-panel__body">
                         <div class="ess-empty-sm">{% trans "Loading..." %}</div>
@@ -1017,6 +1330,57 @@
         </div>
         <!-- /ess-layout -->
     </div><!-- /ess-dashboard -->
+
+    <div
+        class="ess-customize-overlay"
+        id="essCustomizeOverlay"
+        aria-hidden="true"
+    ></div>
+    <aside
+        class="ess-customize-panel"
+        id="essCustomizePanel"
+        aria-hidden="true"
+        aria-labelledby="essCustomizeTitle"
+        aria-modal="true"
+        role="dialog"
+        data-overview-label="{% trans 'Overview' %}"
+        data-activity-label="{% trans 'My activity' %}"
+        data-updates-label="{% trans 'Updates' %}"
+        data-unsaved-message="{% trans 'You have unsaved changes.' %}"
+        data-reset-message="{% trans 'Default dashboard restored.' %}"
+        inert
+    >
+        <div class="ess-customize-panel__header">
+            <div>
+                <h2 id="essCustomizeTitle">{% trans "Customize Dashboard" %}</h2>
+                <p>{% trans "Choose the sections you want to see on your employee dashboard." %}</p>
+            </div>
+            <button
+                type="button"
+                class="ess-customize-close"
+                id="essCloseCustomize"
+                aria-label="{% trans 'Close customizer' %}"
+            >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                     aria-hidden="true" focusable="false">
+                    <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="ess-customize-panel__body">
+            <div id="essCustomizeList"></div>
+            <div class="ess-customize-status" id="essCustomizeStatus" aria-live="polite"></div>
+        </div>
+        <div class="ess-customize-panel__footer">
+            <button type="button" class="ess-customize-reset" id="essResetCustomize">
+                {% trans "Reset to default" %}
+            </button>
+            <button type="button" class="ess-customize-save" id="essSaveCustomize">
+                {% trans "Save changes" %}
+            </button>
+        </div>
+    </aside>
 
     <script>
         (function () {
@@ -1039,6 +1403,272 @@
 
           document.getElementById('essHeaderDate').textContent =
             today.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+          // Employee dashboard section preferences
+          var CUSTOMIZE_KEY = 'ess_dashboard_prefs_v1_{{ request.user.pk|escapejs }}';
+          var customizeMemoryPrefs = null;
+          var customizeLastFocus = null;
+          var customizeTrigger = document.getElementById('essOpenCustomize');
+          var customizeOverlay = document.getElementById('essCustomizeOverlay');
+          var customizePanel = document.getElementById('essCustomizePanel');
+          var customizeClose = document.getElementById('essCloseCustomize');
+          var customizeList = document.getElementById('essCustomizeList');
+          var customizeStatus = document.getElementById('essCustomizeStatus');
+          var customizeGroups = {
+            overview: customizePanel.getAttribute('data-overview-label'),
+            activity: customizePanel.getAttribute('data-activity-label'),
+            updates: customizePanel.getAttribute('data-updates-label')
+          };
+
+          function getDashboardWidgets() {
+            var seen = {};
+            return Array.prototype.filter.call(
+              document.querySelectorAll('[data-ess-widget-id]'),
+              function (widget) {
+                var id = widget.getAttribute('data-ess-widget-id');
+                if (!id || seen[id]) return false;
+                seen[id] = true;
+                return true;
+              }
+            );
+          }
+
+          function getDefaultWidgetPrefs() {
+            return getDashboardWidgets().map(function (widget) {
+              return {
+                id: widget.getAttribute('data-ess-widget-id'),
+                visible: true
+              };
+            });
+          }
+
+          function normalizeWidgetPrefs(candidate) {
+            var defaults = getDefaultWidgetPrefs();
+            var available = {};
+            var saved = {};
+
+            defaults.forEach(function (pref) { available[pref.id] = true; });
+            if (Array.isArray(candidate)) {
+              candidate.forEach(function (pref) {
+                if (!pref || typeof pref.id !== 'string') return;
+                if (!available[pref.id] || Object.prototype.hasOwnProperty.call(saved, pref.id)) return;
+                saved[pref.id] = pref.visible !== false;
+              });
+            }
+
+            return defaults.map(function (pref) {
+              return {
+                id: pref.id,
+                visible: Object.prototype.hasOwnProperty.call(saved, pref.id) ? saved[pref.id] : true
+              };
+            });
+          }
+
+          function loadWidgetPrefs() {
+            if (customizeMemoryPrefs) return normalizeWidgetPrefs(customizeMemoryPrefs);
+            try {
+              var raw = window.localStorage.getItem(CUSTOMIZE_KEY);
+              if (!raw) return getDefaultWidgetPrefs();
+              var parsed = JSON.parse(raw);
+              if (!Array.isArray(parsed)) {
+                window.localStorage.removeItem(CUSTOMIZE_KEY);
+                return getDefaultWidgetPrefs();
+              }
+              customizeMemoryPrefs = normalizeWidgetPrefs(parsed);
+              return customizeMemoryPrefs;
+            } catch (error) {
+              try { window.localStorage.removeItem(CUSTOMIZE_KEY); } catch (storageError) {}
+              return getDefaultWidgetPrefs();
+            }
+          }
+
+          function saveWidgetPrefs(prefs) {
+            var normalized = normalizeWidgetPrefs(prefs);
+            customizeMemoryPrefs = normalized;
+            try {
+              window.localStorage.setItem(CUSTOMIZE_KEY, JSON.stringify(normalized));
+            } catch (error) {}
+            return normalized;
+          }
+
+          function syncWidgetLayout() {
+            document.querySelectorAll('[data-ess-widget-row]').forEach(function (row) {
+              var visibleChildren = Array.prototype.filter.call(row.children, function (child) {
+                return child.hasAttribute('data-ess-widget-id') && !child.hidden;
+              });
+              row.hidden = visibleChildren.length === 0;
+              row.classList.toggle('ess-chart-grid--single', visibleChildren.length === 1);
+            });
+
+            var layout = document.getElementById('essDashboardLayout');
+            var main = document.getElementById('essMainWidgets');
+            var sidebar = document.getElementById('essSidebarWidgets');
+            var mainWidgets = main ? main.querySelectorAll('[data-ess-widget-id]') : [];
+            var sidebarWidgets = sidebar ? sidebar.querySelectorAll('[data-ess-widget-id]') : [];
+            var mainVisible = Array.prototype.some.call(mainWidgets, function (widget) { return !widget.hidden; });
+            var sidebarVisible = Array.prototype.some.call(sidebarWidgets, function (widget) { return !widget.hidden; });
+
+            if (main) main.hidden = !mainVisible;
+            if (sidebar) sidebar.hidden = !sidebarVisible;
+            if (layout) {
+              layout.hidden = !mainVisible && !sidebarVisible;
+              layout.classList.toggle('ess-layout--single-column', !mainVisible || !sidebarVisible);
+            }
+          }
+
+          function applyWidgetPrefs(prefs) {
+            var visibility = {};
+            normalizeWidgetPrefs(prefs).forEach(function (pref) {
+              visibility[pref.id] = pref.visible;
+            });
+            getDashboardWidgets().forEach(function (widget) {
+              var id = widget.getAttribute('data-ess-widget-id');
+              widget.hidden = visibility[id] === false;
+            });
+            syncWidgetLayout();
+          }
+
+          function renderCustomizeList(prefs) {
+            var preferenceById = {};
+            normalizeWidgetPrefs(prefs).forEach(function (pref) {
+              preferenceById[pref.id] = pref;
+            });
+
+            customizeList.textContent = '';
+            ['overview', 'activity', 'updates'].forEach(function (groupName) {
+              var widgets = getDashboardWidgets().filter(function (widget) {
+                return widget.getAttribute('data-ess-widget-group') === groupName;
+              });
+              if (!widgets.length) return;
+
+              var group = document.createElement('fieldset');
+              group.className = 'ess-customize-group';
+              var heading = document.createElement('legend');
+              heading.className = 'ess-customize-group__title';
+              heading.textContent = customizeGroups[groupName] || groupName;
+              group.appendChild(heading);
+
+              widgets.forEach(function (widget) {
+                var id = widget.getAttribute('data-ess-widget-id');
+                var label = document.createElement('label');
+                var labelText = document.createElement('span');
+                var checkbox = document.createElement('input');
+
+                label.className = 'ess-customize-item';
+                label.setAttribute('for', 'essWidgetToggle-' + id);
+                labelText.className = 'ess-customize-item__label';
+                labelText.textContent = widget.getAttribute('data-ess-widget-label') || id;
+                checkbox.type = 'checkbox';
+                checkbox.id = 'essWidgetToggle-' + id;
+                checkbox.setAttribute('data-ess-widget-toggle', id);
+                checkbox.checked = !preferenceById[id] || preferenceById[id].visible !== false;
+
+                label.appendChild(labelText);
+                label.appendChild(checkbox);
+                group.appendChild(label);
+              });
+              customizeList.appendChild(group);
+            });
+          }
+
+          function getCustomizeState() {
+            var checkboxById = {};
+            customizeList.querySelectorAll('[data-ess-widget-toggle]').forEach(function (checkbox) {
+              checkboxById[checkbox.getAttribute('data-ess-widget-toggle')] = checkbox;
+            });
+            return getDefaultWidgetPrefs().map(function (pref) {
+              var checkbox = checkboxById[pref.id];
+              return { id: pref.id, visible: checkbox ? checkbox.checked : true };
+            });
+          }
+
+          function refreshVisibleChartLayout() {
+            window.requestAnimationFrame(function () {
+              window.dispatchEvent(new Event('resize'));
+            });
+          }
+
+          function openCustomize() {
+            customizeLastFocus = document.activeElement;
+            renderCustomizeList(loadWidgetPrefs());
+            customizeStatus.textContent = '';
+            customizeOverlay.classList.add('ess-customize-overlay--open');
+            customizePanel.classList.add('ess-customize-panel--open');
+            customizeOverlay.setAttribute('aria-hidden', 'false');
+            customizePanel.setAttribute('aria-hidden', 'false');
+            customizePanel.removeAttribute('inert');
+            customizeTrigger.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('ess-customize-open');
+            window.setTimeout(function () { customizeClose.focus(); }, 0);
+          }
+
+          function closeCustomize() {
+            customizeOverlay.classList.remove('ess-customize-overlay--open');
+            customizePanel.classList.remove('ess-customize-panel--open');
+            customizeOverlay.setAttribute('aria-hidden', 'true');
+            customizePanel.setAttribute('aria-hidden', 'true');
+            customizePanel.setAttribute('inert', '');
+            customizeTrigger.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('ess-customize-open');
+            if (customizeLastFocus && typeof customizeLastFocus.focus === 'function') {
+              customizeLastFocus.focus();
+            }
+          }
+
+          customizeTrigger.addEventListener('click', openCustomize);
+          customizeClose.addEventListener('click', closeCustomize);
+          customizeOverlay.addEventListener('click', closeCustomize);
+          customizeList.addEventListener('change', function () {
+            customizeStatus.textContent = customizePanel.getAttribute('data-unsaved-message');
+          });
+          document.getElementById('essSaveCustomize').addEventListener('click', function () {
+            var prefs = saveWidgetPrefs(getCustomizeState());
+            applyWidgetPrefs(prefs);
+            closeCustomize();
+            refreshVisibleChartLayout();
+          });
+          document.getElementById('essResetCustomize').addEventListener('click', function () {
+            customizeMemoryPrefs = null;
+            try { window.localStorage.removeItem(CUSTOMIZE_KEY); } catch (error) {}
+            var defaults = getDefaultWidgetPrefs();
+            applyWidgetPrefs(defaults);
+            renderCustomizeList(defaults);
+            customizeStatus.textContent = customizePanel.getAttribute('data-reset-message');
+            refreshVisibleChartLayout();
+          });
+          window.addEventListener('storage', function (event) {
+            if (event.key !== CUSTOMIZE_KEY) return;
+            customizeMemoryPrefs = null;
+            var prefs = loadWidgetPrefs();
+            applyWidgetPrefs(prefs);
+            if (customizePanel.classList.contains('ess-customize-panel--open')) {
+              renderCustomizeList(prefs);
+              customizeStatus.textContent = '';
+            }
+            refreshVisibleChartLayout();
+          });
+          document.addEventListener('keydown', function (event) {
+            if (!customizePanel.classList.contains('ess-customize-panel--open')) return;
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              closeCustomize();
+              return;
+            }
+            if (event.key !== 'Tab') return;
+            var focusable = customizePanel.querySelectorAll('button:not([disabled]), input:not([disabled])');
+            if (!focusable.length) return;
+            var first = focusable[0];
+            var last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            }
+          });
+
+          applyWidgetPrefs(loadWidgetPrefs());
 
           // ── Period picker (matches onboarding/recruitment dashboards) ──────────────
           var PERIOD_KEY = 'ess_period_v1';
