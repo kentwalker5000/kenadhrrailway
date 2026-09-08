@@ -3491,8 +3491,10 @@ ul.errorlist ul.errorlist {
 }
 
 .oh-404__image {
-  width: 80px;
-  height: 80px;
+  width: min(260px, 70vw);
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
 }
 
 .oh-404__title {
@@ -3668,8 +3670,10 @@ span.oh-activity-sidebar__a img {
 }
 
 .oh-404__image {
-  width: 80px;
-  height: 80px;
+  width: min(260px, 70vw);
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
 }
 
 .w-25 {

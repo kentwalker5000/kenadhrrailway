@@ -14919,8 +14919,10 @@ div.ui-tooltip {
 }
 
 .oh-404__image {
-  width: 80px;
-  height: 80px;
+  width: min(260px, 70vw);
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
 }
 
 .oh-404__title {
