@@ -1660,3 +1660,24 @@ input[type="checkbox"].custom-checkbox:hover {
 .oh-dot--approved {
   background-color: var(--primary-600, #1d4ed8) !important;
 }
+
+/* Use the primary navy palette for success feedback as well, so successful
+   actions read as a product confirmation rather than a separate green state. */
+.oh-alert--success {
+  background-color: #eff6ff !important;
+  border-color: #bfdbfe !important;
+  border-left-color: var(--primary-600, #1d4ed8) !important;
+  color: #1e3a8a !important;
+}
+
+.swal2-icon.swal2-success {
+  border-color: var(--primary-600, #1d4ed8) !important;
+  color: var(--primary-600, #1d4ed8) !important;
+}
+
+.swal2-success-line-tip,
+.swal2-success-line-long,
+.swal2-timer-progress-bar,
+.swal2-styled.swal2-confirm {
+  background-color: var(--primary-600, #1d4ed8) !important;
+}
