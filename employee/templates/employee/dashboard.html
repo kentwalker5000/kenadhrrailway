@@ -5,7 +5,7 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <style>
         :root {
-            --em-indigo: var(--primary-600, #E54F38);
+            --em-indigo: var(--primary-600, #1d4ed8);
             --em-green: #22c55e;
             --em-amber: #f59e0b;
             --em-red: #ef4444;
@@ -59,10 +59,34 @@
             text-decoration: none;
         }
 
-        /* KPI Grid */
+        /* Workforce overview */
+        .em-section-heading {
+            display: flex;
+            align-items: end;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 16px;
+        }
+        .em-section-heading h2 {
+            margin: 0;
+            color: var(--primary-800, #172554);
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .dark .em-section-heading h2 {
+            color: #f8fafc;
+        }
+        .em-section-heading p {
+            margin: 3px 0 0;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .dark .em-section-heading p {
+            color: #94a3b8;
+        }
         .em-kpi-grid {
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             margin-bottom: 20px;
             gap: 14px;
         }
@@ -85,6 +109,16 @@
             color: inherit;
             text-decoration: none;
         }
+        .em-kpi-card:focus-visible {
+            outline: 3px solid var(--primary-300, #bfdbfe);
+            outline-offset: 2px;
+        }
+        .em-kpi-card[aria-disabled="true"] {
+            cursor: default;
+        }
+        .em-kpi-card[aria-disabled="true"]:hover {
+            transform: none;
+        }
         .dark .em-kpi-card {
             border-color: rgba(255, 255, 255, 0.07);
             background: #242424;
@@ -101,57 +135,66 @@
             font-size: 18px;
         }
         .em-kpi-card__icon--indigo {
-            background: #e0e7ff;
-            color: var(--em-indigo);
+            background: var(--primary-100, #eff6ff);
+            color: var(--primary-800, #172554);
         }
-        .em-kpi-card__icon--green {
-            background: #dcfce7;
-            color: var(--em-green);
+        .em-kpi-card__icon--contractual {
+            background: var(--primary-200, #dbeafe);
+            color: var(--primary-700, #1e3a8a);
         }
-        .em-kpi-card__icon--red {
-            background: #fee2e2;
-            color: var(--em-red);
-        }
-        .em-kpi-card__icon--amber {
-            background: #fef3c7;
-            color: var(--em-amber);
-        }
-        .em-kpi-card__icon--blue {
+        .em-kpi-card__icon--internship {
             background: #dbeafe;
-            color: var(--em-blue);
+            color: var(--primary-600, #1d4ed8);
+        }
+        .em-kpi-card__icon--service {
+            border: 1px solid var(--primary-200, #dbeafe);
+            background: var(--secondary-100, #f8fafc);
+            color: var(--primary-800, #172554);
         }
         .dark .em-kpi-card__icon--indigo {
-            background: #312e81;
+            background: rgba(59, 130, 246, 0.16);
+            color: #bfdbfe;
         }
-        .dark .em-kpi-card__icon--green {
-            background: #14532d;
+        .dark .em-kpi-card__icon--contractual {
+            background: rgba(29, 78, 216, 0.26);
+            color: #dbeafe;
         }
-        .dark .em-kpi-card__icon--red {
-            background: #7f1d1d;
+        .dark .em-kpi-card__icon--internship {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
         }
-        .dark .em-kpi-card__icon--amber {
-            background: #78350f;
-        }
-        .dark .em-kpi-card__icon--blue {
-            background: #1e3a5f;
+        .dark .em-kpi-card__icon--service {
+            border-color: rgba(147, 197, 253, 0.2);
+            background: rgba(15, 23, 42, 0.7);
+            color: #bfdbfe;
         }
         .em-kpi-card__label {
             margin-bottom: 6px;
+            color: #475569;
             font-weight: 600;
             font-size: 11px;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            opacity: 0.5;
+        }
+        .dark .em-kpi-card__label {
+            color: #cbd5e1;
         }
         .em-kpi-card__value {
             margin-bottom: 6px;
+            color: #0f172a;
             font-weight: 800;
             font-size: 30px;
             line-height: 1;
         }
+        .dark .em-kpi-card__value {
+            color: #f8fafc;
+        }
         .em-kpi-card__sub {
+            color: #64748b;
             font-size: 12px;
-            opacity: 0.6;
+        }
+        .dark .em-kpi-card__sub {
+            color: #94a3b8;
         }
 
         /* Chart Grid */
@@ -384,7 +427,7 @@
 
         @media (max-width: 1200px) {
             .em-kpi-grid {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
         @media (max-width: 900px) {
@@ -403,7 +446,7 @@
         }
         @media (max-width: 600px) {
             .em-kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -418,116 +461,100 @@
             <a href="{% url 'employee-view-new' %}" class="em-btn-back">{% trans "View All Employees" %} →</a>
         </div>
 
-        <!-- KPI Cards -->
-        <div class="em-kpi-grid" id="em-kpi-grid">
-            <a href="{% url 'employee-view-new' %}" class="em-kpi-card">
+        <div class="em-section-heading">
+            <div>
+                <h2 id="em-workforce-heading">{% trans "Workforce Overview" %}</h2>
+                <p>{% trans "Current active headcount by employee type" %}</p>
+            </div>
+        </div>
+
+        <!-- Priority workforce metrics -->
+        <div
+            class="em-kpi-grid"
+            id="em-kpi-grid"
+            role="region"
+            aria-labelledby="em-workforce-heading"
+        >
+            <a
+                href="{% url 'employee-view-new' %}?is_active=True&filter_applied=on"
+                class="em-kpi-card"
+                aria-label="{% trans 'View active employee headcount' %}"
+            >
                 <div class="em-kpi-card__icon em-kpi-card__icon--indigo">
-                    <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true" focusable="false">
                         <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                         <circle cx="9" cy="7" r="4" />
                         <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                     </svg>
                 </div>
-                <div class="em-kpi-card__label">{% trans "Total Employees" %}</div>
-                <div class="em-kpi-card__value" id="kpi-total">—</div>
-                <div class="em-kpi-card__sub">{% trans "All records" %}</div>
+                <div class="em-kpi-card__label">{% trans "Employee Headcount" %}</div>
+                <div class="em-kpi-card__value" id="kpi-headcount" aria-live="polite">—</div>
+                <div class="em-kpi-card__sub">{% trans "Active workforce" %}</div>
             </a>
-            <a href="{% url 'employee-view-new' %}?is_active=True" class="em-kpi-card">
-                <div class="em-kpi-card__icon em-kpi-card__icon--green">
-                    <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="8.5" cy="7" r="4" />
-                        <polyline points="17 11 19 13 23 9" />
+
+            <a
+                id="kpi-contractual-card"
+                class="em-kpi-card"
+                aria-label="{% trans 'View contractual employees' %}"
+                aria-disabled="true"
+                tabindex="-1"
+            >
+                <div class="em-kpi-card__icon em-kpi-card__icon--contractual">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <rect x="3" y="7" width="18" height="13" rx="2" />
+                        <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                        <path d="M3 12h18" />
+                        <path d="M10 12v2h4v-2" />
                     </svg>
                 </div>
-                <div class="em-kpi-card__label">{% trans "Active" %}</div>
-                <div class="em-kpi-card__value" id="kpi-active">—</div>
-                <div class="em-kpi-card__sub" id="kpi-active-pct">—% of total</div>
+                <div class="em-kpi-card__label">{% trans "Contractual Employees" %}</div>
+                <div class="em-kpi-card__value" id="kpi-contractual" aria-live="polite">—</div>
+                <div class="em-kpi-card__sub" id="kpi-contractual-share">{% trans "Active employees by type" %}</div>
             </a>
-            <a href="{% url 'employee-view-new' %}?is_active=False" class="em-kpi-card">
-                <div class="em-kpi-card__icon em-kpi-card__icon--red">
-                    <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="8.5" cy="7" r="4" />
-                        <line x1="18" y1="8" x2="23" y2="13" />
-                        <line x1="23" y1="8" x2="18" y2="13" />
+
+            <a
+                id="kpi-internships-card"
+                class="em-kpi-card"
+                aria-label="{% trans 'View internship employees' %}"
+                aria-disabled="true"
+                tabindex="-1"
+            >
+                <div class="em-kpi-card__icon em-kpi-card__icon--internship">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M2 6.5A2.5 2.5 0 0 1 4.5 4H9a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4.5A2.5 2.5 0 0 0 2 19.5z" />
+                        <path d="M22 6.5A2.5 2.5 0 0 0 19.5 4H15a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h4.5a2.5 2.5 0 0 1 2.5 2.5z" />
                     </svg>
                 </div>
-                <div class="em-kpi-card__label">{% trans "Inactive" %}</div>
-                <div class="em-kpi-card__value" id="kpi-inactive">—</div>
-                <div class="em-kpi-card__sub">{% trans "Archived employees" %}</div>
+                <div class="em-kpi-card__label">{% trans "Internships" %}</div>
+                <div class="em-kpi-card__value" id="kpi-internships" aria-live="polite">—</div>
+                <div class="em-kpi-card__sub" id="kpi-internships-share">{% trans "Active employees by type" %}</div>
             </a>
-            <a href="{% url 'employee-view-new' %}" class="em-kpi-card">
-                <div class="em-kpi-card__icon em-kpi-card__icon--amber">
-                    <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                        <circle cx="8.5" cy="7" r="4" />
-                        <line x1="20" y1="8" x2="20" y2="14" />
-                        <line x1="23" y1="11" x2="17" y2="11" />
+
+            <a
+                id="kpi-national-service-card"
+                class="em-kpi-card"
+                aria-label="{% trans 'View National Service employees' %}"
+                aria-disabled="true"
+                tabindex="-1"
+            >
+                <div class="em-kpi-card__icon em-kpi-card__icon--service">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                         stroke-linejoin="round" aria-hidden="true" focusable="false">
+                        <path d="M5 22V4" />
+                        <path d="M5 4h12l-2 4 2 4H5" />
                     </svg>
                 </div>
-                <div class="em-kpi-card__label">{% trans "New This Month" %}</div>
-                <div class="em-kpi-card__value" id="kpi-new">—</div>
-                <div class="em-kpi-card__sub">{% trans "Joined this month" %}</div>
-            </a>
-            <a href="{% url 'request-view' %}?status=approved&today_leave=true" class="em-kpi-card">
-                <div class="em-kpi-card__icon em-kpi-card__icon--blue">
-                    <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                    >
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                        <line x1="16" y1="2" x2="16" y2="6" />
-                        <line x1="8" y1="2" x2="8" y2="6" />
-                        <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                </div>
-                <div class="em-kpi-card__label">{% trans "On Leave Today" %}</div>
-                <div class="em-kpi-card__value" id="kpi-leave">—</div>
-                <div class="em-kpi-card__sub">{% trans "Approved leaves" %}</div>
+                <div class="em-kpi-card__label">{% trans "National Service Employees" %}</div>
+                <div class="em-kpi-card__value" id="kpi-national-service" aria-live="polite">—</div>
+                <div class="em-kpi-card__sub" id="kpi-national-service-share">{% trans "Active employees by type" %}</div>
             </a>
         </div>
 
@@ -631,8 +658,10 @@
             const textColor = isDark ? '#94a3b8' : '#64748b';
             const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
             const cardBg    = isDark ? '#242424' : '#ffffff';
+            const primaryColor = getComputedStyle(document.documentElement)
+                .getPropertyValue('--primary-600').trim() || '#1d4ed8';
 
-            const COLORS = ['#E54F38','#22c55e','#f59e0b','#3b82f6','#a855f7','#06b6d4','#ec4899','#ef4444','#84cc16','#0ea5e9'];
+            const COLORS = [primaryColor,'#3b82f6','#0ea5e9','#64748b','#22c55e','#06b6d4','#a855f7','#ec4899','#f59e0b','#84cc16'];
 
             function emptyHtml(msg) {
                 return `<div class="em-empty">${msg}</div>`;
@@ -642,20 +671,58 @@
                 return fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
             }
 
+            function workforceShare(count, headcount) {
+                const percentage = headcount ? Math.round((count / headcount) * 1000) / 10 : 0;
+                return `${percentage}% {% trans "of headcount" %}`;
+            }
+
+            function enableEmployeeTypeCard(cardId, typeIds) {
+                const card = document.getElementById(cardId);
+                const ids = Array.isArray(typeIds) ? typeIds.filter(Boolean) : [];
+                if (!card || !ids.length) return;
+
+                const params = new URLSearchParams();
+                params.set('is_active', 'True');
+                params.set('filter_applied', 'on');
+                ids.forEach(id => params.append('employee_work_info__employee_type_id', id));
+                card.href = `{% url 'employee-view-new' %}?${params.toString()}`;
+                card.removeAttribute('aria-disabled');
+                card.removeAttribute('tabindex');
+            }
+
             // Date header
             const d = new Date();
             document.getElementById('em-today-date').textContent = d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
             // ─── KPI ───
             fetchP("{% url 'employee-dashboard-kpi' %}")
-                .then(r => r.json())
+                .then(r => {
+                    if (!r.ok) throw new Error(`KPI request failed (${r.status})`);
+                    return r.json();
+                })
                 .then(data => {
-                    document.getElementById('kpi-total').textContent   = data.total;
-                    document.getElementById('kpi-active').textContent  = data.active;
-                    document.getElementById('kpi-inactive').textContent = data.inactive;
-                    document.getElementById('kpi-new').textContent     = data.new_this_month;
-                    document.getElementById('kpi-leave').textContent   = data.on_leave;
-                    document.getElementById('kpi-active-pct').textContent = data.active_pct + '% of total';
+                    const headcount = Number(data.headcount || 0);
+                    const contractual = Number(data.contractual || 0);
+                    const internships = Number(data.internships || 0);
+                    const nationalService = Number(data.national_service || 0);
+                    const typeIds = data.employee_type_ids || {};
+
+                    document.getElementById('kpi-headcount').textContent = headcount;
+                    document.getElementById('kpi-contractual').textContent = contractual;
+                    document.getElementById('kpi-internships').textContent = internships;
+                    document.getElementById('kpi-national-service').textContent = nationalService;
+                    document.getElementById('kpi-contractual-share').textContent = workforceShare(contractual, headcount);
+                    document.getElementById('kpi-internships-share').textContent = workforceShare(internships, headcount);
+                    document.getElementById('kpi-national-service-share').textContent = workforceShare(nationalService, headcount);
+
+                    enableEmployeeTypeCard('kpi-contractual-card', typeIds.contractual);
+                    enableEmployeeTypeCard('kpi-internships-card', typeIds.internships);
+                    enableEmployeeTypeCard('kpi-national-service-card', typeIds.national_service);
+                })
+                .catch(() => {
+                    document.querySelectorAll('.em-kpi-card__value').forEach(value => {
+                        value.textContent = '—';
+                    });
                 });
 
             // ─── BY DEPARTMENT ───
@@ -759,7 +826,7 @@
                     new ApexCharts(document.querySelector('#chart-em-joining'), {
                         series: [{ name: '{% trans "New Hires" %}', data: data.months.map(m => m.count) }],
                         chart: { type: 'bar', height: 260, toolbar: { show: false }, background: 'transparent', fontFamily: 'inherit' },
-                        colors: ['#E54F38'],
+                        colors: [primaryColor],
                         plotOptions: { bar: { borderRadius: 8, columnWidth: '45%' } },
                         xaxis: { categories: data.months.map(m => m.month), labels: { style: { colors: textColor, fontSize: '12px' } }, axisBorder: { show: false }, axisTicks: { show: false } },
                         yaxis: { labels: { style: { colors: textColor } } },
