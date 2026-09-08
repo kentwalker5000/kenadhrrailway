@@ -3,16 +3,13 @@
 {% include 'filter_tags.html' %}
 
 {% if not rows %}
-    <div
-        class="oh-wrapper"
-        align="center"
-        style="margin-top: 7vh; margin-bottom: 7vh"
-    >
-        <div align="center">
+    <div class="oh-wrapper" align="center">
+        <div class="flex flex-col items-center justify-center py-12">
             <img
-                src="{% static 'images/ui/search.svg' %}"
-                class="oh-404__image"
+                src="{% static 'horilla_theme/assets/img/no-records.svg' %}"
+                class="mb-4 max-w-full"
                 alt="{% trans 'No records' %}"
+                width="300"
             >
             <h1 class="oh-404__title">{% trans "No Records Found" %}</h1>
             <p class="oh-404__subtitle">
