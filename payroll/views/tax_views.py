@@ -40,7 +40,14 @@ def filing_status_view(request):
     """
     status = FilingStatus.objects.all()
     template = "payroll/tax/filing_status_view.html"
-    context = {"status": status}
+    context = {
+        "status": status,
+        "filing_status_count": status.count(),
+        "manual_status_count": status.filter(use_py=False).count(),
+        "tax_bracket_count": TaxBracket.objects.filter(
+            filing_status_id__in=status
+        ).count(),
+    }
     return render(request, template, context)
 
 
