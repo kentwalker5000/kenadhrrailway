@@ -153,7 +153,7 @@ class TaxBracketNavView(HorillaNavView):
     Nav view for tax bracket list
     """
 
-    nav_title = _("Filing Status")
+    nav_title = _("Income Tax")
     search_swap_target = "#FilingStatusList"
 
     def __init__(self, **kwargs):

@@ -1,83 +1,34 @@
-{% extends "index.html" %}
+{% extends 'index.html' %}
 {% load static i18n %}
 
 {% block content %}
-{% include "generic/components.html" %}
+    {% include 'generic/components.html' %}
 
-<style>
-    .kt-tax-workspace { max-width: 1320px; margin: 0 auto; padding: 8px 0 32px; }
-    .kt-tax-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 24px; margin-bottom: 20px; padding: 28px 30px; border: 1px solid #172554; border-radius: 14px; background: linear-gradient(135deg, #0f172a, #1e3a8a); color: #fff; }
-    .kt-tax-eyebrow { margin: 0 0 6px; color: #bfdbfe; font-weight: 700; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; }
-    .kt-tax-hero h1 { margin: 0; font-weight: 800; font-size: 28px; letter-spacing: -.03em; }
-    .kt-tax-hero p:last-child { max-width: 620px; margin: 8px 0 0; color: #dbeafe; font-size: 14px; line-height: 1.55; }
-    .kt-tax-hero .oh-btn { white-space: nowrap; border: 0; background: #fff; color: #172554; font-weight: 700; }
-    .kt-tax-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
-    .kt-tax-stat { min-height: 108px; padding: 18px; border: 1px solid #dbe4f0; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(15, 23, 42, .04); }
-    .kt-tax-stat__label { display: flex; align-items: center; gap: 7px; color: #64748b; font-weight: 700; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
-    .kt-tax-stat__label ion-icon { color: #1d4ed8; font-size: 16px; }
-    .kt-tax-stat__value { margin-top: 12px; color: #0f172a; font-weight: 800; font-size: 29px; line-height: 1; }
-    .kt-tax-stat__hint { margin-top: 7px; color: #64748b; font-size: 12px; }
-    .kt-tax-panel { margin-bottom: 18px; padding: 22px; border: 1px solid #dbe4f0; border-radius: 12px; background: #fff; }
-    .kt-tax-panel__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
-    .kt-tax-panel__header h2 { margin: 0; color: #0f172a; font-weight: 800; font-size: 17px; }
-    .kt-tax-panel__header p { margin: 4px 0 0; color: #64748b; font-size: 13px; }
-    .kt-tax-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    .kt-tax-guide__item { padding: 15px; border-left: 3px solid #1d4ed8; background: #f8fafc; }
-    .kt-tax-guide__item strong { display: block; color: #172554; font-size: 13px; }
-    .kt-tax-guide__item span { display: block; margin-top: 5px; color: #64748b; font-size: 12px; line-height: 1.45; }
-    .kt-tax-empty { padding: 32px 20px; border: 1px dashed #bfdbfe; border-radius: 10px; background: #f8fbff; text-align: center; }
-    .kt-tax-empty ion-icon { color: #1d4ed8; font-size: 30px; }
-    .kt-tax-empty h3 { margin: 9px 0 5px; color: #172554; font-size: 16px; }
-    .kt-tax-empty p { max-width: 480px; margin: 0 auto; color: #64748b; font-size: 13px; }
-    .dark .kt-tax-stat, .dark .kt-tax-panel { border-color: #334155; background: #1e293b; }
-    .dark .kt-tax-stat__value, .dark .kt-tax-panel__header h2, .dark .kt-tax-guide__item strong, .dark .kt-tax-empty h3 { color: #f8fafc; }
-    .dark .kt-tax-stat__label, .dark .kt-tax-stat__hint, .dark .kt-tax-panel__header p, .dark .kt-tax-guide__item span, .dark .kt-tax-empty p { color: #cbd5e1; }
-    .dark .kt-tax-guide__item, .dark .kt-tax-empty { background: #0f172a; }
-    @media (max-width: 767px) { .kt-tax-hero { grid-template-columns: 1fr; padding: 22px; } .kt-tax-stats, .kt-tax-guide { grid-template-columns: 1fr; } .kt-tax-hero .oh-btn { width: 100%; justify-content: center; } }
-</style>
+    <div
+        hx-get="{% url 'filing-status-nav' %}?{{ request.GET.urlencode }}"
+        hx-trigger="load"
+    >
+        <div class="mt-5 oh-wrapper animated-background" style="height: 80px"></div>
+    </div>
 
-<div class="kt-tax-workspace">
-    <section class="kt-tax-hero" aria-labelledby="incomeTaxTitle">
-        <div>
-            <p class="kt-tax-eyebrow">{% trans "Payroll configuration" %}</p>
-            <h1 id="incomeTaxTitle">{% trans "Income Tax" %}</h1>
-            <p>{% trans "Set up filing statuses and progressive tax brackets so payroll can calculate income tax consistently." %}</p>
+    <div class="oh-wrapper mt-3">
+        <div
+            id="FilingStatusList"
+            class="bg-white p-3 rounded-md shadow-card overflow-hidden overflow-y-auto"
+            hx-get="{% url 'filing-status-search' %}?{{ request.GET.urlencode }}"
+            hx-trigger="load"
+        >
+            <div class="animated-background" style="height: 260px"></div>
         </div>
-        {% if perms.payroll.add_filingstatus %}
-            <button class="oh-btn oh-btn--secondary" data-toggle="oh-modal-toggle" data-target="#objectUpdateModal" hx-get="{% url 'create-filing-status' %}" hx-target="#objectUpdateModalTarget">
-                <ion-icon name="add-outline" class="me-1"></ion-icon>{% trans "Add filing status" %}
-            </button>
-        {% endif %}
-    </section>
+    </div>
 
-    <section class="kt-tax-stats" aria-label="{% trans 'Income tax configuration summary' %}">
-        <div class="kt-tax-stat"><div class="kt-tax-stat__label"><ion-icon name="document-text-outline"></ion-icon>{% trans "Filing statuses" %}</div><div class="kt-tax-stat__value">{{ filing_status_count }}</div><div class="kt-tax-stat__hint">{% trans "Tax rules available to payroll" %}</div></div>
-        <div class="kt-tax-stat"><div class="kt-tax-stat__label"><ion-icon name="options-outline"></ion-icon>{% trans "Tax brackets" %}</div><div class="kt-tax-stat__value">{{ tax_bracket_count }}</div><div class="kt-tax-stat__hint">{% trans "Progressive income ranges configured" %}</div></div>
-        <div class="kt-tax-stat"><div class="kt-tax-stat__label"><ion-icon name="calculator-outline"></ion-icon>{% trans "Bracket-based rules" %}</div><div class="kt-tax-stat__value">{{ manual_status_count }}</div><div class="kt-tax-stat__hint">{% trans "Rules calculated from tax brackets" %}</div></div>
-    </section>
-
-    {% if not status %}
-        <section class="kt-tax-panel"><div class="kt-tax-empty"><ion-icon name="receipt-outline"></ion-icon><h3>{% trans "Start your tax setup" %}</h3><p>{% trans "Create a filing status first, then add the income ranges and tax rate for each bracket." %}</p></div></section>
-    {% endif %}
-
-    <section class="kt-tax-panel">
-        <div class="kt-tax-panel__header"><div><h2>{% trans "How income tax is calculated" %}</h2><p>{% trans "Use this workflow to keep payroll tax rules complete and easy to review." %}</p></div></div>
-        <div class="kt-tax-guide">
-            <div class="kt-tax-guide__item"><strong>1. {% trans "Create a filing status" %}</strong><span>{% trans "Define the employee category and the earnings base to tax." %}</span></div>
-            <div class="kt-tax-guide__item"><strong>2. {% trans "Add tax brackets" %}</strong><span>{% trans "Enter each income range and the rate applied to it." %}</span></div>
-            <div class="kt-tax-guide__item"><strong>3. {% trans "Review before payroll" %}</strong><span>{% trans "Expand a filing status below to review or update its tax rules." %}</span></div>
-        </div>
-    </section>
-
-    <section class="kt-tax-panel">
-        <div class="kt-tax-panel__header"><div><h2>{% trans "Filing status rules" %}</h2><p>{% trans "Expand a rule to view and manage its tax brackets." %}</p></div></div>
-        <div hx-get="{% url 'filing-status-nav' %}?{{request.GET.urlencode}}" hx-trigger="load"></div>
-        <div class="oh-checkpoint-badge mb-2" id="selectedInstances" data-ids="[]" data-clicked="" style="display: none"></div>
-        <div class="oh-wrapper" id="FilingStatusList" hx-get="{% url 'filing-status-search' %}?{{request.GET.urlencode}}" hx-trigger="load"></div>
-    </section>
-</div>
-
-<div class="oh-modal" id="objectUpdateModal" role="dialog" aria-labelledby="objectUpdateModalLabel" aria-hidden="true">
-    <div class="oh-modal__dialog" id="objectUpdateModalTarget"></div>
-</div>
+    <div
+        class="oh-modal"
+        id="objectUpdateModal"
+        role="dialog"
+        aria-labelledby="objectUpdateModalLabel"
+        aria-hidden="true"
+    >
+        <div class="oh-modal__dialog" id="objectUpdateModalTarget"></div>
+    </div>
 {% endblock content %}
