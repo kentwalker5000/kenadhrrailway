@@ -225,7 +225,7 @@
 }
 
 .breadcrumb li.oh-breadcrumb-current {
-  color: #e54f38;
+  color: var(--primary-600, #1d4ed8);
   font-weight: 500;
 }
 
@@ -234,7 +234,7 @@
 }
 
 .breadcrumb li a:hover {
-  color: #e54f38;
+  color: var(--primary-600, #1d4ed8);
 }
 
 .stickyleft {
