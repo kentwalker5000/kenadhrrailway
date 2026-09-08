@@ -5,7 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <style>
     :root {
-        --pd-indigo: var(--primary-600, #E54F38);
+        --pd-indigo: var(--primary-600, #1d4ed8);
         --pd-green: #22c55e;
         --pd-amber: #f59e0b;
         --pd-red: #ef4444;
@@ -98,8 +98,8 @@
     .pd-pipeline-step__label { font-size: 10px; font-weight: 600; text-transform: uppercase; opacity: 0.7; }
 
     /* Customize Panel */
-    .pd-btn-customize { padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); font-size: 13px; cursor: pointer; color: inherit; transition: all 0.15s; background: none; display: flex; align-items: center; gap: 5px; }
-    .pd-btn-customize:hover { border-color: var(--pd-indigo); color: var(--pd-indigo); }
+    .pd-btn-customize { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--pd-indigo); font-size: 13px; cursor: pointer; color: #fff; transition: all 0.15s; background: var(--pd-indigo); display: flex; align-items: center; gap: 5px; }
+    .pd-btn-customize:hover { border-color: var(--pd-indigo); color: #fff; filter: brightness(0.92); }
     .pd-customize-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1050; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
     .pd-customize-overlay--open { opacity: 1; pointer-events: auto; }
     .pd-customize-panel { position: fixed; top: 0; right: -420px; width: 400px; height: 100vh; background: #ffffff; box-shadow: -4px 0 24px rgba(0,0,0,0.12); z-index: 1051; display: flex; flex-direction: column; transition: right 0.25s ease; }
