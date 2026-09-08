@@ -5,7 +5,7 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <style>
     :root {
-        --ld-indigo: var(--primary-600, #E54F38);
+        --ld-indigo: var(--primary-600, #1d4ed8);
         --ld-green: #22c55e;
         --ld-amber: #f59e0b;
         --ld-red: #ef4444;
@@ -131,8 +131,8 @@
     .ld-util-bar__pct { font-size: 11px; font-weight: 700; min-width: 40px; text-align: right; }
 
     /* Customize Panel */
-    .ld-btn-customize { padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); font-size: 13px; cursor: pointer; color: inherit; transition: all 0.15s; background: none; display: flex; align-items: center; gap: 5px; }
-    .ld-btn-customize:hover { border-color: var(--ld-indigo); color: var(--ld-indigo); }
+    .ld-btn-customize { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--ld-indigo); font-size: 13px; cursor: pointer; color: #fff; transition: all 0.15s; background: var(--ld-indigo); display: flex; align-items: center; gap: 5px; }
+    .ld-btn-customize:hover { border-color: var(--ld-indigo); color: #fff; filter: brightness(0.92); }
     .ld-customize-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1050; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
     .ld-customize-overlay--open { opacity: 1; pointer-events: auto; }
     .ld-customize-panel { position: fixed; top: 0; right: -420px; width: 400px; height: 100vh; background: #ffffff; box-shadow: -4px 0 24px rgba(0,0,0,0.12); z-index: 1051; display: flex; flex-direction: column; transition: right 0.25s ease; }
