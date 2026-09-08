@@ -3,37 +3,33 @@
 
 {% block styles %}
     <style>
-        .select2-container--default {
-            padding-bottom: 0 !important;
-        }
-        .oh-main__topbar {
-            padding-top: 0px;
+        .oh-org-chart__topbar {
+            padding-top: 0;
         }
     </style>
 {% endblock %}
 
 {% block content %}
-    <div class="oh-wrapper oh-main__topbar">
-        <div class="oh-main__titlebar oh-main__titlebar--left">
-            <div style="display: flow">
-                <h1 class="text-lg font-semibold mb-3">
+    <div class="oh-wrapper oh-main__topbar oh-org-chart__topbar">
+        <div class="oh-main__titlebar oh-main__titlebar--left oh-org-chart__titlebar">
+            <div class="oh-org-chart__heading">
+                <h1 class="text-lg font-semibold oh-org-chart__title">
                     {% trans "Organization Chart" %}
                 </h1>
 
-                <div class="flex gap-2 items-center">
-                    <p class="text-sm text-gray font-semibold">
+                <div class="oh-org-chart__manager-row">
+                    <label class="oh-org-chart__manager-label" for="managerSelect">
                         {% trans "Reporting Managers" %} :
-                    </p>
+                    </label>
                     <div class="oh-org-chart__manager-select">
                         <select
                             id="managerSelect"
                             class="oh-select {% if not reporting_manager_dict %} hidden {% endif %}"
-                            style="align-items: center; background-color: #fff; border: 1px solid #aaa; border-radius: 2px"
                             name="manager_id"
                             title="{% trans 'Reporting Managers' %}"
                             hx-post="{% url 'organisation-chart' %}"
                             hx-target="#chart_target"
-                            hx-swap="OuterHTML"
+                            hx-swap="innerHTML"
                             hx-trigger="load, change"
                         >
                             {% for manager_id, values in reporting_manager_dict.items %}
@@ -51,7 +47,7 @@
                 </div>
             </div>
         </div>
-        <div class="oh-main__titlebar oh-main__titlebar--right pr-5">
+        <div class="oh-main__titlebar oh-main__titlebar--right oh-org-chart__search">
             <div class="relative">
                 <input
                     class="text-color-600 ps-8 p-1.5 pb-2 placeholder:text-xs w-full border border-dark-50 rounded-md focus-visible:outline-0 placeholder:text-dark-100 text-sm [transition:.3s] focus:border-primary-600"

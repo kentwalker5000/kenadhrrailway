@@ -3,26 +3,29 @@
     {% load i18n %}
 
     <main :class="sidebarOpen ? 'oh-main__sidebar-visible' : ''">
-        <section class="oh-wrapper oh-main__topbar" x-data="{searchShow: false}">
-            <div class="oh-main__titlebar oh-main__titlebar--left">
+        <section class="oh-wrapper oh-main__topbar oh-org-chart__topbar" x-data="{searchShow: false}">
+            <div class="oh-main__titlebar oh-main__titlebar--left oh-org-chart__titlebar">
                 <div class="oh-org-chart__heading">
-                    <h1 class="oh-main__titlebar-title fw-bold">{% trans "Organization Chart" %}</h1>
-                    <div class="oh-org-chart__manager-select">
-                        <label class="oh-org-chart__manager-select-label" for="managerSelect">{% trans "Reporting Managers" %}</label>
-                        <select
-                            id="managerSelect"
-                            class="oh-select {% if not reporting_manager_dict %} d-none {% endif %}"
-                            name="manager_id"
-                            title="{% trans 'Reporting Managers' %}"
-                            hx-post="{% url 'organisation-chart' %}"
-                            hx-target="#chart_target"
-                        >
-                            {% for manager_id, values in reporting_manager_dict.items %}
-                                <option value="{{ manager_id }}" {% if act_manager_id == manager_id %}selected{% endif %}>
-                                    {{ values }}
-                                </option>
-                            {% endfor %}
-                        </select>
+                    <h1 class="oh-main__titlebar-title fw-bold oh-org-chart__title">{% trans "Organization Chart" %}</h1>
+                    <div class="oh-org-chart__manager-row">
+                        <label class="oh-org-chart__manager-label" for="managerSelect">{% trans "Reporting Managers" %} :</label>
+                        <div class="oh-org-chart__manager-select">
+                            <select
+                                id="managerSelect"
+                                class="oh-select {% if not reporting_manager_dict %} d-none {% endif %}"
+                                name="manager_id"
+                                title="{% trans 'Reporting Managers' %}"
+                                hx-post="{% url 'organisation-chart' %}"
+                                hx-target="#chart_target"
+                                hx-swap="innerHTML"
+                            >
+                                {% for manager_id, values in reporting_manager_dict.items %}
+                                    <option value="{{ manager_id }}" {% if act_manager_id == manager_id %}selected{% endif %}>
+                                        {{ values }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <a
@@ -34,7 +37,7 @@
                     <ion-icon name="search-outline" class="oh-main__titlebar-serach-icon"></ion-icon>
                 </a>
             </div>
-            <div class="oh-main__titlebar oh-main__titlebar--right">
+            <div class="oh-main__titlebar oh-main__titlebar--right oh-org-chart__search">
                 <div
                     class="oh-input-group oh-input__search-group"
                     :class="searchShow ? 'oh-input__search-group--show' : ''"
