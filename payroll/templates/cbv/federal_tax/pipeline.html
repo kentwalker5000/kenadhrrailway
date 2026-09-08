@@ -1,4 +1,4 @@
-{% load i18n recruitmentfilters horillafilters %}
+{% load i18n static recruitmentfilters horillafilters %}
 {% load generic_template_filters %}
 {% get_company as theme_obj %}
 <div id="{{view_id}}" class="accordion-wrapper space-y-2">
@@ -64,8 +64,18 @@
     >
   </div>
   </div>
+  {% empty %}
+  <div class="flex flex-col items-center justify-center py-10">
+    <img
+      src="{% static 'horilla_theme/assets/img/no-records.svg' %}"
+      alt=""
+      width="300"
+      class="mb-4 max-w-full"
+    >
+    <p class="text-[#666] mb-0">{% trans "No tax filing statuses have been added yet." %}</p>
+  </div>
   {% endfor %}
-</div>
+  </div>
 <script>
     var tabId = $("#{{view_id}}").closest(".oh-tabs__content").attr("id");
     var badge = $(`#badge-${tabId}`);

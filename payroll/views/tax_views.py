@@ -17,6 +17,7 @@ from django.contrib import messages
 from django.db.models import ProtectedError
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
 from django.utils.translation import gettext_lazy as _
 
 from base.methods import get_key_instances
@@ -38,17 +39,31 @@ def filing_status_view(request):
     'payroll/tax/filing_status_view.html' template with the filing status data.
 
     """
-    status = FilingStatus.objects.all()
-    template = "payroll/tax/filing_status_view.html"
+    # The navigation and filing-status pipeline are normally loaded through
+    # htmx. Render them here as part of the first response so the page is
+    # immediately useful instead of showing loading placeholders.
+    from payroll.cbv.federal_tax import FilingStatusPipeline, TaxBracketNavView
+
+    nav_view = TaxBracketNavView()
+    nav_view.request = request
+
+    pipeline_view = FilingStatusPipeline()
+    pipeline_view.request = request
+    pipeline_view.args = ()
+    pipeline_view.kwargs = {}
+    pipeline_view.object_list = pipeline_view.get_queryset()
+
     context = {
-        "status": status,
-        "filing_status_count": status.count(),
-        "manual_status_count": status.filter(use_py=False).count(),
-        "tax_bracket_count": TaxBracket.objects.filter(
-            filing_status_id__in=status
-        ).count(),
+        "income_tax_nav": render_to_string(
+            nav_view.template_name, nav_view.get_context_data(), request=request
+        ),
+        "income_tax_list": render_to_string(
+            pipeline_view.template_name,
+            pipeline_view.get_context_data(object_list=pipeline_view.object_list),
+            request=request,
+        ),
     }
-    return render(request, template, context)
+    return render(request, "payroll/tax/filing_status_view.html", context)
 
 
 @login_required

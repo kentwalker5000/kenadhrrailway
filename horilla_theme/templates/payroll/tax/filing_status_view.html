@@ -4,21 +4,16 @@
 {% block content %}
     {% include 'generic/components.html' %}
 
-    <div
-        hx-get="{% url 'filing-status-nav' %}?{{ request.GET.urlencode }}"
-        hx-trigger="load"
-    >
-        <div class="mt-5 oh-wrapper animated-background" style="height: 80px"></div>
+    <div class="mt-5 oh-wrapper">
+        {{ income_tax_nav|safe }}
     </div>
 
     <div class="oh-wrapper mt-3">
         <div
             id="FilingStatusList"
             class="bg-white p-3 rounded-md shadow-card overflow-hidden overflow-y-auto"
-            hx-get="{% url 'filing-status-search' %}?{{ request.GET.urlencode }}"
-            hx-trigger="load"
         >
-            <div class="animated-background" style="height: 260px"></div>
+            {{ income_tax_list|safe }}
         </div>
     </div>
 
