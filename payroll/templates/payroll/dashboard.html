@@ -25,9 +25,9 @@
 
     /* KPI Grid - 5 cards */
     .pd-kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
-    .pd-kpi-card { border-radius: 12px; padding: 16px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); transition: all 0.2s; text-decoration: none; color: inherit; display: block; }
-    .pd-kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); text-decoration: none; color: inherit; }
-    .dark .pd-kpi-card { background: #242424; border-color: rgba(255,255,255,0.08); }
+    .pd-kpi-card { border-radius: 12px; padding: 16px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); transition: all 0.2s; text-decoration: none; color: inherit; display: block; box-shadow: 0 3px 12px rgba(15, 23, 42, 0.08); }
+    .pd-kpi-card:hover { box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12); transform: translateY(-1px); text-decoration: none; color: inherit; }
+    .dark .pd-kpi-card { background: #242424; border-color: rgba(255,255,255,0.08); box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28); }
     .pd-kpi-card__icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 8px; }
     .pd-kpi-card__icon--green { background: #dcfce7; color: var(--pd-green); }
     .pd-kpi-card__icon--red { background: #fee2e2; color: var(--pd-red); }
@@ -53,8 +53,8 @@
 
     /* Chart Grid */
     .pd-chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
-    .pd-chart-card { border-radius: 12px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); overflow: visible; }
-    .dark .pd-chart-card { background: #242424; border-color: rgba(255,255,255,0.08); }
+    .pd-chart-card { border-radius: 12px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); overflow: visible; box-shadow: 0 3px 12px rgba(15, 23, 42, 0.08); }
+    .dark .pd-chart-card { background: #242424; border-color: rgba(255,255,255,0.08); box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28); }
     .pd-chart-card--wide { grid-column: span 2; }
     .pd-chart-card__header { padding: 14px 18px 0; display: flex; justify-content: space-between; align-items: center; }
     .pd-chart-card__title { font-size: 14px; font-weight: 600; }
@@ -68,8 +68,8 @@
     .pd-skeleton--kpi { height: 100px; }
 
     /* Sidebar panels */
-    .pd-info-panel { border-radius: 12px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); overflow: hidden; display: flex; flex-direction: column; }
-    .dark .pd-info-panel { background: #242424; border-color: rgba(255,255,255,0.08); }
+    .pd-info-panel { border-radius: 12px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 3px 12px rgba(15, 23, 42, 0.08); }
+    .dark .pd-info-panel { background: #242424; border-color: rgba(255,255,255,0.08); box-shadow: 0 3px 12px rgba(0, 0, 0, 0.28); }
     .pd-info-panel__header { padding: 14px 16px 10px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; border-bottom: 1px solid rgba(128,128,128,0.08); }
     .pd-info-panel__title { font-size: 13px; font-weight: 700; }
     .pd-info-panel__body { padding: 8px 16px 12px; overflow-y: auto; flex: 1; max-height: 350px; }
