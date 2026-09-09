@@ -14,15 +14,13 @@
     .ob-btn-back:hover { border-color: var(--ob-indigo); color: var(--ob-indigo); text-decoration: none; }
 
     .ob-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-    .ob-kpi-card { border-radius: 12px; padding: 18px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); transition: all 0.2s; text-decoration: none; color: inherit; display: block; }
-    .ob-kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); text-decoration: none; color: inherit; }
-    .ob-kpi-card--static:hover { transform: none; box-shadow: none; cursor: default; }
-    .dark .ob-kpi-card { background: #242424; border-color: rgba(255,255,255,0.08); }
-    .ob-kpi-card__icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; }
-    .ob-kpi-card__icon--red { background: #fee2e2; color: var(--ob-red); } .ob-kpi-card__icon--amber { background: #fef3c7; color: var(--ob-amber); }
-    .ob-kpi-card__icon--green { background: #dcfce7; color: var(--ob-green); } .ob-kpi-card__icon--blue { background: #dbeafe; color: var(--ob-blue); }
-    .dark .ob-kpi-card__icon--red { background: #7f1d1d; } .dark .ob-kpi-card__icon--amber { background: #78350f; }
-    .dark .ob-kpi-card__icon--green { background: #14532d; } .dark .ob-kpi-card__icon--blue { background: #1e3a5f; }
+    .ob-kpi-card { border-radius: 12px; padding: 18px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); box-shadow: 0 3px 12px rgba(15,23,42,0.08); transition: all 0.2s; text-decoration: none; color: inherit; display: block; }
+    .ob-kpi-card:hover { box-shadow: 0 8px 18px rgba(15,23,42,0.12); transform: translateY(-1px); text-decoration: none; color: inherit; }
+    .ob-kpi-card--static:hover { transform: none; box-shadow: 0 3px 12px rgba(15,23,42,0.08); cursor: default; }
+    .dark .ob-kpi-card { background: #242424; border-color: rgba(255,255,255,0.08); box-shadow: 0 3px 12px rgba(0,0,0,0.28); }
+    .ob-kpi-card__icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; background: #f1f3f5; color: #163a63; }
+    .ob-kpi-card__icon--red, .ob-kpi-card__icon--amber, .ob-kpi-card__icon--green, .ob-kpi-card__icon--blue { background: #f1f3f5; color: #163a63; }
+    .dark .ob-kpi-card__icon, .dark .ob-kpi-card__icon--red, .dark .ob-kpi-card__icon--amber, .dark .ob-kpi-card__icon--green, .dark .ob-kpi-card__icon--blue { background: #3a3a3a; color: #8db5e0; }
     .ob-kpi-card__label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.5; margin-bottom: 6px; }
     .ob-kpi-card__value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
     .ob-kpi-card__sub { font-size: 12px; opacity: 0.6; }
@@ -39,6 +37,10 @@
     .dark .ob-chart-card { background: #242424; border-color: rgba(255,255,255,0.08); }
     .ob-chart-card--wide { grid-column: span 2; }
     .ob-chart-card__header { padding: 14px 18px 0; display: flex; justify-content: space-between; align-items: center; }
+    .ob-section-heading { display: flex; align-items: center; min-width: 0; gap: 9px; }
+    .ob-section-icon { width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: #f1f3f5; color: #163a63; }
+    .ob-section-icon svg { width: 16px; height: 16px; }
+    .dark .ob-section-icon { background: #3a3a3a; color: #8db5e0; }
     .ob-chart-card__title { font-size: 14px; font-weight: 600; }
     .ob-chart-card__subtitle { font-size: 11px; opacity: 0.5; margin-top: 2px; }
     .ob-chart-card__body { padding: 6px 10px 10px; }
@@ -166,32 +168,32 @@
             <div class="ob-chart-grid">
 
                 <div class="ob-chart-card ob-chart-card--wide" data-chart-id="offboarding_pipeline" data-chart-label="{% trans 'Offboarding Pipeline' %}">
-                    <div class="ob-chart-card__header"><div><div class="ob-chart-card__title">{% trans "Offboarding Pipeline" %}</div><div class="ob-chart-card__subtitle">{% trans "Employees by stage" %}</div></div></div>
+                    <div class="ob-chart-card__header"><div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-9"/></svg></span><div><div class="ob-chart-card__title">{% trans "Offboarding Pipeline" %}</div><div class="ob-chart-card__subtitle">{% trans "Employees by stage" %}</div></div></div></div>
                     <div class="ob-chart-card__body"><div id="ob-pipeline"></div></div>
                 </div>
 
                 <div class="ob-chart-card" data-chart-id="resignation_status" data-chart-label="{% trans 'Resignation Status' %}">
-                    <div class="ob-chart-card__header"><div><div class="ob-chart-card__title">{% trans "Resignation Status" %}</div><div class="ob-chart-card__subtitle">{% trans "Letter submissions" %}</div></div></div>
+                    <div class="ob-chart-card__header"><div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span><div><div class="ob-chart-card__title">{% trans "Resignation Status" %}</div><div class="ob-chart-card__subtitle">{% trans "Letter submissions" %}</div></div></div></div>
                     <div class="ob-chart-card__body"><div id="chart-resignation"></div></div>
                 </div>
 
                 <div class="ob-chart-card" data-chart-id="task_completion" data-chart-label="{% trans 'Task Completion' %}">
-                    <div class="ob-chart-card__header"><div><div class="ob-chart-card__title">{% trans "Task Completion" %}</div><div class="ob-chart-card__subtitle">{% trans "All offboarding tasks" %}</div></div></div>
+                    <div class="ob-chart-card__header"><div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="m8 12 2.5 2.5L16 9"/></svg></span><div><div class="ob-chart-card__title">{% trans "Task Completion" %}</div><div class="ob-chart-card__subtitle">{% trans "All offboarding tasks" %}</div></div></div></div>
                     <div class="ob-chart-card__body"><div id="chart-tasks"></div></div>
                 </div>
 
                 <div class="ob-chart-card" data-chart-id="dept_attrition" data-chart-label="{% trans 'Department Attrition' %}">
-                    <div class="ob-chart-card__header"><div><div class="ob-chart-card__title">{% trans "Department Attrition" %}</div><div class="ob-chart-card__subtitle">{% trans "Offboarding by department" %}</div></div></div>
+                    <div class="ob-chart-card__header"><div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 17V8M12 17V5M17 17v-6"/></svg></span><div><div class="ob-chart-card__title">{% trans "Department Attrition" %}</div><div class="ob-chart-card__subtitle">{% trans "Offboarding by department" %}</div></div></div></div>
                     <div class="ob-chart-card__body"><div id="chart-dept-attrition"></div></div>
                 </div>
 
                 <div class="ob-chart-card" data-chart-id="exit_reasons" data-chart-label="{% trans 'Exit Reasons' %}">
-                    <div class="ob-chart-card__header"><div><div class="ob-chart-card__title">{% trans "Exit Reasons" %}</div><div class="ob-chart-card__subtitle">{% trans "Why employees leave" %}</div></div></div>
+                    <div class="ob-chart-card__header"><div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span><div><div class="ob-chart-card__title">{% trans "Exit Reasons" %}</div><div class="ob-chart-card__subtitle">{% trans "Why employees leave" %}</div></div></div></div>
                     <div class="ob-chart-card__body"><div id="chart-exit-reasons"></div></div>
                 </div>
 
                 <div class="ob-chart-card ob-chart-card--wide" data-chart-id="join_exit_trend" data-chart-label="{% trans 'Joining vs Exiting' %}">
-                    <div class="ob-chart-card__header"><div><div class="ob-chart-card__title">{% trans "Joining vs Exiting" %}</div><div class="ob-chart-card__subtitle">{% trans "Monthly trend — last 6 months" %}</div></div></div>
+                    <div class="ob-chart-card__header"><div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 3-3 3 2 5-7"/></svg></span><div><div class="ob-chart-card__title">{% trans "Joining vs Exiting" %}</div><div class="ob-chart-card__subtitle">{% trans "Monthly trend — last 6 months" %}</div></div></div></div>
                     <div class="ob-chart-card__body"><div id="chart-join-exit"></div></div>
                 </div>
 
@@ -201,7 +203,7 @@
         <div class="ob-sidebar">
             <div class="ob-info-panel">
                 <div class="ob-info-panel__header">
-                    <div class="ob-info-panel__title">{% trans "Notice Period Tracker" %}</div>
+                    <div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg></span><div class="ob-info-panel__title">{% trans "Notice Period Tracker" %}</div></div>
                 </div>
                 <div class="ob-info-panel__body" id="ob-notice">
                     <div class="ob-info-panel__empty">{% trans "Loading..." %}</div>
@@ -209,7 +211,7 @@
             </div>
             <div class="ob-info-panel">
                 <div class="ob-info-panel__header">
-                    <div class="ob-info-panel__title">{% trans "Unreturned Assets" %}</div>
+                    <div class="ob-section-heading"><span class="ob-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/></svg></span><div class="ob-info-panel__title">{% trans "Unreturned Assets" %}</div></div>
                 </div>
                 <div class="ob-info-panel__body" id="ob-assets">
                     <div class="ob-info-panel__empty">{% trans "Loading..." %}</div>
