@@ -27,7 +27,7 @@
         {% trans "In progress" %}
     </span>
     <span class="m-3 draft" hx-get="{% url 'project-filter' %}?{{pd}}&status=completed&view=card" hx-target="#view-container" style="cursor: pointer">
-        <span class="oh-dot oh-dot--small me-1" style="background-color:yellowgreen"></span>
+        <span class="oh-dot oh-dot--small me-1" style="background-color:var(--primary-600, #1d4ed8)"></span>
         {% trans "Completed" %}
     </span><span class="m-3 draft" hx-get="{% url 'project-filter' %}?{{pd}}&status=on_hold&view=card" hx-target="#view-container" style="cursor: pointer">
         <span class="oh-dot oh-dot--small me-1" style="background-color:orange"></span>
@@ -50,7 +50,7 @@
         {% for project in projects %}
             <div  class="oh-kanban-card {% if project.status == 'new'%} row-status--cyan
                                         {% elif project.status == 'in_progress' %} row-status--blue
-                                        {% elif project.status == 'completed' %} row-status--yellow
+                                        {% elif project.status == 'completed' %} row-status--blue
                                         {% elif project.status == 'on_hold' %} row-status--orange
                                         {% elif project.status == 'cancelled' %} row-status--red
                                         {% else %} row-status--gray

@@ -29,7 +29,7 @@
                 {% trans "In progress" %}
             </span>
             <span class="m-3 draft" hx-get="{% url 'project-filter' %}?{{pd}}&status=completed&view=list" hx-target="#view-container" style="cursor: pointer">
-                <span class="oh-dot oh-dot--small me-1" style="background-color:yellowgreen"></span>
+                <span class="oh-dot oh-dot--small me-1" style="background-color:var(--primary-600, #1d4ed8)"></span>
                 {% trans "Completed" %}
             </span><span class="m-3 draft" hx-get="{% url 'project-filter' %}?{{pd}}&status=on_hold&view=list" hx-target="#view-container" style="cursor: pointer">
                 <span class="oh-dot oh-dot--small me-1" style="background-color:orange"></span>
@@ -80,7 +80,7 @@
           <div class="oh-sticky-table__tr ui-sortable-handle" data-url="{% url 'task-view' project.id %}?view=list">
               <div class="oh-sticky-table__sd {% if project.status == 'new'%} row-status--cyan
                                               {% elif project.status == 'in_progress' %} row-status--blue
-                                              {% elif project.status == 'completed' %} row-status--yellow
+                                              {% elif project.status == 'completed' %} row-status--blue
                                               {% elif project.status == 'on_hold' %} row-status--orange
                                               {% elif project.status == 'cancelled' %} row-status--red
                                               {% else %} row-status--gray
