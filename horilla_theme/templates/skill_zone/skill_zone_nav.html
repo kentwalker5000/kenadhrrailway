@@ -1,4 +1,5 @@
-{% load static i18n i18n %}
+{% load static i18n horillafilters %}
+{% get_company as theme_obj %}
 {% block styles %}
     <style>
         .oh-label {
@@ -6,11 +7,11 @@
         }
 
         #modernFilterPanel .oh-filter-panel__apply {
-            background: #163a63;
+            background: {{ theme_obj.primary_600|default:"#1d4ed8" }};
         }
 
         #modernFilterPanel .oh-filter-panel__apply:hover {
-            background: #0f2c4a;
+            background: {{ theme_obj.primary_700|default:"#1e3a8a" }};
         }
     </style>
 {% endblock styles %}
