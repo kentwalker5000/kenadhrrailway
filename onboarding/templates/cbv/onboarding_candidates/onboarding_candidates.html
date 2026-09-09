@@ -1,12 +1,13 @@
 {% extends "index.html" %}
-{% load i18n %}{% load static %}
+{% load i18n %}{% load static %}{% load horillafilters %}
+{% get_company as theme_obj %}
 
 {% block content %}
     <meta name="csrf-token" content="{{ csrf_token }}">
 
     <style>
         .portal--dot {
-            background-color: yellowgreen;
+            background-color: {{ theme_obj.primary_600|default:"#1d4ed8" }};
         }
         .not-portal--dot {
             background-color: rgba(128, 128, 128, 0.482);
