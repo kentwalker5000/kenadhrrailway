@@ -307,7 +307,7 @@ class AssetCategoryNav(HorillaNavView):
     nav bar for asset category
     """
 
-    nav_title = _("Asset")
+    nav_title = _("Asset Categories")
     filter_body_template = "cbv/asset_category/filter.html"
     filter_instance = AssetFilter()
     filter_form_context_name = "form"

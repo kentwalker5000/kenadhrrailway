@@ -647,8 +647,6 @@ def asset_category_view(request):
         None
     """
 
-    if not AssetCategory.objects.exists():
-        return render(request, "category/asset_empty.html")
     return render(
         request,
         "category/asset_category_view.html",
