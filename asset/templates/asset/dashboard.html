@@ -649,7 +649,7 @@
                 grid-template-columns: repeat(2, 1fr);
             }
             .as-chart-grid {
-                grid-template-columns: 1fr;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
             .as-chart-card--wide {
                 grid-column: span 1;
@@ -658,7 +658,10 @@
                 grid-template-columns: 1fr;
             }
         }
-        @media (max-width: 640px) {
+        @media (max-width: 420px) {
+            .as-chart-grid {
+                grid-template-columns: 1fr;
+            }
             .as-kpi-grid {
                 grid-template-columns: 1fr;
             }
