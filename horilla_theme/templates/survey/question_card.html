@@ -1,5 +1,117 @@
 {% load i18n %}
 {% load static %}
+<style>
+    .sq-list {
+        padding: 20px;
+    }
+    .sq-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+    }
+    .sq-card {
+        position: relative;
+        min-height: 146px;
+        padding: 18px;
+        border: 1px solid #e5eaf1;
+        border-radius: 12px;
+        background: #fff;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, .025);
+        cursor: pointer;
+        transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    }
+    .sq-card:hover {
+        border-color: rgba(22, 58, 99, .28);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, .08);
+        transform: translateY(-2px);
+    }
+    .sq-card__header {
+        display: flex;
+        align-items: flex-start;
+        min-width: 0;
+        gap: 11px;
+    }
+    .sq-card__icon {
+        display: inline-flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        background: #f1f3f5;
+        color: #163a63;
+    }
+    .sq-card__icon svg {
+        width: 17px;
+        height: 17px;
+    }
+    .sq-card__question {
+        overflow: hidden;
+        margin: 0;
+        color: #172033;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.45;
+        text-overflow: ellipsis;
+    }
+    .sq-card__label {
+        margin: 3px 0 0;
+        color: #667085;
+        font-size: 11px;
+    }
+    .sq-card__recruitments {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 17px 30px 0 45px;
+        gap: 5px;
+    }
+    .sq-card__tag {
+        max-width: 100%;
+        padding: 4px 7px;
+        overflow: hidden;
+        border-radius: 6px;
+        background: #f1f3f5;
+        color: #475467;
+        font-size: 10px;
+        font-weight: 600;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .sq-card__menu {
+        position: absolute;
+        top: 16px;
+        right: 14px;
+    }
+    .sq-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 330px;
+        padding: 36px 20px;
+        color: #667085;
+        text-align: center;
+    }
+    .sq-empty__icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 54px;
+        height: 54px;
+        margin-bottom: 14px;
+        border-radius: 14px;
+        background: #f1f3f5;
+        color: #163a63;
+    }
+    @media (max-width: 1100px) {
+        .sq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+        .sq-list { padding: 14px; }
+        .sq-grid { grid-template-columns: 1fr; }
+    }
+</style>
 {% if questions %}
     {% if questions.has_next or questions.has_previous %}
         {% if questions.paginator.count %}
@@ -65,26 +177,28 @@
             </div>
         {% endif %}
     {% endif %}
-    <div id="gridView" class="p-5">
-        <div class="grid grid-cols-4 gap-4">
+    <div id="gridView" class="sq-list">
+        <div class="sq-grid">
             {% for question in questions %}
                 <div
-                    class="border border-[#ebebeb] p-4 rounded-md shadow-card"
+                    class="sq-card"
+                    role="button"
+                    tabindex="0"
                     data-toggle="oh-modal-toggle"
                     data-target="#genericModal"
                     hx-get="{% url 'single-survey-view' question.id %}?instance_ids={{requests_ids}}"
                     hx-target="#genericModalBody"
                 >
-                    <div class="flex gap-5 relative z-0">
-                        <span class="absolute -left-3 -top-3 bg-green-500 w-2 h-2 rounded-full"></span>
+                    <div class="sq-card__header">
+                        <span class="sq-card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg></span>
                         {% if perms.recruitment.delete_recruitmentsurvey or perms.recruitment.change_recruitmentsurvey or perms.recruitment.add_recruitmentsurvey %}
                             <div
-                                class="absolute inline-block right-0 -top-1"
+                                class="sq-card__menu"
                                 x-data="{open: false}"
                                 onclick="event.stopPropagation()"
                             >
                                 <a
-                                    class="cursor-pointer w-4 text-center inline-block"
+                                    class="cursor-pointer w-6 h-6 text-center inline-flex items-center justify-center rounded hover:bg-[#f1f3f5]"
                                     role="button"
                                     @click="open = !open"
                                     @click.outside="open = false"
@@ -146,14 +260,17 @@
                                 </div>
                             </div>
                         {% endif %}
-                        <div class="mr-2">
-                            <h5 class="mb-1 font-medium text-sm">{{ question }}</h5>
-                            <p class="text-xs text-[#565E6C] mb-1">
-                                {% for rec in question.recruitment_ids.all %}
-                                    {{ rec }},&nbsp;
-                                {% endfor %}
-                            </p>
+                        <div class="min-w-0">
+                            <h5 class="sq-card__question">{{ question }}</h5>
+                            <p class="sq-card__label">{% trans "Survey question" %}</p>
                         </div>
+                    </div>
+                    <div class="sq-card__recruitments">
+                        {% for rec in question.recruitment_ids.all %}
+                            <span class="sq-card__tag">{{ rec }}</span>
+                        {% empty %}
+                            <span class="sq-card__tag">{% trans "Not assigned" %}</span>
+                        {% endfor %}
                     </div>
                 </div>
             {% endfor %}
@@ -161,13 +278,9 @@
     </div>
 
 {% else %}
-    <div class="oh-wrapper h-full" align="center">
-        <div class="xl:col-span-4 md:col-span-6 col-span-12 bg-white p-6 rounded-md shadow-card h-[70%]">
-            <div class="flex flex-col items-center justify-center h-full">
-                <img src="/static/horilla_theme/assets/img/no-records.png" alt="" width="300" class="mb-4">
-                <p class="text-[#666] mb-5">{% trans "No records available at the moment" %}</p>
-                {% include "generic/import_block.html" %}
-            </div>
-        </div>
+    <div class="sq-empty">
+        <span class="sq-empty__icon" aria-hidden="true"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/><path d="M8 10h8"/></svg></span>
+        <p class="mb-5">{% trans "No survey questions have been created yet." %}</p>
+        {% include "generic/import_block.html" %}
     </div>
 {% endif %}
