@@ -26,6 +26,244 @@
             href="{% if white_label_company.icon %}{{white_label_company.icon.url}} {% else %}{% static 'favicons/favicon-16x16.png' %}{% endif %}"
         >
         <link rel="stylesheet" href='{% static "/build/css/style.min.css" %}'>
+        <style>
+            :root {
+                --ojl-navy: var(--primary-600, #1e3a8a);
+                --ojl-navy-dark: var(--primary-700, #172554);
+                --ojl-ink: #172033;
+                --ojl-muted: #667085;
+                --ojl-surface: #ffffff;
+                --ojl-page: #f7f9fc;
+                --ojl-line: #e5eaf1;
+            }
+            body {
+                background: var(--ojl-page);
+                color: var(--ojl-ink);
+            }
+            .ojl-page {
+                min-height: 100vh;
+                padding: 28px 20px 56px;
+            }
+            .ojl-container {
+                width: min(1120px, 100%);
+                margin: 0 auto;
+            }
+            .ojl-back {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 38px;
+                height: 38px;
+                margin-bottom: 28px;
+                border: 1px solid var(--ojl-line);
+                border-radius: 10px;
+                background: var(--ojl-surface);
+                color: var(--ojl-navy);
+                text-decoration: none;
+                transition: background .18s ease, border-color .18s ease, transform .18s ease;
+            }
+            .ojl-back:hover {
+                border-color: var(--ojl-navy);
+                background: #f1f5f9;
+                color: var(--ojl-navy);
+                text-decoration: none;
+                transform: translateX(-2px);
+            }
+            .ojl-hero {
+                max-width: 690px;
+                margin: 0 auto 36px;
+                text-align: center;
+            }
+            .ojl-hero__icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 48px;
+                height: 48px;
+                margin-bottom: 14px;
+                border-radius: 12px;
+                background: #f1f3f5;
+                color: var(--ojl-navy);
+            }
+            .ojl-hero__icon svg {
+                width: 23px;
+                height: 23px;
+            }
+            .ojl-hero h1 {
+                margin: 0 0 9px;
+                color: var(--ojl-ink);
+                font-size: clamp(28px, 4vw, 38px);
+                font-weight: 750;
+                letter-spacing: -0.04em;
+            }
+            .ojl-hero p {
+                max-width: 580px;
+                margin: 0 auto;
+                color: var(--ojl-muted);
+                font-size: 15px;
+                line-height: 1.65;
+            }
+            .ojl-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 16px;
+            }
+            .ojl-card {
+                display: flex;
+                flex-direction: column;
+                min-height: 278px;
+                padding: 20px;
+                border: 1px solid var(--ojl-line);
+                border-radius: 14px;
+                background: var(--ojl-surface);
+                box-shadow: 0 2px 6px rgba(15, 23, 42, .025);
+                transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+            }
+            .ojl-card:hover {
+                border-color: color-mix(in srgb, var(--ojl-navy) 30%, var(--ojl-line));
+                box-shadow: 0 12px 28px rgba(15, 23, 42, .09);
+                transform: translateY(-3px);
+            }
+            .ojl-card__header {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 12px;
+            }
+            .ojl-company {
+                display: flex;
+                align-items: center;
+                min-width: 0;
+                gap: 10px;
+            }
+            .ojl-company__logo {
+                display: flex;
+                flex: 0 0 auto;
+                align-items: center;
+                justify-content: center;
+                width: 38px;
+                height: 38px;
+                overflow: hidden;
+                border-radius: 10px;
+                background: #f1f3f5;
+                color: var(--ojl-navy);
+                font-weight: 700;
+                font-size: 13px;
+            }
+            .ojl-company__logo img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .ojl-company__name {
+                overflow: hidden;
+                color: var(--ojl-ink);
+                font-size: 12px;
+                font-weight: 700;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .ojl-company__date {
+                margin-top: 2px;
+                color: var(--ojl-muted);
+                font-size: 11px;
+            }
+            .ojl-apply {
+                flex: 0 0 auto;
+                padding: 6px 10px;
+                border-radius: 7px;
+                background: var(--ojl-navy);
+                color: #fff;
+                font-size: 11px;
+                font-weight: 700;
+                text-decoration: none;
+                transition: background .18s ease;
+            }
+            .ojl-apply:hover {
+                background: var(--ojl-navy-dark);
+                color: #fff;
+                text-decoration: none;
+            }
+            .ojl-card__roles {
+                display: flex;
+                flex-wrap: wrap;
+                margin-top: 22px;
+                gap: 6px;
+            }
+            .ojl-role {
+                padding: 4px 8px;
+                border-radius: 6px;
+                background: #f1f3f5;
+                color: #475467;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            .ojl-card__title {
+                margin: 14px 0 0;
+                color: var(--ojl-ink);
+                font-size: 18px;
+                font-weight: 750;
+                letter-spacing: -0.02em;
+                line-height: 1.35;
+            }
+            .ojl-card__meta {
+                margin-top: 12px;
+                color: var(--ojl-muted);
+                font-size: 12px;
+                line-height: 1.5;
+            }
+            .ojl-progress {
+                height: 5px;
+                margin-top: 14px;
+                overflow: hidden;
+                border-radius: 999px;
+                background: #edf1f5;
+            }
+            .ojl-progress span {
+                display: block;
+                height: 100%;
+                border-radius: inherit;
+                background: var(--ojl-navy);
+            }
+            .ojl-card__footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-top: auto;
+                padding-top: 18px;
+            }
+            .ojl-capacity {
+                color: var(--ojl-muted);
+                font-size: 11px;
+            }
+            .ojl-details {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                border: 0;
+                background: transparent;
+                color: var(--ojl-navy);
+                font-size: 12px;
+                font-weight: 700;
+            }
+            .ojl-details:hover {
+                color: var(--ojl-navy-dark);
+            }
+            .ojl-empty {
+                grid-column: 1 / -1;
+                padding: 56px 20px;
+                color: var(--ojl-muted);
+                text-align: center;
+            }
+            @media (max-width: 900px) {
+                .ojl-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            }
+            @media (max-width: 600px) {
+                .ojl-page { padding: 20px 14px 40px; }
+                .ojl-grid { grid-template-columns: 1fr; }
+                .ojl-hero { margin-bottom: 26px; }
+            }
+        </style>
     </head>
 
     <body>
@@ -38,113 +276,84 @@
                 {% endfor %}
             </div>
         {% endif %}
-        <div id="main">
-            <div class="oh-wrapper mt-4">
+        <div id="main" class="ojl-page">
+            <div class="ojl-container">
                 {% if request.user.is_authenticated %}
-                    <div class="oh-wrapper">
-                        <div class="oh-wrapper">
-                            <div class="oh-wrapper" style="font-size: xx-large; cursor: pointer">
-                                {% if request.path not in request.META.HTTP_REFERER %}
-                                    <a href="{{ request.META.HTTP_REFERER }}">
-                                        <ion-icon name="arrow-back-outline"></ion-icon>
-                                    </a>
-                                {% else %}
-                                    <a href="/">
-                                        <ion-icon name="arrow-back-outline"></ion-icon>
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
+                    <a class="ojl-back" href="{{ request.META.HTTP_REFERER|default:'/' }}" aria-label="{% trans 'Go back' %}">
+                        <ion-icon name="arrow-back-outline"></ion-icon>
+                    </a>
                 {% endif %}
-            </div>
-            <main class="oh-onboarding">
-                <div class="oh-job__page-container">
-                    <div class="oh-joblisting__title-container">
-                        <h1 class="oh-onboarding-card__title oh-onboarding-card__title--h1 text-center mb-3">
-                            {% trans "Open Job Listings" %}
-                        </h1>
-                        <p class="oh-onboarding__content text-center w-50 m-auto">
-                            {% trans "We're hiring! Join our team and be part of a vibrant workplace where your talents make a difference. Here are the open Recruitments...." %}
-                        </p>
+                <main>
+                    <div class="ojl-hero">
+                        <span class="ojl-hero__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
+                        <h1>{% trans "Open Job Listings" %}</h1>
+                        <p>{% trans "Explore current opportunities and find a role where your talent can make an impact." %}</p>
                     </div>
-                    <div class="oh-layout--grid-3 oh-jobs__container--list pt-3">
+                    <div class="ojl-grid">
                         {% for recruitment in recruitments %}
-                            <div class="oh-kanban-card oh-joblist_card">
-                                <div class="oh-joblist__header">
-                                    <div class="oh-job_recruit--detail">
-                                        <div class="oh-recruitment-company">
-                                            <img
-                                                src="{{recruitment.company_id.icon.url}}"
-                                                alt=""
-                                                class="oh-job-list_company-logo"
-                                            >
+                            <article class="ojl-card">
+                                <div class="ojl-card__header">
+                                    <div class="ojl-company">
+                                        <div class="ojl-company__logo">
+                                            {% if recruitment.company_id.icon %}
+                                                <img src="{{ recruitment.company_id.icon.url }}" alt="{{ recruitment.company_id }}">
+                                            {% else %}
+                                                {{ recruitment.company_id|slice:":1" }}
+                                            {% endif %}
                                         </div>
-                                        <div class="oh-recuritment__details">
-                                            <p class="oh-recuritment_company-name">{{ recruitment.company_id }}</p>
-                                            <span
-                                                class="oh-job_post--posteddate"
-                                            >{{ recruitment.created_at|timesince }}</span>
+                                        <div style="min-width: 0">
+                                            <div class="ojl-company__name">{{ recruitment.company_id }}</div>
+                                            <div class="ojl-company__date">{% trans "Posted" %} {{ recruitment.created_at|timesince }} {% trans "ago" %}</div>
                                         </div>
                                     </div>
-                                    <div class="oh-recuritment_tag" style="background: hsl(121deg 81.26% 91.23%)">
-                                        <a
-                                            class="text-success text-decoration-none"
-                                            href='{% url "application-form" %}?recruitmentId={{recruitment.id}}'
-                                            rel="noopener noreferrer"
-                                            target="_blank"
-                                        >{% trans "Apply Now" %}</a>
-                                    </div>
+                                    <a
+                                        class="ojl-apply"
+                                        href='{% url "application-form" %}?recruitmentId={{recruitment.id}}'
+                                        rel="noopener noreferrer"
+                                        target="_blank"
+                                    >{% trans "Apply Now" %}</a>
                                 </div>
-                                <div class="d-flex mt-3 flex-wrap">
+                                <div class="ojl-card__roles">
                                     {% for job_position in recruitment.open_positions.all %}
-                                        <div class="oh-recuritment_tag">{{ job_position.job_position }}</div>
+                                        <span class="ojl-role">{{ job_position.job_position }}</span>
                                     {% endfor %}
                                 </div>
-                                <h5 class="oh-job__post">{{ recruitment.title }}</h5>
+                                <h2 class="ojl-card__title">{{ recruitment.title }}</h2>
                                 {% if perms.recruitment.view_recruitment %}
-                                    <div class="oh-recuritment__progress-bar">
-                                        <div
-                                            class="oh-progress-bar__state"
-                                            role="progressbar"
-                                            aria-valuenow="70"
-                                            aria-valuemin="0"
-                                            aria-valuemax="100"
-                                            style="width:{{ recruitment.candidate.all|length|percentage:recruitment.vacancy }}%"
-                                        >
-                                        </div>
+                                    <div class="ojl-progress" aria-label="{% trans 'Application progress' %}">
+                                        <span style="width:{{ recruitment.candidate.all|length|percentage:recruitment.vacancy }}%"></span>
                                     </div>
-                                    <span class="oh-recuritment_application"><span
-                                            class="oh-recuritment_application-count"
-                                        >{{ recruitment.candidate.all|length }}
-                                            {% trans "Applied" %}</span> {% trans "of" %} {{ recruitment.vacancy }}
-                                        {% trans "Capacity" %}</span>
+                                    <div class="ojl-card__meta">{{ recruitment.candidate.all|length }} {% trans "applied" %} {% trans "of" %} {{ recruitment.vacancy }} {% trans "positions" %}</div>
                                 {% else %}
-                                    <div style="color: gray">
-                                        {{ recruitment.start_date }} - {{ recruitment.end_date }} <br>
+                                    <div class="ojl-card__meta">
+                                        {{ recruitment.start_date }} – {{ recruitment.end_date }}<br>
                                         {% if recruitment.vacancy %}
-                                            {% trans "Total vacancies" %} {{ recruitment.vacancy }}
+                                            {% trans "Total vacancies" %}: {{ recruitment.vacancy }}
                                         {% endif %}
                                     </div>
                                 {% endif %}
 
-                                <div class="oh-job__apply-btn">
-                                    <a
-                                        class="oh-btn oh-apply_btn"
+                                <div class="ojl-card__footer">
+                                    <span class="ojl-capacity">{% trans "Open recruitment" %}</span>
+                                    <button
+                                        class="ojl-details"
+                                        type="button"
                                         role="button"
                                         data-toggle="oh-modal-toggle"
                                         data-target="#jobDetailModal"
                                         hx-get='{% url "recruitment-details" recruitment.id %}'
                                         hx-target="#detailTarget"
                                     >
-                                        {% trans "Details" %}
-                                    </a>
+                                        {% trans "View details" %} <ion-icon name="arrow-forward-outline"></ion-icon>
+                                    </button>
                                 </div>
-                            </div>
+                            </article>
+                        {% empty %}
+                            <div class="ojl-empty">{% trans "There are no open job listings at the moment. Please check back soon." %}</div>
                         {% endfor %}
                     </div>
-                </div>
-            </main>
+                </main>
+            </div>
             <div class="oh-modal" id="jobDetailModal" role="dialog" aria-labelledby="jobDetailModal" aria-hidden="true">
                 <div class="oh-job-selected_detail">
                     <button class="oh-modal__close" aria-label="{% trans 'Close' %}">
