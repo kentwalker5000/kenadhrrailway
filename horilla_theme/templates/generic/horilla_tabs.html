@@ -102,6 +102,36 @@
                     </div>
                 {% endfor %}
             </div>
+            {% if view_id == "surveyTemplateSettingsTab" %}
+                <div class="flex flex-wrap items-center gap-2">
+                    {% if perms.recruitment.add_surveytemplate %}
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-2 rounded-md bg-primary-600 px-3 py-2 text-xs font-medium text-white transition duration-200 hover:bg-primary-800"
+                            hx-get="{% url 'survey-template-create' %}"
+                            hx-target="#genericModalBody"
+                            data-toggle="oh-modal-toggle"
+                            data-target="#genericModal"
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                            {% trans "New template" %}
+                        </button>
+                    {% endif %}
+                    {% if perms.recruitment.add_recruitmentsurvey %}
+                        <button
+                            type="button"
+                            class="inline-flex items-center gap-2 rounded-md border border-primary-600 px-3 py-2 text-xs font-medium text-primary-700 transition duration-200 hover:bg-primary-50"
+                            hx-get="{% url 'recruitment-survey-question-template-create' %}"
+                            hx-target="#genericModalBody"
+                            data-toggle="oh-modal-toggle"
+                            data-target="#genericModal"
+                        >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                            {% trans "New question" %}
+                        </button>
+                    {% endif %}
+                </div>
+            {% endif %}
         </div>
 
         <div class="oh-tabs__contents">
