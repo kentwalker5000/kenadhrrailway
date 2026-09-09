@@ -13,13 +13,19 @@ def default_currency(request):
     """
     This method will return the currency
     """
-    if models.PayrollSettings.objects.first() is None:
-        settings = models.PayrollSettings()
-        settings.currency_symbol = "$"
-        settings.company_id = getattr(request, "selected_company_instance", None)
+    settings = models.PayrollSettings.objects.first()
+    if settings is None:
+        settings = models.PayrollSettings(
+            currency_symbol="$",
+            company_id=getattr(request, "selected_company_instance", None),
+        )
         settings.save()
-    symbol = models.PayrollSettings.objects.first().currency_symbol
-    position = models.PayrollSettings.objects.first().position
+
+    # Reuse the instance we just created.  The company-aware manager can hide a
+    # newly-created global setting for the current request, so querying it again
+    # here can otherwise make every page fail to render.
+    symbol = settings.currency_symbol
+    position = settings.position
     return {
         "currency": request.session.get("currency", symbol),
         "position": request.session.get("position", position),
