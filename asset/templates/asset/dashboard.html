@@ -234,8 +234,7 @@
             width: 100px;
             opacity: 0.7;
         }
-        /* Keep empty chart cards compact: an empty state should not reserve
-           the same visual weight as a populated 300px chart. */
+        /* Empty charts use a compact left/right card treatment. */
         .as-chart-card .as-empty {
             width: 100%;
             min-height: 142px;
@@ -245,6 +244,27 @@
         }
         .as-chart-card .as-empty img {
             width: 64px;
+        }
+        .as-chart-card:has(.as-empty) {
+            min-height: 220px;
+            flex-direction: row !important;
+            align-items: center;
+        }
+        .as-chart-card:has(.as-empty) .as-chart-card__header {
+            width: 44%;
+            min-height: 0;
+            padding: 24px;
+        }
+        .as-chart-card:has(.as-empty) .as-chart-card__body {
+            width: 56%;
+            padding: 20px 24px 20px 10px;
+        }
+        .as-chart-card:has(.as-empty) .as-empty {
+            min-height: 0;
+            padding: 0;
+        }
+        .as-chart-card:has(.as-empty) .as-empty img {
+            width: 96px;
         }
         .as-skeleton {
             border-radius: 12px;
@@ -950,6 +970,7 @@
                     chartInstances[key].destroy();
                     chartInstances[key] = null;
                 }
+                el.innerHTML = '';
                 const chart = new ApexCharts(el, options);
                 chartInstances[key] = chart;
                 chart.render();
