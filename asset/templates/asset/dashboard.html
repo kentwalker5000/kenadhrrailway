@@ -172,8 +172,9 @@
             gap: 16px;
         }
         .as-chart-card {
-            display: flex;
-            flex-direction: column;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch;
             overflow: visible;
             border: 1px solid rgba(128, 128, 128, 0.12);
             border-radius: 12px;
@@ -193,6 +194,9 @@
             align-items: center;
             justify-content: space-between;
             min-height: 64px;
+            width: 100%;
+            box-sizing: border-box;
+            flex: 0 0 auto;
             padding: 14px 18px 0;
         }
         .as-chart-card__heading, .as-info-panel__heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
@@ -210,6 +214,9 @@
             opacity: 0.5;
         }
         .as-chart-card__body {
+            width: 100%;
+            box-sizing: border-box;
+            flex: 0 0 auto;
             padding: 6px 10px 10px;
         }
         .as-empty {
@@ -230,7 +237,9 @@
         /* Keep empty chart cards compact: an empty state should not reserve
            the same visual weight as a populated 300px chart. */
         .as-chart-card .as-empty {
-            min-height: 118px;
+            width: 100%;
+            min-height: 142px;
+            box-sizing: border-box;
             padding: 16px 0;
             gap: 6px;
         }
