@@ -7,16 +7,10 @@
     </style>
 {% endblock styles %}
 <div class="flex flex-wrap justify-between items-center mb-3">
-    <div class="oh-main__titlebar oh-main__titlebar--left flex items-center gap-3">
-        <span class="w-10 h-10 rounded-md bg-slate-100 text-[#163a63] flex items-center justify-center" aria-hidden="true">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        </span>
-        <div>
-            <h1 class="text-lg font-semibold leading-tight">
-                {% trans "Talent Pool" %}
-            </h1>
-            <p class="text-xs text-dark-100 mt-0.5">{% trans "Keep promising candidates ready for future roles." %}</p>
-        </div>
+    <div class="oh-main__titlebar oh-main__titlebar--left">
+        <h1 class="text-lg font-semibold">
+            {% trans "Talent Pool" %}
+        </h1>
     </div>
 
     <div class="flex flex-wrap gap-1">
@@ -193,20 +187,18 @@
             </div>
         </form>
 
-        {% if perms.recruitment.add_skillzone %}
-            <div class="ml-2">
-                <a
-                    class="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-primary-600 text-white text-xs font-medium hover:bg-primary-800 transition duration-200 cursor-pointer"
-                    data-toggle="oh-modal-toggle"
-                    data-target="#objectCreateModal"
-                    hx-get="{% url 'skill-zone-create' %}"
-                    hx-target="#objectCreateModalTarget"
-                >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-                    {% trans "New talent pool" %}
-                </a>
-            </div>
-        {% endif %}
+        <div class="oh-btn-group ml-2">
+            <a
+                class="oh-btn oh-btn--secondary oh-btn--shadow"
+                data-toggle="oh-modal-toggle"
+                data-target="#objectCreateModal"
+                hx-get="{% url 'skill-zone-create' %}"
+                hx-target="#objectCreateModalTarget"
+            >
+                <ion-icon name="add-outline" class="me-1"></ion-icon>
+                {% trans "Create" %}
+            </a>
+        </div>
     </div>
 </div>
 {% include "generic/filter_tags.html" %}
