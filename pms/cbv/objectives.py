@@ -269,7 +269,7 @@ class ObjectivesTab(HorillaTabView):
             return f"{url}?{query_string}" if query_string else url
 
         all_objectives_tab = {
-            "title": _("Team & Company Objectives"),
+            "title": _("Team Goals (Manager/HR)"),
             "url": with_query(reverse("all-objectives-tab-shell")),
             "badge": all_objectives_count,
         }
@@ -279,7 +279,7 @@ class ObjectivesTab(HorillaTabView):
         else:
             self.tabs = [
                 {
-                    "title": _("My Objectives"),
+                    "title": _("My Goals (Assigned to Me)"),
                     "url": with_query(reverse("my-objectives-tab-shell")),
                     "badge": assigned_objectives_count,
                 },
