@@ -15,74 +15,88 @@
 </div>
 
 <script>
-    function toggleOpt() {
-            if ($("#genericModalBody form [name=type]").first().val() == "options" || $("#genericModalBody form [name=type]").first().val() == "multiple") {
-                $("#id_options_parent_div").show();
-                $('[id^="moreOptionContainer_"]').remove();
-                var optionCount = {{ form.option_count }}
+    (function () {
+        const root = document.getElementById("formContainer");
+        if (!root) return;
 
-                for (var i = 1; i < optionCount; i++) {
-                    var parentDivId = "id_options"+ i +"_parent_div";
-                    var parentDiv = document.getElementById(parentDivId);
-                    $(parentDiv).removeClass("col-md-6");
-                    if (i >= 1) {
-                        $(parentDiv).find('.oh-label__info').remove();
-                    }
-                }
+        const typeSelect = root.querySelector('form [name="type"]');
+        const optionsGroup = root.querySelector("#id_options_parent_div");
+        const addMoreTrigger = root.querySelector("#addMoreOptions");
+        const choiceTypes = new Set(["options", "multiple"]);
+        const typeHints = {
+            checkbox: "Applicants will choose Yes or No.",
+            text: "Applicants will enter a short text response.",
+            number: "Applicants will enter a number.",
+            percentage: "Applicants will enter a value from 0 to 100%.",
+            date: "Applicants will select a date.",
+            textarea: "Applicants will enter a longer text response.",
+            file: "Applicants will upload a file.",
+            rating: "Applicants will select a rating.",
+        };
 
-                // Check if "Add more options" button already exists
-                var test = document.getElementById('addOptions')
-                if (!document.getElementById('addOptions')) {
-                    var divElement = document.createElement('div');
-                    divElement.id = 'moreOptionContainer_' + optionCount;
-                    divElement.className = 'pt-2 text-primary-600';
-                    divElement.style.textAlign = 'end';
+        const hint = document.createElement("p");
+        hint.id = "questionTypeHint";
+        hint.className = "mt-2 text-xs text-dark-100";
+        hint.setAttribute("aria-live", "polite");
 
-                    var anchorElement = document.createElement('a');
-                    anchorElement.setAttribute('role', 'button');
-                    anchorElement.setAttribute('id', 'addOptions');
-                    anchorElement.innerText = 'Add more options..';
+        function removeOptionControls() {
+            root.querySelectorAll('[id^="moreOptionContainer_"]').forEach(function (element) {
+                element.remove();
+            });
+        }
 
-                    divElement.appendChild(anchorElement);
+        function addOptionsControl() {
+            if (!optionsGroup || root.querySelector("#addOptions")) return;
 
-                    //var parentDiv = document.getElementById('id_options_parent_div');
-                    if (parentDiv) {
-                        parentDiv.insertAdjacentElement('afterend', divElement);
+            const container = document.createElement("div");
+            container.id = "moreOptionContainer_{{ form.option_count }}";
+            container.className = "pt-2 text-primary-600";
+            container.style.textAlign = "end";
 
-                    }
-                    else {
-                        var parentDivMain = document.getElementById('id_options_parent_div');
-                        parentDivMain.insertAdjacentElement('afterend', divElement);
-                        var nextDiv = parentDivMain.nextElementSibling;
-                        nextDiv.id = 'moreOptionContainer_1';
-                    }
+            const button = document.createElement("button");
+            button.type = "button";
+            button.id = "addOptions";
+            button.className = "text-xs font-medium text-primary-600 hover:underline";
+            button.textContent = "Add another option";
+            button.addEventListener("click", function () {
+                addMoreTrigger.click();
+            });
 
-                }
-                else{
-                    $("#addOptions").show();
-                }
+            container.appendChild(button);
+            optionsGroup.insertAdjacentElement("afterend", container);
+        }
 
+        function updateQuestionType() {
+            const type = typeSelect ? typeSelect.value : "";
+            const usesOptions = choiceTypes.has(type);
+
+            if (optionsGroup) {
+                optionsGroup.style.display = usesOptions ? "" : "none";
+            }
+
+            removeOptionControls();
+            if (usesOptions) {
+                addOptionsControl();
+                hint.textContent = type === "multiple"
+                    ? "Add the answers applicants can select. They may select more than one."
+                    : "Add the answers applicants can choose from. They may select one.";
             } else {
-                $("#id_options_parent_div").hide();
-                $("#addOptions").hide();
-                $('[id^="moreOptionContainer_"]').remove();
+                hint.textContent = typeHints[type] || "Choose a question type to see how applicants will answer.";
+            }
+
+            if (!hint.parentNode && optionsGroup) {
+                optionsGroup.insertAdjacentElement("afterend", hint);
             }
         }
-        $(document).off('click', '#addOptions').on('click', '#addOptions', function(event) {
-            $('#addMoreOptions').click();
+
+        $(document)
+            .off("change.surveyQuestionType", "#formContainer form [name=type]")
+            .on("change.surveyQuestionType", "#formContainer form [name=type]", updateQuestionType);
+
+        updateQuestionType();
+
+        $("#{{ view_id }}Form").find("select").select2({
+            width: "100%"
         });
-
-      $(document).on('change', '#genericModalBody form [name=type]', function (e) {
-        toggleOpt();
-    });
-
-      $(document).ready(function() {
-          toggleOpt();
-      });
-
-        $(document).ready(function () {
-            $("#{{ view_id }}Form").find("select").select2({
-                width: '100%'
-            });
-        });
+    })();
 </script>
