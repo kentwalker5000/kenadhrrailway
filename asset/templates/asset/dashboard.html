@@ -169,15 +169,13 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             margin-bottom: 20px;
-            gap: 16px;
+            gap: 18px;
         }
         .as-chart-card {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: stretch;
-            overflow: visible;
-            border: 1px solid rgba(128, 128, 128, 0.12);
-            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(128, 128, 128, 0.09);
+            border-radius: 16px;
             background: #ffffff;
             box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
         }
@@ -193,11 +191,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            min-height: 64px;
-            width: 100%;
-            box-sizing: border-box;
-            flex: 0 0 auto;
-            padding: 14px 18px 0;
+            padding: 16px 18px 4px;
         }
         .as-chart-card__heading, .as-info-panel__heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
         .as-chart-card__heading > div { min-width: 0; }
@@ -214,10 +208,7 @@
             opacity: 0.5;
         }
         .as-chart-card__body {
-            width: 100%;
-            box-sizing: border-box;
-            flex: 0 0 auto;
-            padding: 6px 10px 10px;
+            padding: 4px 12px 12px;
         }
         .as-empty {
             display: flex;
@@ -233,38 +224,6 @@
         .as-empty img {
             width: 100px;
             opacity: 0.7;
-        }
-        /* Empty charts use a compact left/right card treatment. */
-        .as-chart-card .as-empty {
-            width: 100%;
-            min-height: 142px;
-            box-sizing: border-box;
-            padding: 16px 0;
-            gap: 6px;
-        }
-        .as-chart-card .as-empty img {
-            width: 64px;
-        }
-        .as-chart-card:has(.as-empty) {
-            min-height: 220px;
-            flex-direction: row !important;
-            align-items: center;
-        }
-        .as-chart-card:has(.as-empty) .as-chart-card__header {
-            width: 44%;
-            min-height: 0;
-            padding: 24px;
-        }
-        .as-chart-card:has(.as-empty) .as-chart-card__body {
-            width: 56%;
-            padding: 20px 24px 20px 10px;
-        }
-        .as-chart-card:has(.as-empty) .as-empty {
-            min-height: 0;
-            padding: 0;
-        }
-        .as-chart-card:has(.as-empty) .as-empty img {
-            width: 96px;
         }
         .as-skeleton {
             border-radius: 12px;
@@ -689,6 +648,9 @@
             .as-kpi-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
+            .as-chart-grid {
+                grid-template-columns: 1fr;
+            }
             .as-chart-card--wide {
                 grid-column: span 1;
             }
@@ -696,10 +658,7 @@
                 grid-template-columns: 1fr;
             }
         }
-        @media (max-width: 480px) {
-            .as-chart-grid {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 640px) {
             .as-kpi-grid {
                 grid-template-columns: 1fr;
             }
