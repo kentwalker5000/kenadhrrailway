@@ -100,42 +100,13 @@
             height: 38px;
             margin-bottom: 10px;
             border-radius: 10px;
+            background: #f1f3f5;
+            color: #5f6773;
             font-size: 18px;
         }
-        .rd-kpi-card__icon--amber {
-            background: #fef3c7;
-            color: var(--rd-amber);
-        }
-        .rd-kpi-card__icon--red {
-            background: #fee2e2;
-            color: var(--rd-red);
-        }
-        .rd-kpi-card__icon--green {
-            background: #dcfce7;
-            color: var(--rd-green);
-        }
-        .rd-kpi-card__icon--blue {
-            background: #dbeafe;
-            color: var(--rd-blue);
-        }
-        .rd-kpi-card__icon--purple {
-            background: #f3e8ff;
-            color: var(--rd-purple);
-        }
-        .dark .rd-kpi-card__icon--amber {
-            background: #78350f;
-        }
-        .dark .rd-kpi-card__icon--red {
-            background: #7f1d1d;
-        }
-        .dark .rd-kpi-card__icon--green {
-            background: #14532d;
-        }
-        .dark .rd-kpi-card__icon--blue {
-            background: #1e3a5f;
-        }
-        .dark .rd-kpi-card__icon--purple {
-            background: #3b0764;
+        .dark .rd-kpi-card__icon {
+            background: #3a3a3a;
+            color: #d1d5db;
         }
 
         .rd-kpi-card__label {
@@ -211,6 +182,32 @@
             align-items: center;
             justify-content: space-between;
             padding: 14px 18px 0;
+        }
+        .rd-chart-card__heading,
+        .rd-info-panel__heading {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            gap: 9px;
+        }
+        .rd-section-icon {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: #f1f3f5;
+            color: #5f6773;
+        }
+        .rd-section-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+        .dark .rd-section-icon {
+            background: #3a3a3a;
+            color: #d1d5db;
         }
         .rd-chart-card__title {
             font-weight: 600;
@@ -910,9 +907,12 @@
                         data-chart-label="{% trans 'Stage Conversion Funnel' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18l-7 8v6l-4 4v-10z"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Stage Conversion Funnel" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "Share of total candidates per stage" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-conversion-funnel"></div></div>
@@ -925,9 +925,12 @@
                         data-chart-label="{% trans 'Candidates by Stage' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16V8M12 16V5M17 16v-4"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Candidates by Stage" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "All active recruitments" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-stage-summary"></div></div>
@@ -940,9 +943,12 @@
                         data-chart-label="{% trans 'Offer Letter Status' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Offer Letter Status" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "All candidates" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-offer-status"></div></div>
@@ -955,9 +961,12 @@
                         data-chart-label="{% trans 'Source of Hire' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Source of Hire" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "Where candidates come from" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-source-hire"></div></div>
@@ -970,9 +979,12 @@
                         data-chart-label="{% trans 'Open Positions by Department' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 21V7h10v14M9 11h.01M9 15h.01M15 11h.01M15 15h.01"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Open Positions by Department" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "Filled vs open vacancies" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-open-dept"></div></div>
@@ -985,10 +997,13 @@
                         data-chart-label="{% trans 'Hiring Pipeline' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M4 19h16M8 16v-5M12 16V8M16 16v-9"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Hiring Pipeline" %}</div>
                                 <div class="rd-chart-card__subtitle">
                                     {% trans "Candidates per stage per recruitment" %}
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -1006,9 +1021,12 @@
                         data-chart-label="{% trans 'Hire Rate by Recruitment' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 14 5-5 4 4 7-8"/><path d="M15 5h5v5"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Hire Rate by Recruitment" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "Conversion efficiency" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-hire-rate"></div></div>
@@ -1021,10 +1039,13 @@
                         data-chart-label="{% trans 'Time to Hire' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Time to Hire" %}</div>
                                 <div class="rd-chart-card__subtitle">
                                     {% trans "Average days from application to hire" %}
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -1038,9 +1059,12 @@
                         data-chart-label="{% trans 'Joinings Per Month' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15h.01M12 15h.01M16 15h.01"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Joinings Per Month" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "In selected period" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-joinings"></div></div>
@@ -1053,10 +1077,13 @@
                         data-chart-label="{% trans 'Ongoing Recruitments & Managers' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Ongoing Recruitments & Managers" %}</div>
                                 <div class="rd-chart-card__subtitle">
                                     {% trans "Active hiring with assigned managers" %}
+                                </div>
                                 </div>
                             </div>
                         </div>
@@ -1073,9 +1100,12 @@
                         data-chart-label="{% trans 'Source Conversion Rate' %}"
                     >
                         <div class="rd-chart-card__header">
-                            <div>
+                            <div class="rd-chart-card__heading">
+                                <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 3 3 5-6"/></svg></span>
+                                <div>
                                 <div class="rd-chart-card__title">{% trans "Source Conversion Rate" %}</div>
                                 <div class="rd-chart-card__subtitle">{% trans "Hire rate per candidate source" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="rd-chart-card__body"><div id="chart-source-conv"></div></div>
@@ -1087,7 +1117,10 @@
             <div class="rd-sidebar">
                 <div class="rd-info-panel">
                     <div class="rd-info-panel__header">
-                        <div class="rd-info-panel__title">{% trans "Interviews" %}</div>
+                        <div class="rd-info-panel__heading">
+                            <span class="rd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15h.01M12 15h.01"/></svg></span>
+                            <div class="rd-info-panel__title">{% trans "Interviews" %}</div>
+                        </div>
                         <a href="{% url 'interview-view' %}" style="font-size: 11px; opacity: 0.7;">{% trans "View all" %} &rarr;</a>
                     </div>
                     <div class="rd-info-panel__body" id="rd-interviews">
@@ -1278,31 +1311,31 @@
                 .then(data => {
                     document.getElementById('rd-kpi-grid').innerHTML = `
                 <a href="{% url 'recruitment-view' %}" class="rd-kpi-card">
-                    <div class="rd-kpi-card__icon rd-kpi-card__icon--amber"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
+                    <div class="rd-kpi-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></div>
                     <div class="rd-kpi-card__label">{% trans "Total Vacancies" %}</div>
                     <div class="rd-kpi-card__value">${data.total_vacancy}</div>
                     <div class="rd-kpi-card__sub">{% trans "Open positions" %}</div>
                 </a>
                 <a href="{% url 'recruitment-view' %}" class="rd-kpi-card">
-                    <div class="rd-kpi-card__icon rd-kpi-card__icon--red"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
+                    <div class="rd-kpi-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></div>
                     <div class="rd-kpi-card__label">{% trans "Ongoing" %}</div>
                     <div class="rd-kpi-card__value">${data.ongoing_recruitments}</div>
                     <div class="rd-kpi-card__sub">{% trans "Active recruitments" %}</div>
                 </a>
                 <a href="{% url 'candidate-view' %}?hired=true&created_at_from=${data.period_from_date}&created_at_till=${data.period_to_date}&filter_applied=1" class="rd-kpi-card">
-                    <div class="rd-kpi-card__icon rd-kpi-card__icon--green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg></div>
+                    <div class="rd-kpi-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg></div>
                     <div class="rd-kpi-card__label">{% trans "Hired" %}</div>
                     <div class="rd-kpi-card__value">${data.total_hired}</div>
                     <div class="rd-kpi-card__sub">{% trans "of" %} ${data.total_candidates} {% trans "candidates" %}</div>
                 </a>
                 <div class="rd-kpi-card rd-kpi-card--static" title="{% trans "Conversion Rate" %} = {% trans "Hired" %} (${data.total_hired}) / {% trans "Total Candidates" %} (${data.total_candidates}) × 100 = ${data.conversion_rate}%">
-                    <div class="rd-kpi-card__icon rd-kpi-card__icon--blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+                    <div class="rd-kpi-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
                     <div class="rd-kpi-card__label">{% trans "Conversion Rate" %}</div>
                     <div class="rd-kpi-card__value">${data.conversion_rate}%</div>
                     <div class="rd-kpi-card__sub">{% trans "Hired / Total" %}</div>
                 </div>
                 <div class="rd-kpi-card rd-kpi-card--static" title="{% trans "Acceptance Rate" %} = {% trans "Accepted Offers" %} (${data.accepted_count}) / {% trans "Hired" %} (${data.total_hired}) × 100 = ${data.acceptance_rate}%">
-                    <div class="rd-kpi-card__icon rd-kpi-card__icon--purple"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 18 2 2 4-4"/></svg></div>
+                    <div class="rd-kpi-card__icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="m9 18 2 2 4-4"/></svg></div>
                     <div class="rd-kpi-card__label">{% trans "Acceptance Rate" %}</div>
                     <div class="rd-kpi-card__value">${data.acceptance_rate}%</div>
                     <div class="rd-kpi-card__sub">{% trans "Offer accepted" %}</div>
