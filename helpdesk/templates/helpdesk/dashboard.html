@@ -4,25 +4,23 @@
 {% block content %}
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <style>
-    :root { --hd-indigo: var(--primary-600, #E54F38); --hd-green: #22c55e; --hd-amber: #f59e0b; --hd-red: #ef4444; --hd-blue: #3b82f6; --hd-purple: #a855f7; }
-    .hd-dashboard { font-family: inherit; background: #ffffff; margin: -24px; padding: 24px; min-height: calc(100vh - 80px); }
+    :root { --hd-indigo: #1d4ed8; --hd-navy: #163a63; --hd-green: #22c55e; --hd-amber: #f59e0b; --hd-red: #ef4444; --hd-blue: #3b82f6; --hd-purple: #a855f7; }
+    .hd-dashboard { font-family: inherit; background: #f8fafc; margin: -24px; padding: 24px; min-height: calc(100vh - 80px); }
     .dark .hd-dashboard { background: #000000; }
     .hd-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .hd-header h1 { font-size: 22px; font-weight: 700; }
     .hd-header__date { font-size: 13px; opacity: 0.6; margin-top: 2px; }
-    .hd-btn-back { padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); font-size: 13px; cursor: pointer; text-decoration: none; color: inherit; transition: all 0.15s; background: none; }
-    .hd-btn-back:hover { border-color: var(--hd-indigo); color: var(--hd-indigo); text-decoration: none; }
+    .hd-btn-back { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--hd-indigo); font-size: 13px; cursor: pointer; text-decoration: none; color: var(--hd-indigo); transition: all 0.15s; background: #fff; }
+    .hd-btn-back:hover { border-color: var(--hd-navy); color: var(--hd-navy); background: #eff6ff; text-decoration: none; }
 
     .hd-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
-    .hd-kpi-card { border-radius: 12px; padding: 18px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); transition: all 0.2s; text-decoration: none; color: inherit; display: block; }
+    .hd-kpi-card { border-radius: 12px; padding: 18px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); box-shadow: 0 2px 8px rgba(15,23,42,0.05); transition: all 0.2s; text-decoration: none; color: inherit; display: block; }
     .hd-kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); text-decoration: none; color: inherit; }
     .hd-kpi-card--static:hover { transform: none; box-shadow: none; cursor: default; }
     .dark .hd-kpi-card { background: #242424; border-color: rgba(255,255,255,0.08); }
-    .hd-kpi-card__icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; }
-    .hd-kpi-card__icon--blue { background: #dbeafe; color: var(--hd-blue); } .hd-kpi-card__icon--amber { background: #fef3c7; color: var(--hd-amber); }
-    .hd-kpi-card__icon--green { background: #dcfce7; color: var(--hd-green); } .hd-kpi-card__icon--red { background: #fee2e2; color: var(--hd-red); }
-    .dark .hd-kpi-card__icon--blue { background: #1e3a5f; } .dark .hd-kpi-card__icon--amber { background: #78350f; }
-    .dark .hd-kpi-card__icon--green { background: #14532d; } .dark .hd-kpi-card__icon--red { background: #7f1d1d; }
+    .hd-kpi-card__icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; background: #f1f3f5; color: var(--hd-navy); }
+    .hd-kpi-card__icon--blue, .hd-kpi-card__icon--amber, .hd-kpi-card__icon--green, .hd-kpi-card__icon--red { background: #f1f3f5; color: var(--hd-navy); }
+    .dark .hd-kpi-card__icon, .dark .hd-kpi-card__icon--blue, .dark .hd-kpi-card__icon--amber, .dark .hd-kpi-card__icon--green, .dark .hd-kpi-card__icon--red { background: #3a3a3a; color: #8db5e0; }
     .hd-kpi-card__label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.5; margin-bottom: 6px; }
     .hd-kpi-card__value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
     .hd-kpi-card__sub { font-size: 12px; opacity: 0.6; }
@@ -33,10 +31,14 @@
     .hd-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
     .hd-main { min-width: 0; } .hd-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 90px; }
     .hd-chart-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
-    .hd-chart-card { border-radius: 12px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); overflow: visible; }
+    .hd-chart-card { border-radius: 12px; background: #ffffff; border: 1px solid rgba(128,128,128,0.12); box-shadow: 0 2px 8px rgba(15,23,42,0.05); overflow: visible; }
     .dark .hd-chart-card { background: #242424; border-color: rgba(255,255,255,0.08); }
     .hd-chart-card--wide { grid-column: span 2; }
     .hd-chart-card__header { padding: 14px 18px 0; display: flex; justify-content: space-between; align-items: center; }
+    .hd-chart-card__heading, .hd-info-panel__heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .hd-section-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; background: #f1f3f5; color: var(--hd-navy); }
+    .hd-section-icon svg { width: 16px; height: 16px; }
+    .dark .hd-section-icon { background: #3a3a3a; color: #8db5e0; }
     .hd-chart-card__title { font-size: 14px; font-weight: 600; }
     .hd-chart-card__subtitle { font-size: 11px; opacity: 0.5; margin-top: 2px; }
     .hd-chart-card__body { padding: 6px 10px 10px; }
@@ -61,8 +63,8 @@
     .hd-priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .hd-priority-dot--high { background: #ef4444; } .hd-priority-dot--medium { background: #f59e0b; } .hd-priority-dot--low { background: #22c55e; }
     /* Customize Panel */
-    .hd-btn-customize { padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(128,128,128,0.2); font-size: 13px; cursor: pointer; color: inherit; transition: all 0.15s; background: none; display: flex; align-items: center; gap: 5px; }
-    .hd-btn-customize:hover { border-color: var(--hd-indigo); color: var(--hd-indigo); }
+    .hd-btn-customize { padding: 6px 12px; border-radius: 8px; border: 1px solid var(--hd-indigo); font-size: 13px; cursor: pointer; color: #fff; transition: all 0.15s; background: var(--hd-indigo); display: flex; align-items: center; gap: 5px; }
+    .hd-btn-customize:hover { border-color: var(--hd-navy); background: var(--hd-navy); color: #fff; }
     .hd-customize-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1050; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
     .hd-customize-overlay--open { opacity: 1; pointer-events: auto; }
     .hd-customize-panel { position: fixed; top: 0; right: -420px; width: 400px; height: 100vh; background: #ffffff; box-shadow: -4px 0 24px rgba(0,0,0,0.12); z-index: 1051; display: flex; flex-direction: column; transition: right 0.25s ease; }
@@ -159,48 +161,48 @@
         <div class="hd-main">
             <div class="hd-chart-grid">
                 <div class="hd-chart-card" data-chart-id="ticket_status" data-chart-label="{% trans 'Ticket Status' %}">
-                    <div class="hd-chart-card__header"><div><div class="hd-chart-card__title">{% trans "Ticket Status" %}</div><div class="hd-chart-card__subtitle">{% trans "All active tickets" %}</div></div></div>
+                    <div class="hd-chart-card__header"><div class="hd-chart-card__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 17v2M13 11v2"/></svg></span><div><div class="hd-chart-card__title">{% trans "Ticket Status" %}</div><div class="hd-chart-card__subtitle">{% trans "All active tickets" %}</div></div></div></div>
                     <div class="hd-chart-card__body"><div id="chart-hd-status"></div></div>
                 </div>
                 <div class="hd-chart-card" data-chart-id="priority_breakdown" data-chart-label="{% trans 'Priority Breakdown' %}">
-                    <div class="hd-chart-card__header"><div><div class="hd-chart-card__title">{% trans "Priority Breakdown" %}</div><div class="hd-chart-card__subtitle">{% trans "Low, medium, high" %}</div></div></div>
+                    <div class="hd-chart-card__header"><div class="hd-chart-card__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v18"/><path d="M5 4h11l-2 4 2 4H5"/></svg></span><div><div class="hd-chart-card__title">{% trans "Priority Breakdown" %}</div><div class="hd-chart-card__subtitle">{% trans "Low, medium, high" %}</div></div></div></div>
                     <div class="hd-chart-card__body"><div id="chart-hd-priority"></div></div>
                 </div>
                 <div class="hd-chart-card" data-chart-id="tickets_by_type" data-chart-label="{% trans 'Tickets by Type' %}">
-                    <div class="hd-chart-card__header"><div><div class="hd-chart-card__title">{% trans "Tickets by Type" %}</div><div class="hd-chart-card__subtitle">{% trans "Suggestion, complaint, service, etc." %}</div></div></div>
+                    <div class="hd-chart-card__header"><div class="hd-chart-card__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 23l-8.59-8.59a2 2 0 0 1 0-2.82L11 3l9.59 8.59a2 2 0 0 1 0 2.82Z"/><circle cx="7.5" cy="11.5" r="1"/></svg></span><div><div class="hd-chart-card__title">{% trans "Tickets by Type" %}</div><div class="hd-chart-card__subtitle">{% trans "Suggestion, complaint, service, etc." %}</div></div></div></div>
                     <div class="hd-chart-card__body"><div id="chart-hd-type"></div></div>
                 </div>
                 <div class="hd-chart-card" data-chart-id="tickets_by_dept" data-chart-label="{% trans 'Tickets by Department' %}">
-                    <div class="hd-chart-card__header"><div><div class="hd-chart-card__title">{% trans "Tickets by Department" %}</div><div class="hd-chart-card__subtitle">{% trans "Raised by department" %}</div></div></div>
+                    <div class="hd-chart-card__header"><div class="hd-chart-card__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V5l7-3v19M19 21V9l-7-3"/><path d="M8 8h.01M8 12h.01M8 16h.01M15 12h.01M15 16h.01"/></svg></span><div><div class="hd-chart-card__title">{% trans "Tickets by Department" %}</div><div class="hd-chart-card__subtitle">{% trans "Raised by department" %}</div></div></div></div>
                     <div class="hd-chart-card__body"><div id="chart-hd-dept"></div></div>
                 </div>
                 <div class="hd-chart-card hd-chart-card--wide" data-chart-id="ticket_trend" data-chart-label="{% trans 'Ticket Trend' %}">
-                    <div class="hd-chart-card__header"><div><div class="hd-chart-card__title">{% trans "Ticket Trend" %}</div><div class="hd-chart-card__subtitle">{% trans "Created vs resolved — last 6 months" %}</div></div></div>
+                    <div class="hd-chart-card__header"><div class="hd-chart-card__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg></span><div><div class="hd-chart-card__title">{% trans "Ticket Trend" %}</div><div class="hd-chart-card__subtitle">{% trans "Created vs resolved — last 6 months" %}</div></div></div></div>
                     <div class="hd-chart-card__body"><div id="chart-hd-trend"></div></div>
                 </div>
                 <div class="hd-chart-card" data-chart-id="sla_compliance" data-chart-label="{% trans 'SLA Compliance' %}">
-                    <div class="hd-chart-card__header"><div><div class="hd-chart-card__title">{% trans "SLA Compliance" %}</div><div class="hd-chart-card__subtitle">{% trans "Resolved within deadline" %}</div></div></div>
+                    <div class="hd-chart-card__header"><div class="hd-chart-card__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg></span><div><div class="hd-chart-card__title">{% trans "SLA Compliance" %}</div><div class="hd-chart-card__subtitle">{% trans "Resolved within deadline" %}</div></div></div></div>
                     <div class="hd-chart-card__body"><div id="chart-hd-sla"></div></div>
                 </div>
                 <div class="hd-chart-card" data-chart-id="assignee_workload" data-chart-label="{% trans 'Assignee Workload' %}">
-                    <div class="hd-chart-card__header"><div><div class="hd-chart-card__title">{% trans "Assignee Workload" %}</div><div class="hd-chart-card__subtitle">{% trans "Open tickets per assignee" %}</div></div></div>
+                    <div class="hd-chart-card__header"><div class="hd-chart-card__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><div><div class="hd-chart-card__title">{% trans "Assignee Workload" %}</div><div class="hd-chart-card__subtitle">{% trans "Open tickets per assignee" %}</div></div></div></div>
                     <div class="hd-chart-card__body"><div id="chart-hd-workload"></div></div>
                 </div>
             </div>
         </div>
 
         <div class="hd-sidebar">
-            <div class="hd-info-panel">
-                <div class="hd-info-panel__header">
-                    <div class="hd-info-panel__title">{% trans "Overdue Tickets" %}</div>
+                <div class="hd-info-panel">
+                    <div class="hd-info-panel__header">
+                    <div class="hd-info-panel__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><div class="hd-info-panel__title">{% trans "Overdue Tickets" %}</div></div>
                 </div>
                 <div class="hd-info-panel__body" id="hd-overdue">
                     <div class="hd-info-panel__empty">{% trans "Loading..." %}</div>
                 </div>
             </div>
-            <div class="hd-info-panel">
-                <div class="hd-info-panel__header">
-                    <div class="hd-info-panel__title">{% trans "Recent Tickets" %}</div>
+                <div class="hd-info-panel">
+                    <div class="hd-info-panel__header">
+                    <div class="hd-info-panel__heading"><span class="hd-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="hd-info-panel__title">{% trans "Recent Tickets" %}</div></div>
                     <a href="{% url 'ticket-view' %}" style="font-size:11px;color:var(--hd-indigo);text-decoration:none;">{% trans "View all" %}</a>
                 </div>
                 <div class="hd-info-panel__body" id="hd-recent">
@@ -231,7 +233,7 @@
     const textColor = isDark ? '#e2e8f0' : '#334155';
     const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
     const cardBg = isDark ? '#242424' : '#ffffff';
-    const COLORS = ['#E54F38','#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
+    const COLORS = ['#1d4ed8','#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
     const statusColors = { new: '#3b82f6', in_progress: '#f59e0b', on_hold: '#ef4444', resolved: '#22c55e', canceled: '#94a3b8' };
     const priorityColors = { low: '#22c55e', medium: '#f59e0b', high: '#ef4444' };
     const emptyHtml = (msg) => `<div class="hd-empty"><img src="/static/images/ui/no_records.svg" alt="">${msg}</div>`;
