@@ -19,9 +19,9 @@
             onsubmit="event.preventDefault()"
             id="filterForm"
             hx-target="#skill_zone_container"
-            class="d-flex gap-3"
+            class="flex items-center gap-2"
         >
-            <div class="oh-input-group oh-input__search-group relative">
+            <div class="oh-input-group oh-input__search-group relative w-56">
                 <i
                     class="fas fa-search absolute left-3 top-[1px] bottom-0 m-auto flex items-center opacity-50 text-xs"
                 ></i>
@@ -29,10 +29,10 @@
                     type="text"
                     class="
                         text-color-600
-                        ps-8 p-1.5 pb-2
+                        ps-8 py-2
                         placeholder:text-xs
                         placeholder:text-dark-100
-                        w-full
+                        w-full h-9
                         border border-primary-500 rounded-md
                         focus-visible:outline-0
                         text-sm [transition:.3s]
@@ -50,7 +50,7 @@
                 type="button"
                 id="modernFilterTrigger"
                 onclick="toggleModernFilterPanel(true)"
-                class="px-5 py-2 h-full bg-[white] rounded-md text-xs flex items-center gap-2 border border-primary-500 hover:border-primary-600 transition duration-300 cursor-pointer"
+                class="px-4 h-9 bg-[white] rounded-md text-xs flex items-center gap-2 whitespace-nowrap border border-primary-500 hover:border-primary-600 transition duration-300 cursor-pointer"
             >
                 <img
                     src="{% static 'horilla_theme/assets/img/icons/sort.svg' %}"
