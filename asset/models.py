@@ -238,7 +238,7 @@ class Asset(HorillaModel):
         """
 
         status_class_map = {
-            "Available": "row-status--yellow",
+            "Available": "row-status--asset-blue",
             "In use": "row-status--blue",
             "Not-Available": "row-status--gray",
         }

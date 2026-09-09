@@ -246,7 +246,7 @@ class AssetCategoryListView(HorillaListView):
 
     row_status_indications = [
         (
-            "yellow--dot",
+            "asset-blue--dot",
             _("Available"),
             """
             onclick="

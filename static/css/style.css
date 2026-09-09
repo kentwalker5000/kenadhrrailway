@@ -151,6 +151,11 @@ ion-icon {
     border-radius: 5px;
 }
 
+.row-status--asset-blue {
+    border-left: 4px solid #1d4ed8;
+    border-radius: 5px;
+}
+
 form label {
     font-weight: 700;
 }

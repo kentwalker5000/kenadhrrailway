@@ -36,7 +36,7 @@ class AssetListView(HorillaListView):
 
     row_status_indications = [
         (
-            "yellow--dot",
+            "asset-blue--dot",
             _("Available"),
         ),
         (
