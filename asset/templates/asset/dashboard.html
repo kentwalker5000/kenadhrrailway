@@ -172,6 +172,8 @@
             gap: 16px;
         }
         .as-chart-card {
+            display: flex;
+            flex-direction: column;
             overflow: visible;
             border: 1px solid rgba(128, 128, 128, 0.12);
             border-radius: 12px;
@@ -190,9 +192,11 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            min-height: 64px;
             padding: 14px 18px 0;
         }
         .as-chart-card__heading, .as-info-panel__heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .as-chart-card__heading > div { min-width: 0; }
         .as-section-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; background: #f1f3f5; color: #163a63; }
         .as-section-icon svg { width: 16px; height: 16px; }
         .dark .as-section-icon { background: #3a3a3a; color: #8db5e0; }
@@ -1161,7 +1165,7 @@
                     const ageColors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#94a3b8'];
                     renderChart('age-dist', document.querySelector("#chart-age-dist"), {
                         series: [{ name: '{% trans "Assets" %}', data: data.brackets.map(b => b.count) }],
-                        chart: { type: 'bar', height: 280, toolbar: { show: false }, background: 'transparent', fontFamily: 'inherit',
+                        chart: { type: 'bar', height: 300, toolbar: { show: false }, background: 'transparent', fontFamily: 'inherit',
                             events: { dataPointSelection: (e, ctx, config) => {
                                 window.location.href = "{% url 'asset-category-view' %}";
                             }}
