@@ -227,6 +227,16 @@
             width: 100px;
             opacity: 0.7;
         }
+        /* Keep empty chart cards compact: an empty state should not reserve
+           the same visual weight as a populated 300px chart. */
+        .as-chart-card .as-empty {
+            min-height: 118px;
+            padding: 16px 0;
+            gap: 6px;
+        }
+        .as-chart-card .as-empty img {
+            width: 64px;
+        }
         .as-skeleton {
             border-radius: 12px;
             background: linear-gradient(90deg, rgba(128, 128, 128, 0.1) 25%, transparent 50%, rgba(128, 128, 128, 0.1) 75%);
