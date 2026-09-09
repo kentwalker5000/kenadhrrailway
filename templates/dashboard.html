@@ -14,18 +14,25 @@
             --md-cyan: #06b6d4;
             --md-pink: #ec4899;
             --md-sidebar-w: 320px;
+            --md-navy: #163a63;
+            --md-navy-mid: #245786;
+            --md-navy-tint: #edf4fa;
         }
 
         .md-dashboard {
             min-height: calc(100vh - 80px);
             margin: -24px;
             padding: 24px;
-            background: #ffffff;
+            background:
+                radial-gradient(circle at 100% 0, rgba(36, 87, 134, 0.11), transparent 28rem),
+                linear-gradient(180deg, #f8fbfe 0, #ffffff 320px);
             font-family: inherit;
         }
 
         .dark .md-dashboard {
-            background: #000000;
+            background:
+                radial-gradient(circle at 100% 0, rgba(36, 87, 134, 0.18), transparent 28rem),
+                #000000;
         }
 
         .md-header {
@@ -36,8 +43,26 @@
         }
 
         .md-header h1 {
+            position: relative;
+            padding-left: 13px;
+            color: var(--md-navy);
             font-weight: 700;
             font-size: 22px;
+            letter-spacing: -0.03em;
+        }
+        .md-header h1::before {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 4px;
+            height: 22px;
+            border-radius: 999px;
+            background: linear-gradient(180deg, var(--md-navy-mid), var(--md-navy));
+            content: '';
+            transform: translateY(-50%);
+        }
+        .dark .md-header h1 {
+            color: #dbeafe;
         }
 
         .md-header__date {
@@ -122,10 +147,10 @@
             position: relative;
             padding: 20px;
             overflow: hidden;
-            border: 1px solid rgba(128, 128, 128, 0.09);
+            border: 1px solid rgba(22, 58, 99, 0.12);
             border-radius: 16px;
             background: #ffffff;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 4px 14px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03), 0 10px 22px rgba(15, 23, 42, 0.06);
             color: inherit;
             text-decoration: none;
             cursor: pointer;
@@ -143,8 +168,20 @@
 
         .md-kpi-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+            border-color: rgba(22, 58, 99, 0.26);
+            box-shadow: 0 10px 28px rgba(22, 58, 99, 0.15);
             text-decoration: none;
+        }
+        .md-kpi-card::before {
+            position: absolute;
+            top: 0;
+            right: 20px;
+            left: 20px;
+            height: 3px;
+            border-radius: 0 0 999px 999px;
+            background: linear-gradient(90deg, var(--md-navy), #4c89be);
+            content: '';
+            opacity: 0.88;
         }
         .md-kpi-card__hit {
             display: block;
@@ -187,6 +224,10 @@
             font-weight: 800;
             font-size: 30px;
             line-height: 1;
+            color: var(--md-navy);
+        }
+        .dark .md-kpi-card__value {
+            color: #dbeafe;
         }
 
         .md-kpi-card__sub {
@@ -233,15 +274,16 @@
             position: relative;
             /* visible so ApexCharts axis/legend labels are not clipped */
             overflow: visible;
-            border: 1px solid rgba(128, 128, 128, 0.09);
+            border: 1px solid rgba(22, 58, 99, 0.12);
             border-radius: 16px;
             background: #ffffff;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03), 0 10px 24px rgba(15, 23, 42, 0.05);
             transition: box-shadow 0.25s ease, transform 0.25s ease;
         }
         .md-chart-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.1);
+            border-color: rgba(22, 58, 99, 0.25);
+            box-shadow: 0 12px 30px rgba(22, 58, 99, 0.13);
         }
         .dark .md-chart-card {
             border-color: rgba(255, 255, 255, 0.07);
@@ -285,6 +327,8 @@
             border-radius: 8px;
             background: #f1f3f5;
             color: #163a63;
+            box-shadow: inset 0 0 0 1px rgba(22, 58, 99, 0.06);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .md-section-icon svg {
             width: 16px;
@@ -294,11 +338,20 @@
             background: #3a3a3a;
             color: #8db5e0;
         }
+        .md-chart-card:hover .md-section-icon,
+        .md-info-panel:hover .md-section-icon {
+            box-shadow: inset 0 0 0 1px rgba(22, 58, 99, 0.14), 0 3px 8px rgba(22, 58, 99, 0.12);
+            transform: translateY(-1px);
+        }
 
         .md-chart-card__title {
+            color: var(--md-navy);
             font-weight: 700;
             font-size: 14px;
             letter-spacing: -0.01em;
+        }
+        .dark .md-chart-card__title {
+            color: #dbeafe;
         }
 
         .md-chart-card__subtitle {
@@ -415,9 +468,16 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            border: 1px solid rgba(128, 128, 128, 0.12);
-            border-radius: 12px;
+            border: 1px solid rgba(22, 58, 99, 0.12);
+            border-radius: 14px;
             background: #ffffff;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .md-info-panel:hover {
+            border-color: rgba(22, 58, 99, 0.24);
+            box-shadow: 0 12px 26px rgba(22, 58, 99, 0.11);
+            transform: translateY(-1px);
         }
 
         .dark .md-info-panel {
@@ -435,8 +495,12 @@
         }
 
         .md-info-panel__title {
+            color: var(--md-navy);
             font-weight: 700;
             font-size: 13px;
+        }
+        .dark .md-info-panel__title {
+            color: #dbeafe;
         }
 
         .md-info-panel__body {
