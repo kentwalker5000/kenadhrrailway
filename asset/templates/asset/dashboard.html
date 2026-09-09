@@ -1,11 +1,12 @@
 ﻿{% extends "index.html" %}
-{% load static i18n %}
+{% load static i18n horillafilters %}
+{% get_company as theme_obj %}
 
 {% block content %}
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <style>
         :root {
-            --as-indigo: var(--primary-600, #E54F38);
+            --as-indigo: {{ theme_obj.primary_600|default:"#1d4ed8" }};
             --as-green: #22c55e;
             --as-amber: #f59e0b;
             --as-red: #ef4444;
@@ -91,35 +92,11 @@
             margin-bottom: 10px;
             border-radius: 10px;
             font-size: 18px;
+            background: #f1f3f5;
+            color: #163a63;
         }
-        .as-kpi-card__icon--blue {
-            background: #dbeafe;
-            color: var(--as-blue);
-        }
-        .as-kpi-card__icon--green {
-            background: #dcfce7;
-            color: var(--as-green);
-        }
-        .as-kpi-card__icon--amber {
-            background: #fef3c7;
-            color: var(--as-amber);
-        }
-        .as-kpi-card__icon--red {
-            background: #fee2e2;
-            color: var(--as-red);
-        }
-        .dark .as-kpi-card__icon--blue {
-            background: #1e3a5f;
-        }
-        .dark .as-kpi-card__icon--green {
-            background: #14532d;
-        }
-        .dark .as-kpi-card__icon--amber {
-            background: #78350f;
-        }
-        .dark .as-kpi-card__icon--red {
-            background: #7f1d1d;
-        }
+        .as-kpi-card__icon--blue, .as-kpi-card__icon--green, .as-kpi-card__icon--amber, .as-kpi-card__icon--red { background: #f1f3f5; color: #163a63; }
+        .dark .as-kpi-card__icon, .dark .as-kpi-card__icon--blue, .dark .as-kpi-card__icon--green, .dark .as-kpi-card__icon--amber, .dark .as-kpi-card__icon--red { background: #3a3a3a; color: #8db5e0; }
         .as-kpi-card__label {
             margin-bottom: 6px;
             font-weight: 600;
@@ -215,6 +192,10 @@
             justify-content: space-between;
             padding: 14px 18px 0;
         }
+        .as-chart-card__heading, .as-info-panel__heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .as-section-icon { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; background: #f1f3f5; color: #163a63; }
+        .as-section-icon svg { width: 16px; height: 16px; }
+        .dark .as-section-icon { background: #3a3a3a; color: #8db5e0; }
         .as-chart-card__title {
             font-weight: 600;
             font-size: 14px;
@@ -370,6 +351,8 @@
             border-color: var(--as-indigo);
             color: var(--as-indigo);
         }
+        .as-dashboard #as-open-customize { border-color: var(--as-indigo); background: var(--as-indigo); color: #ffffff; box-shadow: 0 4px 10px color-mix(in srgb, var(--as-indigo) 22%, transparent); }
+        .as-dashboard #as-open-customize:hover { border-color: var(--primary-700, #1e3a8a); background: var(--primary-700, #1e3a8a); color: #ffffff; box-shadow: 0 6px 14px color-mix(in srgb, var(--as-indigo) 30%, transparent); }
         .as-customize-overlay {
             z-index: 1050;
             position: fixed;
@@ -728,8 +711,7 @@
                         data-chart-label="{% trans 'Asset Status' %}"
                     >
                         <div class="as-chart-card__header">
-                            <div>
-                                <div class="as-chart-card__title">{% trans "Asset Status" %}</div>
+                            <div class="as-chart-card__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg></span><div><div class="as-chart-card__title">{% trans "Asset Status" %}</div>
                                 <div class="as-chart-card__subtitle">{% trans "In use, available, unavailable" %}</div>
                             </div>
                         </div>
@@ -741,8 +723,7 @@
                         data-chart-label="{% trans 'Request Status' %}"
                     >
                         <div class="as-chart-card__header">
-                            <div>
-                                <div class="as-chart-card__title">{% trans "Request Status" %}</div>
+                            <div class="as-chart-card__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></span><div><div class="as-chart-card__title">{% trans "Request Status" %}</div>
                                 <div class="as-chart-card__subtitle">{% trans "Asset requests" %}</div>
                             </div>
                         </div>
@@ -754,8 +735,7 @@
                         data-chart-label="{% trans 'Assets by Category' %}"
                     >
                         <div class="as-chart-card__header">
-                            <div>
-                                <div class="as-chart-card__title">{% trans "Assets by Category" %}</div>
+                            <div class="as-chart-card__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="as-chart-card__title">{% trans "Assets by Category" %}</div>
                                 <div class="as-chart-card__subtitle">
                                     {% trans "In use vs available per category" %}
                                 </div>
@@ -769,8 +749,7 @@
                         data-chart-label="{% trans 'Value by Category' %}"
                     >
                         <div class="as-chart-card__header">
-                            <div>
-                                <div class="as-chart-card__title">{% trans "Value by Category" %}</div>
+                            <div class="as-chart-card__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span><div><div class="as-chart-card__title">{% trans "Value by Category" %}</div>
                                 <div class="as-chart-card__subtitle">{% trans "Total purchase cost" %}</div>
                             </div>
                         </div>
@@ -782,8 +761,7 @@
                         data-chart-label="{% trans 'Assets by Department' %}"
                     >
                         <div class="as-chart-card__header">
-                            <div>
-                                <div class="as-chart-card__title">{% trans "Assets by Department" %}</div>
+                            <div class="as-chart-card__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V5l7-3v19M19 21V9l-7-3"/><path d="M8 8h.01M8 12h.01M8 16h.01M15 12h.01M15 16h.01"/></svg></span><div><div class="as-chart-card__title">{% trans "Assets by Department" %}</div>
                                 <div class="as-chart-card__subtitle">{% trans "Allocated assets ranked by department" %}</div>
                             </div>
                         </div>
@@ -795,8 +773,7 @@
                         data-chart-label="{% trans 'Asset Age' %}"
                     >
                         <div class="as-chart-card__header">
-                            <div>
-                                <div class="as-chart-card__title">{% trans "Asset Age" %}</div>
+                            <div class="as-chart-card__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div><div class="as-chart-card__title">{% trans "Asset Age" %}</div>
                                 <div class="as-chart-card__subtitle">{% trans "Fleet age distribution" %}</div>
                             </div>
                         </div>
@@ -808,7 +785,7 @@
             <div class="as-sidebar">
                 <div class="as-info-panel">
                     <div class="as-info-panel__header">
-                        <div class="as-info-panel__title">{% trans "Expiring Soon" %}</div>
+                        <div class="as-info-panel__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div class="as-info-panel__title">{% trans "Expiring Soon" %}</div></div>
                         <span style="font-size: 11px; opacity: 0.5">{% trans "Next 60 days" %}</span>
                     </div>
                     <div class="as-info-panel__body" id="as-expiring">
@@ -817,7 +794,7 @@
                 </div>
                 <div class="as-info-panel">
                     <div class="as-info-panel__header">
-                        <div class="as-info-panel__title">{% trans "Recent Allocations" %}</div>
+                        <div class="as-info-panel__heading"><span class="as-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><div class="as-info-panel__title">{% trans "Recent Allocations" %}</div></div>
                     </div>
                     <div class="as-info-panel__body" id="as-allocations">
                         <div class="as-info-panel__empty">{% trans "Loading..." %}</div>
@@ -847,7 +824,8 @@
             const textColor = isDark ? '#e2e8f0' : '#334155';
             const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
             const cardBg = isDark ? '#242424' : '#ffffff';
-            const COLORS = ['#E54F38','#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
+            const appBlue = getComputedStyle(document.documentElement).getPropertyValue('--as-indigo').trim() || '#1d4ed8';
+            const COLORS = [appBlue,'#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
             const emptyHtml = (msg) => `<div class="as-empty"><img src="/static/images/ui/no_records.svg" alt="">${msg}</div>`;
             const fmt = v => Number(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
