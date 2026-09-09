@@ -3,12 +3,50 @@
 from horilla.decorators import decorator_with_arguments
 from horilla.horilla_middlewares import _thread_locals
 from horilla.methods import handle_no_permission
+from django.db.models import Q
 from offboarding.models import (
     Offboarding,
     OffboardingEmployee,
     OffboardingStage,
     OffboardingTask,
 )
+
+
+def accessible_offboardings(request):
+    """Return only the offboarding processes the requesting user may view."""
+    if request.user.has_perm("offboarding.view_offboarding"):
+        return Offboarding.objects.all()
+
+    employee = getattr(request.user, "employee_get", None)
+    if not employee:
+        return Offboarding.objects.none()
+
+    return Offboarding.objects.filter(
+        Q(managers=employee)
+        | Q(offboardingstage__managers=employee)
+        | Q(offboardingstage__offboardingtask__managers=employee)
+        | Q(offboardingstage__offboardingemployee__employee_id=employee)
+    ).distinct()
+
+
+def manageable_offboardings(request):
+    """Return processes the user may change, excluding an exiting employee's own access."""
+    if (
+        request.user.has_perm("offboarding.change_offboarding")
+        or request.user.has_perm("offboarding.change_offboardingemployee")
+        or request.user.has_perm("offboarding.change_offboardingstage")
+    ):
+        return Offboarding.objects.all()
+
+    employee = getattr(request.user, "employee_get", None)
+    if not employee:
+        return Offboarding.objects.none()
+
+    return Offboarding.objects.filter(
+        Q(managers=employee)
+        | Q(offboardingstage__managers=employee)
+        | Q(offboardingstage__offboardingtask__managers=employee)
+    ).distinct()
 
 
 @decorator_with_arguments
@@ -46,7 +84,7 @@ def offboarding_manager_can_enter(function, perm):
         request = getattr(_thread_locals, "request")
         if not getattr(self, "request", None):
             self.request = request
-        employee = request.user.has_perm(perm)
+        employee = request.user.employee_get
         if (
             request.user.has_perm(perm)
             or Offboarding.objects.filter(managers=employee).exists()
@@ -66,7 +104,7 @@ def offboarding_or_stage_manager_can_enter(function, perm):
         request = getattr(_thread_locals, "request")
         if not getattr(self, "request", None):
             self.request = request
-        employee = request.user.has_perm(perm)
+        employee = request.user.employee_get
         if (
             request.user.has_perm(perm)
             or Offboarding.objects.filter(managers=employee).exists()

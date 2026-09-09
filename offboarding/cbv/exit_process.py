@@ -40,7 +40,9 @@ from horilla_views.generic.cbv.views import (
 )
 from notifications.signals import notify
 from offboarding.cbv_decorators import (
+    accessible_offboardings,
     any_manager_can_enter,
+    manageable_offboardings,
     offboarding_manager_can_enter,
     offboarding_or_stage_manager_can_enter,
 )
@@ -512,7 +514,10 @@ class PipeLineTabView(HorillaTabView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        offboardings = self.filter_class(self.request.GET).qs.filter(is_active=True)
+        offboardings = self.filter_class(
+            self.request.GET,
+            queryset=accessible_offboardings(self.request),
+        ).qs.filter(is_active=True)
         self.tabs = []
         for offboarding in offboardings:
             tab = {}
@@ -552,7 +557,9 @@ class OffboardingPipelineContentShell(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        offboarding = get_object_or_404(Offboarding, pk=self.kwargs.get("pk"))
+        offboarding = get_object_or_404(
+            accessible_offboardings(self.request), pk=self.kwargs.get("pk")
+        )
         view_type = self.request.GET.get("view", "list")
         content_url = reverse(
             "get-offboarding-stage", kwargs={"offboarding_id": offboarding.pk}
@@ -572,6 +579,12 @@ class OffboardingPipelineContentShell(TemplateView):
 
 @method_decorator(login_required, name="dispatch")
 @method_decorator(hx_request_required, name="dispatch")
+@method_decorator(
+    any_manager_can_enter(
+        "offboarding.view_offboarding", offboarding_employee_can_enter=True
+    ),
+    name="dispatch",
+)
 class OffboardingPipelineStage(Pipeline):
     """
     Offboarding Pipeline Stage
@@ -633,11 +646,19 @@ class OffboardingPipelineStage(Pipeline):
         queryset = queryset.annotate(
             employee_count=Count("offboardingemployee", distinct=True)
         )
-        self.queryset = queryset.order_by("sequence")
+        self.queryset = queryset.filter(
+            offboarding_id__in=accessible_offboardings(self.request)
+        ).order_by("sequence")
         return self.queryset
 
 
 @method_decorator(login_required, name="dispatch")
+@method_decorator(
+    any_manager_can_enter(
+        "offboarding.view_offboarding", offboarding_employee_can_enter=True
+    ),
+    name="dispatch",
+)
 class OffboardingKanbanView(HorillaKanbanView):
     """
     Offboarding Kanban View
@@ -776,10 +797,78 @@ class OffboardingKanbanView(HorillaKanbanView):
         if off_id:
             related_groups = related_groups.filter(offboarding_id=off_id)
 
-        return related_groups
+        return related_groups.filter(
+            offboarding_id__in=accessible_offboardings(self.request)
+        )
+
+    def get_queryset(self, queryset=None, filtered=False, *args, **kwargs):
+        queryset = super().get_queryset(queryset, filtered, *args, **kwargs)
+        self.queryset = queryset.filter(
+            stage_id__offboarding_id__in=accessible_offboardings(self.request)
+        )
+        return self.queryset
+
+    def has_kanban_change_permission(self):
+        """Only a process manager (or a user with change permission) may move cards."""
+        if (
+            self.request.user.has_perm("offboarding.change_offboarding")
+            or self.request.user.has_perm("offboarding.change_offboardingemployee")
+            or self.request.user.has_perm("offboarding.change_offboardingstage")
+        ):
+            return True
+
+        record_ids = self.get_kanban_order()
+        if not record_ids:
+            return False
+        records = self.get_queryset().filter(pk__in=record_ids)
+        return (
+            records.count() == len(set(record_ids))
+            and not records.exclude(
+                stage_id__offboarding_id__in=manageable_offboardings(self.request)
+            ).exists()
+        )
+
+    def kanban_move_item(self):
+        """Block cross-process moves and incomplete required tasks server-side."""
+        group = self.resolve_kanban_group(self.request.POST.get("groupId"))
+        order = self.get_kanban_order()
+        if group is None:
+            return JsonResponse({"error": "Invalid group."}, status=400)
+        if not order:
+            return JsonResponse({"error": "Missing order."}, status=400)
+
+        records = self.get_queryset().select_related("stage_id").filter(pk__in=order)
+        if records.exclude(stage_id__offboarding_id=group.offboarding_id).exists():
+            return JsonResponse(
+                {"error": "Employees can only move within their own offboarding process."},
+                status=400,
+            )
+
+        pending_tasks = []
+        for record in records:
+            if group.sequence > record.stage_id.sequence:
+                pending_tasks.extend(record.pending_required_tasks(record.stage_id))
+        if pending_tasks:
+            titles = ", ".join(sorted({task.title for task in pending_tasks}))
+            return JsonResponse(
+                {
+                    "error": str(
+                        _("Complete the required task(s) before moving to the next stage: %(tasks)s")
+                        % {"tasks": titles}
+                    )
+                },
+                status=400,
+            )
+        return super().kanban_move_item()
 
 
 @method_decorator(login_required, name="dispatch")
+@method_decorator(
+    any_manager_can_enter(
+        "offboarding.view_offboarding", offboarding_employee_can_enter=True
+    ),
+    name="dispatch",
+)
 class OffboardingKanbanRequiredTaskCheck(View):
     """
     Pre-move check for the offboarding kanban drag-and-drop: blocks forward
@@ -800,12 +889,25 @@ class OffboardingKanbanRequiredTaskCheck(View):
         current_stage = offboarding_employee.stage_id
         if (
             not current_stage
-            or current_stage.sequence is None
+            or target_stage.offboarding_id_id != current_stage.offboarding_id_id
+            or not manageable_offboardings(request)
+            .filter(pk=target_stage.offboarding_id_id)
+            .exists()
+        ):
+            return JsonResponse(
+                {"blocked": True, "message": _("Permission denied.")}, status=403
+            )
+        if (
+            current_stage.sequence is None
             or target_stage.sequence is None
         ):
             return JsonResponse({"blocked": False})
 
-        pending_tasks = offboarding_employee.pending_required_tasks(current_stage)
+        pending_tasks = (
+            offboarding_employee.pending_required_tasks(current_stage)
+            if target_stage.sequence > current_stage.sequence
+            else OffboardingTask.objects.none()
+        )
         if pending_tasks.exists():
             task_titles = ", ".join(pending_tasks.values_list("title", flat=True))
             message = str(
@@ -870,11 +972,9 @@ class OffboardingEmployeeList(HorillaListView):
         if not getattr(self, "queryset", None):
             qs = OffboardingEmployee.objects.entire()
             queryset = super().get_queryset(qs, filtered, *args, **kwargs)
-            if not (
-                self.request.user.has_perm("offboarding.view_offboarding")
-                or any_manager(self.request.user.employee_get)
-            ):
-                queryset = queryset.filter(employee_id=self.request.user.employee_get)
+            queryset = queryset.filter(
+                stage_id__offboarding_id__in=accessible_offboardings(self.request)
+            )
             self.queryset = queryset
         return self.queryset
 
@@ -972,11 +1072,17 @@ class OffboardingEmployeeList(HorillaListView):
         return context
 
     def bulk_update_accessibility(self):
-        return (
-            self.request.user.has_perm("offboarding.change_offboardingstage")
-            or self.request.user.has_perm("offboarding.change_offboarding")
-            or any_manager(self.request.user.employee_get)
+        return manageable_offboardings(self.request).exists()
+
+    def _manageable_records(self, instance_ids):
+        """Return selected records only when all belong to a managed process."""
+        records = OffboardingEmployee.objects.filter(pk__in=instance_ids)
+        records = records.filter(
+            stage_id__offboarding_id__in=manageable_offboardings(self.request)
         )
+        if records.count() != len(set(instance_ids)):
+            return OffboardingEmployee.objects.none()
+        return records
 
     def get_bulk_form(self):
         form = super().get_bulk_form()
@@ -1004,18 +1110,51 @@ class OffboardingEmployeeList(HorillaListView):
         return form
 
     def handle_bulk_submission(self, request):
+        instance_ids = eval_validate(request.POST.get("instance_ids", "[]"))
+        records = self._manageable_records(instance_ids)
+        if not instance_ids or not records.exists():
+            return HttpResponse("Permission denied.", status=403)
+
+        target_stage_id = request.POST.get("stage_id")
+        target_stage = None
+        if target_stage_id:
+            target_stage = OffboardingStage.objects.filter(pk=target_stage_id).first()
+            if (
+                not target_stage
+                or records.exclude(
+                    stage_id__offboarding_id=target_stage.offboarding_id
+                ).exists()
+            ):
+                return HttpResponse("Invalid offboarding stage.", status=400)
+
+            pending_tasks = []
+            for record in records.select_related("stage_id"):
+                if target_stage.sequence > record.stage_id.sequence:
+                    pending_tasks.extend(record.pending_required_tasks(record.stage_id))
+            if pending_tasks:
+                titles = ", ".join(sorted({task.title for task in pending_tasks}))
+                return HttpResponse(
+                    str(
+                        _("Complete the required task(s) before moving to the next stage: %(tasks)s")
+                        % {"tasks": titles}
+                    ),
+                    status=400,
+                )
+
         response = super().handle_bulk_submission(request)
         mapped_data = {
             int(re.search(r"bulk_task_status_(\d+)", key).group(1)): value
             for key, value in request.POST.items()
             if re.search(r"bulk_task_status_(\d+)", key)
         }
-        instance_ids = request.POST.get("instance_ids", "[]")
-        instance_ids = eval_validate(instance_ids)
         for pk, status in mapped_data.items():
             EmployeeTask.objects.filter(
                 employee_id__in=instance_ids, task_id=pk
             ).update(status=status)
+        if target_stage:
+            Employee.objects.filter(
+                id__in=records.values_list("employee_id_id", flat=True)
+            ).update(is_active=target_stage.type != "archived")
         return response
 
 

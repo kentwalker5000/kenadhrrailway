@@ -32,6 +32,7 @@ from horilla.methods import get_horilla_model_class
 from horilla_auth.models import HorillaUser
 from horilla_views.generic.cbv.views import HorillaFormView
 from notifications.signals import notify
+from offboarding.cbv_decorators import manageable_offboardings
 from offboarding.decorators import (
     any_manager_can_enter,
     check_feature_enabled,
@@ -501,6 +502,12 @@ def change_stage(request):
     stage_id = request.GET["stage_id"]
     employees = OffboardingEmployee.objects.filter(id__in=employee_ids)
     stage = OffboardingStage.objects.get(id=stage_id)
+    if not manageable_offboardings(request).filter(
+        pk=stage.offboarding_id_id
+    ).exists():
+        return HttpResponse("Permission denied.", status=403)
+    if employees.exclude(stage_id__offboarding_id=stage.offboarding_id).exists():
+        return HttpResponse("Employees must remain in their offboarding process.", status=400)
 
     blocked_message = _blocked_required_tasks_message(employees, stage)
     if blocked_message:
@@ -579,6 +586,12 @@ def change_offboarding_stage(request):
     stage_id = request.GET["stage_id"]
     employees = OffboardingEmployee.objects.filter(id__in=employee_ids)
     stage = OffboardingStage.objects.get(id=stage_id)
+    if not manageable_offboardings(request).filter(
+        pk=stage.offboarding_id_id
+    ).exists():
+        return HttpResponse("Permission denied.", status=403)
+    if employees.exclude(stage_id__offboarding_id=stage.offboarding_id).exists():
+        return HttpResponse("Employees must remain in their offboarding process.", status=400)
 
     blocked_message = _blocked_required_tasks_message(employees, stage)
     if blocked_message:
@@ -596,10 +609,9 @@ def change_offboarding_stage(request):
     for employee in employees:
         employee.stage_id = stage
         employee.save()
-    if stage.type == "archived":
-        Employee.objects.filter(
-            id__in=employees.values_list("employee_id__id", flat=True)
-        ).update(is_active=False)
+    Employee.objects.filter(
+        id__in=employees.values_list("employee_id__id", flat=True)
+    ).update(is_active=stage.type != "archived")
     stage_forms = {}
     stage_forms[str(stage.offboarding_id.id)] = StageSelectForm(
         offboarding=stage.offboarding_id
@@ -772,8 +784,19 @@ def update_task_status(request, *args, **kwargs):
     if not task_id or not status or not stage_id or not employee_ids:
         return HorillaRedirect(request, message=_("Missing required parameters."))
     employee_task = EmployeeTask.objects.filter(
-        employee_id__id__in=employee_ids, task_id__id=task_id
+        employee_id__id__in=employee_ids, task_id__id=task_id, task_id__stage_id=stage_id
     )
+    managed_processes = manageable_offboardings(request)
+    if managed_processes.exists():
+        employee_task = employee_task.filter(
+            employee_id__stage_id__offboarding_id__in=managed_processes
+        )
+    else:
+        employee_task = employee_task.filter(
+            employee_id__employee_id=request.user.employee_get
+        )
+    if not employee_task.exists():
+        return HttpResponse("Permission denied.", status=403)
     employee_task.update(status=status)
     messages.success(request, _("Task status updated successfully..."))
     notify.send(
