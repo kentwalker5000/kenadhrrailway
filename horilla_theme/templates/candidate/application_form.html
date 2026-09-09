@@ -9,7 +9,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="{% static 'horilla_theme/assets/css/tailwind.css' %}" rel="stylesheet">
-    <title>{% trans "Application Form" %}{% if recruitment %} - {{ recruitment.title }}{% endif %}</title>
+    <title>{% trans "Kenad Careers - Application Form" %}{% if recruitment %} - {{ recruitment.title }}{% endif %}</title>
     <link
         rel="apple-touch-icon"
         sizes="180x180"
@@ -162,15 +162,11 @@
                 <i class="fa-solid fa-arrow-left"></i>
             </a>
             <div class="w-12 h-12 shrink-0 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold overflow-hidden">
-                {% if hq_company.icon %}
-                    <img src="{{ hq_company.icon.url }}" alt="" class="w-full h-full object-cover">
-                {% else %}
-                    <span>{{ hq_company.company|default:"Horilla"|first|upper }}</span>
-                {% endif %}
+                <span>K</span>
             </div>
             <div>
                 <h1 class="text-xl font-bold leading-tight">
-                    {{ hq_company.company|default:"Horilla" }} {% trans "Careers" %}
+                    {% trans "Kenad Careers" %}
                 </h1>
                 <p class="text-sm text-dark-100 leading-tight">
                     {% trans "Open positions across our teams" %}
