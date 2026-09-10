@@ -656,14 +656,19 @@
         background: #f3f5f7 !important;
         color: #1d4ed8 !important;
     }
-    .oh-main-content,
-    #sidebar ~ .oh-main-content .oh-main-header {
+    .oh-main-content {
         margin-left: 4.5rem !important;
+        left: auto !important;
+    }
+    #sidebar.sidebar-pinned ~ .oh-main-content {
+        margin-left: 15.75rem !important;
+    }
+    #sidebar ~ .oh-main-content .oh-main-header {
+        margin-left: 0 !important;
         left: 4.5rem !important;
     }
-    #sidebar.sidebar-pinned ~ .oh-main-content,
     #sidebar.sidebar-pinned ~ .oh-main-content .oh-main-header {
-        margin-left: 15.75rem !important;
+        margin-left: 0 !important;
         left: 15.75rem !important;
     }
     #sidebar ~ #floating-buttons .fab-container {
@@ -677,10 +682,13 @@
         #sidebar.sidebar-pinned { width: 4.5rem !important; }
         #sidebar.sidebar-pinned .oh-sidebar-label { opacity: 0 !important; pointer-events: none !important; }
         .oh-main-content,
-        #sidebar.sidebar-pinned ~ .oh-main-content,
+        #sidebar.sidebar-pinned ~ .oh-main-content {
+            margin-left: 4.5rem !important;
+            left: auto !important;
+        }
         #sidebar ~ .oh-main-content .oh-main-header,
         #sidebar.sidebar-pinned ~ .oh-main-content .oh-main-header {
-            margin-left: 4.5rem !important;
+            margin-left: 0 !important;
             left: 4.5rem !important;
         }
     }
