@@ -197,6 +197,7 @@
       {% for r in records %}
       <div class="ms-pop-row">
         <span class="ms-pop-date" style="color:#dc3545;">{{ r.date|date:"D, d M Y" }}</span>
+        <span>{{ r.days|floatformat:"-1" }} {% trans "day(s)" %}</span>
         {% if r.is_regularized %}<span class="ms-pop-reg-badge"><ion-icon name="checkmark-circle-outline" style="font-size:.7rem;"></ion-icon>{% trans "Regularized" %}</span>{% endif %}
       </div>
       {% endfor %}

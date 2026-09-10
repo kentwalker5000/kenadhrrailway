@@ -40,6 +40,7 @@ from base.models import (
 from employee.filters import EmployeeFilter
 from employee.models import Employee, EmployeeTag
 from horilla.decorators import hx_request_required, login_required, manager_can_enter
+from leave.duration import iter_leave_day_units, leave_payment_type
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -95,7 +96,9 @@ def _count_leave_days_in_range(leave_qs, from_date, to_date, off_dates):
 # ---------------------------------------------------------------------------
 
 
-def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=False):
+def build_monthly_summary(
+    from_date, to_date, employee_qs, *, validated_only=False, cache_hours=True
+):
     """
     Compute per-employee attendance summary for [from_date, to_date].
 
@@ -105,6 +108,7 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
         employee_qs : Employee queryset filtered to the relevant company/dept
         validated_only : Payroll excludes unvalidated attendance and does not
             replace the attendance page's cached totals with this subset.
+        cache_hours : Disable cache writes for calendar/detail read-only views.
 
     Returns:
         rows            : list of dicts, one per employee
@@ -274,19 +278,14 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
 
     all_leaves = list(chain(leave_qs, single_day_qs))
 
-    # Per-employee per-date leave tracking (paid / unpaid, for conflict detection)
-    leave_dates_per_emp = defaultdict(set)
-    paid_day_dates_per_emp = defaultdict(set)  # {emp_pk: set(paid-leave dates)}
-    unpaid_day_dates_per_emp = defaultdict(set)  # {emp_pk: set(unpaid-leave dates)}
+    # Keep duration and payment type together. A half-day request must neither
+    # hide the other half's attendance nor become a full unpaid day in payroll.
+    leave_units_per_emp = defaultdict(lambda: defaultdict(list))
     for _lr in all_leaves:
-        _s = max(_lr.start_date, from_date)
-        _e = min(_lr.end_date or _lr.start_date, to_date)
-        for _d in _iter_dates(_s, _e):
-            leave_dates_per_emp[_lr.employee_id_id].add(_d)
-            if _lr.leave_type_id.payment == "paid":
-                paid_day_dates_per_emp[_lr.employee_id_id].add(_d)
-            else:
-                unpaid_day_dates_per_emp[_lr.employee_id_id].add(_d)
+        for _d, fraction in iter_leave_day_units(_lr, from_date, to_date):
+            leave_units_per_emp[_lr.employee_id_id][_d].append(
+                (fraction, _lr.leave_type_id)
+            )
 
     # -- 4. Roster-based week-off per employee (single DB hit) ---------------
     roster_qs = Roster.objects.filter(
@@ -345,8 +344,7 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
     ):
         _att_vals = att_date_value_map.get(emp.pk, {})
         _att_secs = att_date_secs_map.get(emp.pk, {})
-        _paid_dates = paid_day_dates_per_emp.get(emp.pk, set())
-        _unpaid_dates = unpaid_day_dates_per_emp.get(emp.pk, set())
+        _leave_units = leave_units_per_emp.get(emp.pk, {})
         _emp_off = (
             roster_off_dates.get(emp.pk, set())
             if emp.pk in roster_has
@@ -359,6 +357,9 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
 
         present = paid_leave = unpaid_leave = week_off = holiday_c = absent = 0.0
         hours_second = 0
+        custom_leave_units = []
+        custom_days_by_type = defaultdict(float)
+        absent_day_units = {}
 
         for d in all_dates_in_range:
             res = _resolutions.get(d)
@@ -369,12 +370,16 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
                 bucket, val = bucket_info
                 if bucket == "present":
                     present += val
+                    absent += 1.0 - val
+                    if val < 1.0:
+                        absent_day_units[d] = 1.0 - val
                 elif bucket == "paid_leave":
                     paid_leave += val
                 elif bucket == "unpaid_leave":
                     unpaid_leave += val
                 elif bucket == "absent":
                     absent += val
+                    absent_day_units[d] = val
                 elif bucket == "holiday":
                     holiday_c += val
                 elif bucket == "week_off":
@@ -405,45 +410,57 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
                 present += val
                 if val < 1.0:
                     absent += 1.0 - val
+                    absent_day_units[d] = 1.0 - val
                 _day_manual = _daily_hrs.get(d)
                 hours_second += _day_manual if _day_manual is not None else _actual_secs
                 continue
 
-            # Legacy "attendance" / "leave" — fall through to natural
-            # No resolution — natural computation
-            if d in _att_vals:
-                val = _att_vals[d]
-                if d in holiday_dates_set:
-                    holiday_c += 1.0  # HO — attendance on holiday
-                elif d in _emp_off:
-                    week_off += 1.0  # WO — attendance on week-off
-                else:
-                    present += val
-                    # Half-day (0.5) or zero-hour: remaining fraction is absent
-                    if val < 1.0:
-                        absent += 1.0 - val
-                # Actual hours (per-day manual override wins)
+            # Preserve hours even on non-working days, but don't charge leave
+            # on a holiday/week-off. Explicit HR overrides above still win.
+            if d in _att_vals and res != "leave":
                 _day_manual = _daily_hrs.get(d)
                 hours_second += (
                     _day_manual if _day_manual is not None else _att_secs.get(d, 0)
                 )
-            elif d in _paid_dates:
-                paid_leave += 1.0
-            elif d in _unpaid_dates:
-                unpaid_leave += 1.0
-            elif d in holiday_dates_set:
+            if d in holiday_dates_set:
                 holiday_c += 1.0
             elif d in _emp_off:
                 week_off += 1.0
-            elif d not in off_set:
-                absent += 1.0  # working day with no activity
+            else:
+                val = _att_vals.get(d, 0.0) if res != "leave" else 0.0
+                present += val
+                remaining = 1.0 - val
+                for fraction, leave_type in _leave_units.get(d, []):
+                    if res == "attendance":
+                        break
+                    used = min(fraction, remaining)
+                    remaining -= used
+                    if leave_payment_type(leave_type) == "unpaid":
+                        unpaid_leave += used
+                    else:
+                        # Paid leave includes partially paid days. Their actual
+                        # percentage reduction is carried separately to payroll.
+                        paid_leave += used
+                        if used and leave_payment_type(leave_type) == "custom":
+                            pct = leave_type.get_payment_percentage()
+                            custom_leave_units.append((d, pct, used))
+                            custom_days_by_type[(leave_type.name, pct)] += used
+                if d not in off_set:
+                    absent += remaining
+                    if remaining:
+                        absent_day_units[d] = remaining
 
         # Conflict detection (uses raw data, not overrides). Attendance on a
         # holiday/week-off is normal overtime work, not a data discrepancy —
         # only attendance overlapping approved leave counts as a conflict.
         att_dates = att_dates_map.get(emp.pk, set())
-        emp_leave_dates = leave_dates_per_emp.get(emp.pk, set())
-        conflict_date_set = att_dates & emp_leave_dates
+        conflict_date_set = {
+            d
+            for d in att_dates & _leave_units.keys()
+            if d not in holiday_dates_set
+            and d not in _emp_off
+            and _att_vals.get(d, 0.0) + sum(f for f, _ in _leave_units[d]) > 1.0
+        }
         conflict_days = len(conflict_date_set)
 
         emp_resolved_dates = resolutions_by_emp.get(emp.pk, set())
@@ -499,15 +516,25 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
             {
                 "employee": emp,
                 "present": present,
-                "paid_leave": int(paid_leave),
-                "unpaid_leave": int(unpaid_leave),
+                "paid_leave": paid_leave,
+                "unpaid_leave": unpaid_leave,
+                "custom_leave_data": {
+                    "custom_leave_units": custom_leave_units,
+                    "partial_pay_days": sum(f for _, _, f in custom_leave_units),
+                    "custom_leave_breakdown": [
+                        {"leave_type": name, "percentage": pct, "days": days}
+                        for (name, pct), days in custom_days_by_type.items()
+                    ],
+                },
                 "absent": absent,
+                "absent_day_units": absent_day_units,
                 "total_working": total_working,
                 "week_off": int(week_off),
                 "holiday": int(holiday_c),
                 "conflict_days": conflict_days,
                 "resolved_conflicts": resolved_conflicts,
                 "unresolved_conflicts": conflict_days - resolved_conflicts,
+                "leave_conflict_dates": sorted(conflict_date_set),
                 "hours_second": final_hours,
                 "hours_label": hours_label,
                 "is_hours_edited": is_hours_edited,
@@ -535,7 +562,7 @@ def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=Fal
         total_conflicts += conflict_days
 
     # Bulk-upsert computed hours (only for non-manually-edited records)
-    if hours_upsert and not validated_only:
+    if hours_upsert and not validated_only and cache_hours:
         AttendanceSummaryHours.objects.bulk_create(
             hours_upsert,
             update_conflicts=True,
@@ -1054,7 +1081,6 @@ def attendance_monthly_summary_detail(request):
             LeaveRequest.objects.filter(
                 employee_id=emp,
                 status__in=["approved", "requested"],
-                leave_type_id__payment=payment,
                 start_date__lte=to_date,
                 end_date__isnull=False,
                 end_date__gte=from_date,
@@ -1063,11 +1089,16 @@ def attendance_monthly_summary_detail(request):
             LeaveRequest.objects.filter(
                 employee_id=emp,
                 status__in=["approved", "requested"],
-                leave_type_id__payment=payment,
                 start_date__range=(from_date, to_date),
                 end_date__isnull=True,
             ).select_related("leave_type_id")
         )
+        records = [
+            r
+            for r in records
+            if ("unpaid" if leave_payment_type(r.leave_type_id) == "unpaid" else "paid")
+            == payment
+        ]
         # Sort: approved first, then requested; within each group by start_date
         records.sort(key=lambda r: (0 if r.status == "approved" else 1, r.start_date))
         # Add resolution-only entries (days overridden to this leave type without a leave request)
@@ -1088,60 +1119,12 @@ def attendance_monthly_summary_detail(request):
         context["resolution_only_leave"] = [{"date": _d} for _d in _res_only_dates]
 
     elif metric == "absent":
-        working_data = get_working_days(from_date, to_date)
-        off_set = set(working_data["company_leave_dates"])
-        working_dates = {d for d in _iter_dates(from_date, to_date) if d not in off_set}
-
-        present_dates = set(
-            Attendance.objects.filter(
-                employee_id=emp,
-                attendance_date__range=(from_date, to_date),
-            ).values_list("attendance_date", flat=True)
-        )
-        leave_dates = set()
-        for lr in LeaveRequest.objects.filter(
-            employee_id=emp,
-            status="approved",
-            start_date__lte=to_date,
-            end_date__isnull=False,
-            end_date__gte=from_date,
-        ):
-            for d in _iter_dates(
-                max(lr.start_date, from_date), min(lr.end_date, to_date)
-            ):
-                if d not in off_set:
-                    leave_dates.add(d)
-        for lr in LeaveRequest.objects.filter(
-            employee_id=emp,
-            status="approved",
-            start_date__range=(from_date, to_date),
-            end_date__isnull=True,
-        ):
-            if lr.start_date not in off_set:
-                leave_dates.add(lr.start_date)
-
-        # Base absent set: working days with no attendance and no approved leave
-        _absent_set = working_dates - present_dates - leave_dates
-        # Also include days where resolution="absent" (attendance present but overridden)
-        for _d, _res in resolution_map.items():
-            if _res == "absent" and _d in present_dates:
-                _absent_set.add(_d)
-        # Exclude days that resolution moved OUT of absent bucket
-        _res_non_absent = {
-            "full_present",
-            "half_present",
-            "partial_hours",
-            "paid_leave",
-            "unpaid_leave",
-            "holiday",
-            "week_off",
-        }
-        _absent_set -= {
-            _d for _d, _res in resolution_map.items() if _res in _res_non_absent
-        }
+        summary_row = build_monthly_summary(
+            from_date, to_date, Employee.objects.filter(pk=emp.pk), cache_hours=False
+        )[0][0]
         context["records"] = [
-            {"date": d, "is_regularized": d in resolution_map}
-            for d in sorted(_absent_set)
+            {"date": d, "days": days, "is_regularized": d in resolution_map}
+            for d, days in sorted(summary_row["absent_day_units"].items())
         ]
 
     elif metric == "conflict":
@@ -1184,7 +1167,7 @@ def attendance_monthly_summary_detail(request):
             ):
                 leave_date_info[_d] = (
                     _lr.leave_type_id.name,
-                    _lr.leave_type_id.payment,
+                    leave_payment_type(_lr.leave_type_id),
                 )
         for _lr in _LR.objects.filter(
             employee_id=emp,
@@ -1194,7 +1177,7 @@ def attendance_monthly_summary_detail(request):
         ).select_related("leave_type_id"):
             leave_date_info[_lr.start_date] = (
                 _lr.leave_type_id.name,
-                _lr.leave_type_id.payment,
+                leave_payment_type(_lr.leave_type_id),
             )
 
         # Holiday date → name
@@ -1226,7 +1209,13 @@ def attendance_monthly_summary_detail(request):
 
         # Build conflict records
         conflict_records = []
+        summary_row = build_monthly_summary(
+            from_date, to_date, Employee.objects.filter(pk=emp.pk), cache_hours=False
+        )[0][0]
+        leave_conflict_dates = set(summary_row["leave_conflict_dates"])
         for att_date in sorted(att_by_date):
+            if att_date not in leave_conflict_dates:
+                continue
             r = att_by_date[att_date]
             _worked = r["at_work_second"] or 0
             _min_secs = _ss(r["minimum_hour"]) if r.get("minimum_hour") else 0
@@ -1243,7 +1232,9 @@ def attendance_monthly_summary_detail(request):
 
             if att_date in leave_date_info:
                 lt_name, lt_payment = leave_date_info[att_date]
-                conflict_type = "paid_leave" if lt_payment == "paid" else "unpaid_leave"
+                conflict_type = (
+                    "unpaid_leave" if lt_payment == "unpaid" else "paid_leave"
+                )
                 conflict_label = lt_name
             elif att_date in holiday_info:
                 conflict_type = "holiday"
@@ -1390,14 +1381,25 @@ def _build_calendar_context(emp, from_date, to_date):
         end_date__isnull=True,
     ).select_related("leave_type_id")
     for lr in chain(qs_range, qs_single):
-        s = max(lr.start_date, from_date)
-        e = min(lr.end_date or lr.start_date, to_date)
-        name = lr.leave_type_id.name
-        for d in _iter_dates(s, e):
-            if lr.leave_type_id.payment == "paid":
-                paid_map[d] = name
-            else:
-                unpaid_map[d] = name
+        for d, fraction in iter_leave_day_units(lr, from_date, to_date):
+            name = f"{lr.leave_type_id.name} ({fraction:g} " + str(_("day(s)")) + ")"
+            if leave_payment_type(lr.leave_type_id) == "custom":
+                name += f" — {lr.leave_type_id.get_payment_percentage():g}% " + str(
+                    _("paid")
+                )
+            target = (
+                unpaid_map
+                if leave_payment_type(lr.leave_type_id) == "unpaid"
+                else paid_map
+            )
+            target[d] = "; ".join(filter(None, (target.get(d), name)))
+
+    # Use the same fractional totals/conflicts as the attendance table and
+    # payroll, without writing hours just because someone opened a calendar.
+    summary_row = build_monthly_summary(
+        from_date, to_date, Employee.objects.filter(pk=emp.pk), cache_hours=False
+    )[0][0]
+    leave_conflict_dates = set(summary_row["leave_conflict_dates"])
 
     # -- Holiday dates --------------------------------------------------------
     holiday_map = {}
@@ -1547,14 +1549,14 @@ def _build_calendar_context(emp, from_date, to_date):
 
             # Determine conflict type
             raw_conflict = None
-            if d in paid_map:
-                raw_conflict = "paid_leave"
-            elif d in unpaid_map:
-                raw_conflict = "unpaid_leave"
-            elif d in holiday_map:
+            if d in holiday_map:
                 raw_conflict = "holiday_ot"  # attendance on holiday → HO OT
             elif d in week_off_dates:
                 raw_conflict = "week_off_ot"  # attendance on week-off → WO OT
+            elif d in paid_map:
+                raw_conflict = "paid_leave"
+            elif d in unpaid_map:
+                raw_conflict = "unpaid_leave"
 
             if raw_conflict in ("holiday_ot", "week_off_ot"):
                 # Attendance on a holiday/week-off is normal overtime work,
@@ -1579,6 +1581,11 @@ def _build_calendar_context(emp, from_date, to_date):
                         )
                 elif resolution == "attendance":
                     return att_status, detail, None, "resolved_attendance", False
+                elif d not in leave_conflict_dates:
+                    detail += "; " + "; ".join(
+                        filter(None, (paid_map.get(d), unpaid_map.get(d)))
+                    )
+                    return att_status, detail, None, None, False
                 else:
                     return att_status, detail, raw_conflict, None, True
 
@@ -1589,14 +1596,20 @@ def _build_calendar_context(emp, from_date, to_date):
 
             return att_status, detail, None, None, False
 
-        if d in paid_map:
-            return "paid_leave", paid_map[d], None, None, False
-        if d in unpaid_map:
-            return "unpaid_leave", unpaid_map[d], None, None, False
         if d in holiday_map:
             return "holiday", holiday_map[d], None, None, False
         if d in week_off_dates:
             return "week_off", "", None, None, False
+        if d in paid_map:
+            return (
+                "paid_leave",
+                "; ".join(filter(None, (paid_map[d], unpaid_map.get(d)))),
+                None,
+                None,
+                False,
+            )
+        if d in unpaid_map:
+            return "unpaid_leave", unpaid_map[d], None, None, False
         return "absent", "", None, None, False
 
     # -- Build month grid structures ------------------------------------------
@@ -1713,6 +1726,10 @@ def _build_calendar_context(emp, from_date, to_date):
                     cal_summary[_s] += 1
                 if _c.get("conflict_with") in ("paid_leave", "unpaid_leave"):
                     cal_summary["conflict"] += 1
+
+    for key in ("paid_leave", "unpaid_leave", "absent", "week_off", "holiday"):
+        cal_summary[key] = summary_row[key]
+    cal_summary["conflict"] = summary_row["unresolved_conflicts"]
 
     total_days = (to_date - from_date).days + 1
 

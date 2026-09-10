@@ -8,6 +8,7 @@ from django.dispatch import receiver
 from django.utils.translation import gettext_lazy as _
 
 from horilla.methods import get_horilla_model_class
+from leave.duration import iter_leave_day_units
 from leave.models import LeaveRequest, LeaveRequestConditionApproval
 
 if apps.is_installed("attendance"):
@@ -27,9 +28,14 @@ if apps.is_installed("attendance"):
             instance.end_date_breakdown = instance.start_date_breakdown
             super(LeaveRequest, instance).save()
 
-        period_dates = instance.requested_dates()
+        period_units = list(
+            iter_leave_day_units(
+                instance, instance.start_date, instance.end_date or instance.start_date
+            )
+        )
+        period_dates = [day for day, _fraction in period_units]
         if instance.status == "approved":
-            for date in period_dates:
+            for date, fraction in period_units:
                 try:
                     work_entry = (
                         WorkRecords.objects.filter(
@@ -45,28 +51,14 @@ if apps.is_installed("attendance"):
                     work_entry.employee_id = instance.employee_id
                     work_entry.is_leave_record = True
                     work_entry.leave_request_id = instance
-                    work_entry.day_percentage = (
-                        0.50
-                        if instance.start_date == date
-                        and instance.start_date_breakdown == "first_half"
-                        or instance.end_date == date
-                        and instance.end_date_breakdown == "second_half"
-                        else 0.00
-                    )
-                    status = (
-                        "CONF"
-                        if instance.start_date == date
-                        and instance.start_date_breakdown == "first_half"
-                        or instance.end_date == date
-                        and instance.end_date_breakdown == "second_half"
-                        else "ABS"
-                    )
+                    work_entry.day_percentage = 1.0 - fraction
+                    status = "CONF" if fraction < 1.0 else "ABS"
                     work_entry.work_record_type = status
                     work_entry.date = date
                     work_entry.message = (
                         "Leave"
                         if status == "ABS"
-                        else _("Half day Attendance need to validate")
+                        else _("Validate half-day attendance")
                     )
                     work_entry.save()
 
