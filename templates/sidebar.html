@@ -112,14 +112,18 @@
             </div>
         {% endif %}
     </div>
+    <button type="button" class="oh-sidebar-collapse" id="appSidebarToggle" aria-label="{% trans 'Collapse sidebar' %}" title="{% trans 'Collapse sidebar' %}">
+        <ion-icon name="chevron-back-outline"></ion-icon>
+    </button>
     <div class="oh-sidebar__menu">
         <ul class="oh-sidebar__menu-items">
             <li class="oh-sidebar__menu-item" x-data="{ isOpen: getOpenState('dashboardNav') }">
                 <a
                     href="{%url 'home-page' %}"
                     onclick="window.location.href=this.href; return false"
-                    class="oh-sidebar__menu-link"
+                    class="oh-sidebar__menu-link oh-sidebar__menu-link--single"
                     data-id="dashboardNav"
+                    title="{% trans 'Dashboard' %}"
                     x-on:click.prevent="isOpen = !isOpen; saveOpenState('dashboardNav', isOpen)"
                     x-bind:class="isOpen ? 'oh-sidebar__menu-link--active' : ''"
                 >
@@ -139,6 +143,7 @@
                     <a
                         class="oh-sidebar__menu-link"
                         data-id="{{menues.app}}GenericNav"
+                        title="{{menues.menu}}"
                         x-on:click.prevent="isOpen = !isOpen; saveOpenState('{{menues.app}}GenericNav', isOpen)"
                         x-bind:class="isOpen ? 'oh-sidebar__menu-link--active' : ''"
                         style="cursor: pointer"
@@ -163,6 +168,7 @@
                         x-show="isOpen"
                         x-transition
                     >
+                        <div class="oh-sidebar__flyout-title">{{ menues.menu }}</div>
                         <ul class="oh-sidebar__submenu-items">
                             {% for submenu in menues.submenu %}
                                 <li class="oh-sidebar__submenu-item">
@@ -192,24 +198,278 @@
         transition: opacity 1s ease-out;
     }
 </style>
+<style>
+    /* Main navigation — expanded and compact states match the app's light UI. */
+    .oh-wrapper-main {
+        grid-template-columns: 268px minmax(0, 1fr);
+    }
+    .oh-wrapper-main--closed {
+        grid-template-columns: 76px minmax(0, 1fr);
+    }
+    .oh-sidebar {
+        position: relative !important;
+        width: 268px;
+        max-width: none;
+        min-height: 100vh;
+        background: #ffffff;
+        color: #27313f;
+        border-right: 1px solid #e9edf2;
+        box-shadow: 1px 0 16px rgba(15, 23, 42, 0.04);
+        overflow: visible !important;
+        transition: width 180ms ease;
+    }
+    .oh-sidebar__company {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        min-height: 78px;
+        padding: 18px !important;
+        border-bottom: 1px solid #eef1f4;
+    }
+    .oh-sidebar__company > span {
+        display: inline-flex;
+        flex: 0 0 auto;
+        margin-right: 11px !important;
+    }
+    .oh-sidebar__company img {
+        width: 40px !important;
+        height: 40px;
+        border-radius: 12px !important;
+        object-fit: cover;
+        background: #1f2937;
+    }
+    .oh-sidebar__company-title {
+        display: block;
+        max-width: 160px;
+        overflow: hidden;
+        color: #1f2937;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .oh-sidebar__company-link,
+    .oh-sidebar__company-link:hover {
+        color: #7b8490;
+    }
+    .oh-sidebar-collapse {
+        position: absolute;
+        z-index: 110;
+        top: 68px;
+        right: -14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid #e5e9ef;
+        border-radius: 50%;
+        background: #ffffff;
+        color: #52606f;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+        cursor: pointer;
+        transition: color 150ms ease, box-shadow 150ms ease, transform 180ms ease;
+    }
+    .oh-sidebar-collapse:hover {
+        color: #1d4ed8;
+        box-shadow: 0 4px 14px rgba(29, 78, 216, 0.2);
+    }
+    .oh-sidebar-collapse ion-icon {
+        font-size: 16px;
+    }
+    .oh-sidebar__menu {
+        max-height: calc(100vh - 78px);
+        overflow-y: auto;
+        overflow-x: visible;
+        padding: 10px 10px 22px;
+    }
+    .oh-sidebar__menu-items {
+        margin: 0;
+    }
+    .oh-sidebar__menu-item {
+        position: relative;
+        margin-bottom: 4px;
+    }
+    .oh-sidebar__menu-link {
+        display: flex;
+        align-items: center;
+        min-height: 42px;
+        width: 100%;
+        margin: 0;
+        padding: 10px 12px;
+        border-radius: 9px;
+        color: #64707d;
+        font-size: 13px;
+        font-weight: 500;
+        line-height: 1.2;
+        transition: background 150ms ease, color 150ms ease;
+    }
+    .oh-sidebar__menu-link:hover {
+        background: #f4f6f8;
+        color: #1f2937;
+        opacity: 1;
+    }
+    .oh-sidebar__menu-link--active {
+        background: #e8f0ff;
+        color: #1d4ed8;
+        font-weight: 700;
+    }
+    .oh-sidebar__menu-link:not(.oh-sidebar__menu-link--single)::after {
+        margin-left: auto;
+        color: #8b95a1;
+        content: '\203A';
+        font-size: 20px;
+        line-height: 12px;
+        transition: transform 150ms ease;
+    }
+    .oh-sidebar__menu-link--active:not(.oh-sidebar__menu-link--single)::after {
+        transform: rotate(90deg);
+    }
+    .oh-sidebar__menu-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        margin-right: 12px;
+    }
+    .oh-sidebar__menu-icon img {
+        width: 19px !important;
+        height: 19px !important;
+        filter: brightness(0) !important;
+        opacity: 0.67;
+    }
+    .oh-sidebar__menu-link--active .oh-sidebar__menu-icon img {
+        filter: brightness(0) saturate(100%) invert(29%) sepia(93%) saturate(1713%) hue-rotate(215deg) brightness(90%) contrast(96%) !important;
+        opacity: 1;
+    }
+    .oh-sidebar__submenu {
+        width: auto;
+        padding: 3px 0 4px 42px;
+        background: transparent;
+    }
+    .oh-sidebar__submenu-items {
+        margin: 3px 0 0;
+        padding: 0 0 0 12px;
+        border-left: 1px solid #e8edf3;
+    }
+    .oh-sidebar__submenu-item {
+        margin: 0;
+        padding: 0;
+        font-size: 12px;
+    }
+    .oh-sidebar__submenu-link {
+        display: block;
+        padding: 8px 10px;
+        border-radius: 7px;
+        color: #7b8490;
+        white-space: nowrap;
+    }
+    .oh-sidebar__submenu-link:hover,
+    .oh-sidebar__submenu-link:focus,
+    .oh-sidebar__submenu-link:focus-visible,
+    .oh-sidebar__submenu-link:visited {
+        color: #1d4ed8;
+        background: #f4f7fb;
+        text-decoration: none;
+    }
+    .oh-sidebar__flyout-title {
+        display: none;
+    }
+    .oh-wrapper-main--closed .oh-sidebar {
+        width: 76px;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__company {
+        min-height: 78px;
+        padding: 18px !important;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__company > span {
+        margin: 0 !important;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__menu {
+        padding: 10px 12px 22px;
+        overflow: visible;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__menu-item {
+        margin-bottom: 8px;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__menu-link {
+        justify-content: center;
+        width: 52px;
+        min-height: 46px;
+        padding: 10px;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__menu-link::after {
+        display: none;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__menu-link span {
+        display: none;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__menu-icon {
+        width: 21px;
+        height: 21px;
+        margin: 0;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__submenu {
+        position: absolute;
+        z-index: 120;
+        top: 0;
+        left: 60px;
+        width: 218px;
+        padding: 12px;
+        border: 1px solid #e7ebf0;
+        border-radius: 12px;
+        background: #ffffff;
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+        pointer-events: auto;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__submenu-items {
+        margin: 0;
+        padding: 0;
+        border-left: 0;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__submenu-item {
+        margin: 0;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__submenu-link {
+        padding: 10px 11px;
+        font-size: 13px;
+    }
+    .oh-wrapper-main--closed .oh-sidebar__flyout-title {
+        display: block;
+        padding: 0 10px 7px;
+        color: #1f2937;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .oh-wrapper-main--closed .oh-sidebar-collapse ion-icon {
+        transform: rotate(180deg);
+    }
+    @media (max-width: 767.98px) {
+        .oh-sidebar-collapse { display: none; }
+        .oh-sidebar { width: 268px; }
+    }
+</style>
 <script>
-    $("#sidebar").mouseover(function (e) {
-        e.preventDefault();
-        var sidebarContainer = $(".oh-wrapper-main");
-        if (sidebarContainer.hasClass("oh-wrapper-main--closed")) {
-            sidebarContainer.removeClass("oh-wrapper-main--closed");
-        }
-    });
+    function setAppSidebarCollapsed(isCollapsed) {
+        const sidebarContainer = $(".oh-wrapper-main");
+        sidebarContainer.toggleClass("oh-wrapper-main--closed", isCollapsed);
+        localStorage.setItem("appSidebarCollapsed", isCollapsed ? "true" : "false");
+        $("#appSidebarToggle")
+            .attr("aria-label", isCollapsed ? "{% trans 'Expand sidebar' %}" : "{% trans 'Collapse sidebar' %}")
+            .attr("title", isCollapsed ? "{% trans 'Expand sidebar' %}" : "{% trans 'Collapse sidebar' %}");
+    }
 
-    $("#sidebar").mouseleave(function (e) {
-        var sidebarContainer = $(".oh-wrapper-main");
-        if (sidebarContainer.hasClass("oh-wrapper-main--closed")) {
-            sidebarContainer.removeClass("oh-wrapper-main--closed");
-        } else {
-            if (sidebarContainer.hasClass("toggle-clicked")) {
-                sidebarContainer.addClass("oh-wrapper-main--closed");
-            }
-        }
+    window.handleSidebarToggle = function () {
+        setAppSidebarCollapsed(!$(".oh-wrapper-main").hasClass("oh-wrapper-main--closed"));
+    };
+
+    $(function () {
+        setAppSidebarCollapsed(localStorage.getItem("appSidebarCollapsed") === "true");
+        $("#appSidebarToggle").on("click", function () {
+            setAppSidebarCollapsed(!$(".oh-wrapper-main").hasClass("oh-wrapper-main--closed"));
+        });
     });
 
     $(".oh-sidebar__menu-link").click(function (e) {
@@ -219,7 +479,7 @@
         const activeSubMenuId = $(currentActiveNav).attr("data-id");
         $(`#${activeSubMenuId}`).attr("style", "display:none;");
         // Get the JSON object from local storage
-        const menuStates = JSON.parse(localStorage.getItem("menuStates"));
+        const menuStates = JSON.parse(localStorage.getItem("menuStates") || "{}");
 
         // Update the value of a key to false
         menuStates[activeSubMenuId] = false;
