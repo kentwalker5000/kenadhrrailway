@@ -603,11 +603,18 @@
         padding: 0.625rem 0.7rem !important;
         gap: 0.7rem !important;
     }
-    #sidebar .sidebar-item.sidebar-open .sideboxmain,
     #sidebar .sideboxmain.sidebox-active:not(.sidebox-current) {
-        background: #f3f5f7 !important;
-        color: #1f2937 !important;
+        background: transparent !important;
+        color: #657180 !important;
         box-shadow: none !important;
+    }
+    #sidebar.sidebar-pinned .sidebar-item.sidebar-open .sideboxmain {
+        background: #e8f0ff !important;
+        color: #1d4ed8 !important;
+        box-shadow: none !important;
+    }
+    #sidebar.sidebar-pinned .sidebar-item.sidebar-open .oh-sidebar-label {
+        color: #1d4ed8 !important;
     }
     #sidebar .sideboxmain.sidebox-current {
         background: #e8f0ff !important;
@@ -1280,6 +1287,7 @@
 
           sidebarEl.classList.toggle("sidebar-pinned", pinned);
           if (content) content.style.marginLeft = pinned ? "15.75rem" : "4.5rem";
+          if (pinned && typeof hideFlyout === "function") hideFlyout();
 
           // Keep the lock button's tooltip/aria-label in sync with the state.
           // (The open vs closed padlock icon itself is swapped via CSS on .sidebar-pinned.)
