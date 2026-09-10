@@ -369,17 +369,12 @@ class EmployeeCreationForm(ModelForm):
         }
 
     def clean(self):
-        cleaned_data = self.cleaned_data
-        if cleaned_data["experience"] and cleaned_data["experience"] < 0:
-            raise ValidationError(
-                {"experience": _("Experience should be a postive integier")}
-            )
-        if cleaned_data["children"] and cleaned_data["children"] < 0:
-            raise ValidationError(
-                {"children": _("No of children should be a postive integier")}
-            )
-
-        return super().clean()
+        cleaned_data = super().clean()
+        for field in ("experience", "children"):
+            value = cleaned_data.get(field)
+            if value is not None and value < 0:
+                self.add_error(field, _("Enter zero or a positive integer."))
+        return cleaned_data
 
 
 class BankDetailsCreationForm(ModelForm):

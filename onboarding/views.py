@@ -22,13 +22,17 @@ from urllib.parse import parse_qs
 from django import template
 from django.contrib import messages
 from django.contrib.auth import login
+from django.contrib.auth.models import Permission
+from django.contrib.auth.views import redirect_to_login
 from django.contrib.staticfiles import finders
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.base import ContentFile
 from django.core.mail import EmailMessage, send_mail
 from django.core.paginator import Paginator
-from django.db.models import ProtectedError
+from django.db import IntegrityError, transaction
+from django.db.models import ProtectedError, Q
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext as __
@@ -799,21 +803,54 @@ logger = logging.getLogger(__name__)
 
 @login_required
 @all_manager_can_enter("recruitment.view_recruitment")
+@require_POST
 def email_send(request):
     host = request.get_host()
     protocol = "https" if request.is_secure() else "http"
     no_portal = request.GET.get("no_portal") == "True"
 
-    candidates = request.POST.getlist("ids")
+    candidate_ids = request.POST.getlist("ids")
     other_attachments = request.FILES.getlist("other_attachments")
     template_attachment_ids = request.POST.getlist("template_attachment_ids")
 
-    email_backend = ConfiguredEmailBackend()
-    display_email_name = email_backend.dynamic_from_email_with_display_name
-
-    if not candidates:
+    if not candidate_ids:
         messages.info(request, _("Please choose candidates"))
         return HorillaRedirect(request)
+
+    try:
+        candidate_ids = {int(pk) for pk in candidate_ids}
+    except (ValueError, TypeError):
+        return HttpResponse(_("Invalid candidate selection."), status=400)
+    candidates = Candidate.objects.filter(
+        pk__in=candidate_ids, is_active=True, canceled=False
+    )
+    if not request.user.has_perm("recruitment.view_recruitment"):
+        employee = request.user.employee_get
+        candidates = candidates.filter(
+            Q(recruitment_id__recruitment_managers=employee)
+            | Q(recruitment_id__onboarding_stage__employee_id=employee)
+            | Q(recruitment_id__onboarding_stage__onboarding_task__employee_id=employee)
+        )
+    candidates = list(candidates.distinct())
+    if len(candidates) != len(candidate_ids):
+        raise PermissionDenied
+
+    if no_portal:
+        # Starting a stage is independent of SMTP. In particular, it must not
+        # reset an invitation/password step that the candidate already opened.
+        for candidate in candidates:
+            if candidate.converted_employee_id_id:
+                messages.info(request, _("This candidate is already an employee."))
+                continue
+            _start_candidate_onboarding(candidate)
+            messages.success(
+                request,
+                _("%(candidate)s added to onboarding") % {"candidate": candidate.name},
+            )
+        return HorillaRedirect(request)
+
+    email_backend = ConfiguredEmailBackend()
+    display_email_name = email_backend.dynamic_from_email_with_display_name
 
     # Fetch PDF templates
     bodys = list(
@@ -828,12 +865,14 @@ def email_send(request):
         attachments_other.append((file.name, file.read(), file.content_type))
         file.close()
 
-    for cand_id in candidates:
-        candidate = Candidate.objects.get(id=cand_id)
+    for candidate in candidates:
+        portal = OnboardingPortal.objects.filter(candidate_id=candidate).first()
         attachments = list(attachments_other)
 
         # Prevent duplicate onboarding
-        if candidate.converted_employee_id:
+        if candidate.converted_employee_id and not (
+            portal and not portal.used and portal.count == 3
+        ):
             messages.info(
                 request,
                 _("%(candidate)s has already been converted to employee.")
@@ -857,16 +896,21 @@ def email_send(request):
                 )
             )
 
-        # Create / reset portal
-        token = secrets.token_hex(15)
-        portal, _createdcreated = OnboardingPortal.objects.get_or_create(
-            candidate_id=candidate
-        )
-        portal.token = token
-        portal.used = False
-        portal.count = 0
-        portal.profile = None
-        portal.save()
+        # Resending an active invitation must preserve both its working link
+        # and the candidate's progress. Save a new invitation only after send
+        # succeeds, so failures cannot invalidate a previous working link.
+        if portal is None:
+            portal = OnboardingPortal(
+                candidate_id=candidate, token=secrets.token_hex(15)
+            )
+        if portal.used or not portal.is_active:
+            messages.info(
+                request, _("This onboarding portal is no longer active.")
+            )
+            continue
+        if not portal.token:
+            portal.token = secrets.token_hex(15)
+        token = portal.token
 
         # Render email HTML
         html_message = render_to_string(
@@ -917,43 +961,36 @@ def email_send(request):
         except Exception as e:
             logger.error(f"Company logo attach failed: {e}")
 
-        # Send mail, unless the caller only wants onboarding started. The
-        # "Start Onboarding" action posts ?no_portal=True for exactly this.
-        if no_portal:
-            messages.success(
-                request,
-                _("%(candidate)s added to onboarding") % {"candidate": candidate.name},
-            )
-        else:
-            try:
-                email.send()
-                messages.success(request, _("Portal link sent to the candidate"))
-            except Exception as e:
-                logger.error(e)
-                messages.error(
-                    request,
-                    _("Mail not sent to %(candidate_name)s")
-                    % {"candidate_name": candidate.name},
-                )
-                # continue
-
-        # Mark onboarding started without triggering Candidate.save() validation
-        # (which can fail with "Choose valid choice" on job_position_id when the
-        # candidate's job position has been removed from recruitment.open_positions).
-        Candidate.objects.filter(pk=candidate.pk).update(start_onboard=True)
-        candidate.start_onboard = True
-
-        # ✅ SAFE onboarding stage insert
         try:
-            stage = candidate.recruitment_id.onboarding_stage.first()
-            CandidateStage.objects.get_or_create(
-                candidate_id=candidate,
-                defaults={"onboarding_stage_id": stage},
+            if not email.send():
+                raise RuntimeError("Email backend did not send the invitation")
+        except Exception:
+            logger.exception("Onboarding invitation delivery failed")
+            messages.error(
+                request,
+                _("Mail not sent to %(candidate_name)s")
+                % {"candidate_name": candidate.name},
             )
-        except Exception as e:
-            logger.error(e)
+            continue
+        with transaction.atomic():
+            portal.save(update_fields=["token"] if portal.pk else None)
+            _start_candidate_onboarding(candidate)
+        messages.success(request, _("Portal link sent to the candidate"))
 
     return HorillaRedirect(request)
+
+
+@transaction.atomic
+def _start_candidate_onboarding(candidate):
+    stage = candidate.recruitment_id.onboarding_stage.first()
+    if stage is None:
+        stage = OnboardingStage.objects.create(
+            recruitment_id=candidate.recruitment_id, stage_title="Initial", sequence=0
+        )
+    CandidateStage.objects.get_or_create(
+        candidate_id=candidate, defaults={"onboarding_stage_id": stage}
+    )
+    Candidate.objects.filter(pk=candidate.pk).update(start_onboard=True)
 
 
 def onboarding_query_grouper(request, queryset):
@@ -1133,9 +1170,56 @@ def kanban_view(request):
     )
 
 
-portal_user = {}
+def _active_portal(request, token):
+    """The unguessable portal token, not the selected HR company, grants access.
+
+    Serialize writes to the same portal so repeated submissions cannot create
+    two accounts or consume the same invitation twice. Call POST views inside
+    transaction.atomic().
+    """
+    portals = OnboardingPortal._base_manager.all()
+    if request.method == "POST":
+        portals = portals.select_for_update()
+    return get_object_or_404(
+        portals,
+        token=token,
+        used=False,
+        is_active=True,
+        candidate_id__is_active=True,
+        candidate_id__canceled=False,
+    )
 
 
+def _portal_account_key(portal):
+    return f"onboarding_account_{portal.pk}"
+
+
+def _pending_portal_account(request, portal):
+    # Sessions are shared between workers. Never retain an unsaved model (or a
+    # plaintext password) in process memory, nor reuse another candidate's state.
+    account = request.session.get(_portal_account_key(portal), {})
+    if account.get("token") == portal.token:
+        return account
+    return None
+
+
+def _portal_employee(portal):
+    candidate = portal.candidate_id
+    if candidate.converted_employee_id_id:
+        return candidate.converted_employee_id
+    # Resume portals that reached step 3 before candidate linkage was moved
+    # into employee_creation. Both email and onboarding provenance must match.
+    if portal.count == 3:
+        return Employee._base_manager.filter(
+            email=candidate.email,
+            employee_user_id__username=candidate.email,
+            is_from_onboarding=True,
+        ).first()
+    return None
+
+
+@transaction.atomic
+@require_http_methods(["GET", "POST"])
 def user_creation(request, token):
     """
     function used to create user account in onboarding portal.
@@ -1148,32 +1232,25 @@ def user_creation(request, token):
     GET : return user creation form template
     POST : return user_save function
     """
-    try:
-        onboarding_portal = OnboardingPortal.objects.get(token=token)
-        if not onboarding_portal or onboarding_portal.used is True:
-            return render(request, "404.html")
-        if onboarding_portal.count == 3:
-            return redirect("employee-bank-details", token)
-        candidate = onboarding_portal.candidate_id
-        user = HorillaUser.objects.filter(username=candidate.email).first()
-        form = UserCreationForm(instance=user)
-        try:
-            if request.method == "POST":
-                form = UserCreationForm(request.POST, instance=user)
-                if form.is_valid():
-                    return user_save(form, onboarding_portal, request, token)
-        except Exception:
-            messages.error(request, _("User with email-id already exists.."))
-        return render(
-            request,
-            "onboarding/user_creation.html",
-            {
-                "form": form,
-                "company": onboarding_portal.candidate_id.recruitment_id.company_id,
-            },
-        )
-    except Exception as error:
-        return HttpResponse(error)
+    onboarding_portal = _active_portal(request, token)
+    if _portal_employee(onboarding_portal):
+        return redirect("employee-bank-details", token)
+    candidate = onboarding_portal.candidate_id
+    form = UserCreationForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        if HorillaUser.objects.filter(
+            Q(username__iexact=candidate.email) | Q(email__iexact=candidate.email)
+        ).exists():
+            form.add_error(
+                None, _("An account with this email already exists. Please contact HR.")
+            )
+        else:
+            return user_save(form, onboarding_portal, request, token)
+    return render(
+        request,
+        "onboarding/user_creation.html",
+        {"form": form, "company": candidate.recruitment_id.company_id},
+    )
 
 
 def user_save(form, onboarding_portal, request, token):
@@ -1189,15 +1266,19 @@ def user_save(form, onboarding_portal, request, token):
     GET : return profile view
     """
     user = form.save(commit=False)
-    user.username = onboarding_portal.candidate_id.email
-    session_key = request.session.session_key
-    portal_user[session_key] = user
-    onboarding_portal.count = 1
-    onboarding_portal.save()
-    messages.success(request, _("Account created successfully.."))
+    request.session.cycle_key()
+    request.session[_portal_account_key(onboarding_portal)] = {
+        "token": token,
+        "password": user.password,
+    }
+    onboarding_portal.count = max(onboarding_portal.count, 1)
+    onboarding_portal.save(update_fields=["count"])
+    messages.success(request, _("Account details saved. Continue your profile setup."))
     return redirect("profile-view", token)
 
 
+@transaction.atomic
+@require_http_methods(["GET", "POST"])
 def profile_view(request, token):
     """
     function used to view user profile.
@@ -1210,9 +1291,11 @@ def profile_view(request, token):
     GET : return user profile template
     POST : update profile image of the user
     """
-    onboarding_portal = OnboardingPortal.objects.filter(token=token).first()
-    if onboarding_portal is None:
-        return render(request, "404.html")
+    onboarding_portal = _active_portal(request, token)
+    if _portal_employee(onboarding_portal):
+        return redirect("employee-bank-details", token)
+    if not _pending_portal_account(request, onboarding_portal):
+        return redirect("user-creation", token)
     candidate = onboarding_portal.candidate_id
     if request.method == "POST":
         profile = request.FILES.get("profile")
@@ -1235,6 +1318,8 @@ def profile_view(request, token):
     )
 
 
+@transaction.atomic
+@require_http_methods(["GET", "POST"])
 def employee_creation(request, token):
     """
     function used to create employee.
@@ -1247,9 +1332,9 @@ def employee_creation(request, token):
     GET : return employee creation profile template.
     POST : return employee bank detail creation template.
     """
-    onboarding_portal = OnboardingPortal.objects.filter(token=token).first()
-    if onboarding_portal is None:
-        return render(request, "404.html")
+    onboarding_portal = _active_portal(request, token)
+    if _portal_employee(onboarding_portal):
+        return redirect("employee-bank-details", token)
     candidate = onboarding_portal.candidate_id
     initial = {
         "employee_first_name": candidate.name,
@@ -1257,104 +1342,105 @@ def employee_creation(request, token):
         "address": candidate.address,
         "dob": candidate.dob,
     }
-    session_key = request.session.session_key
-    user = portal_user.get(session_key)
-    if user is None:
-        # Fallback for direct/opened links where in-memory portal state is absent.
-        user = HorillaUser.objects.filter(username=candidate.email).first()
-    elif not getattr(user, "pk", None):
-        # Related filters require a saved instance; resolve persisted user by email/username.
-        user = HorillaUser.objects.filter(username=candidate.email).first() or user
-
-    if user is None:
+    account = _pending_portal_account(request, onboarding_portal)
+    if not account:
         messages.error(
             request,
             _("Please create your account first before continuing employee creation."),
         )
         return redirect("user-creation", token)
 
-    user_email = getattr(user, "email", None) or candidate.email
-    if Employee.objects.filter(email=user_email).exists():
-        messages.success(request, _("Employee with email id already exists."))
-        return redirect("login/")
-    employee_qs = (
-        Employee.objects.filter(employee_user_id=user)
-        if getattr(user, "pk", None)
-        else Employee.objects.none()
-    )
-    if employee_qs.first() is not None:
-        employee = employee_qs.first()
-        if employee.employee_bank_details:
-            messages.success(request, _("Employee already exists.."))
-            return redirect("login/")
-        initial = employee.__dict__
-
-    form = EmployeeCreationForm(
-        initial=initial,
-    )
-    # form.errors.clear()
+    form = EmployeeCreationForm(initial=initial)
     if request.method == "POST":
-        instance = employee_qs.first() if getattr(user, "pk", None) else None
-        form = EmployeeCreationForm(
-            request.POST,
-            instance=instance,
-        )
+        form = EmployeeCreationForm(request.POST)
         if form.is_valid():
-            if user is None:
-                messages.error(
-                    request,
+            try:
+                with transaction.atomic():
+                    if (
+                        HorillaUser.objects.filter(
+                            Q(username__iexact=candidate.email)
+                            | Q(email__iexact=candidate.email)
+                        ).exists()
+                        or Employee._base_manager.filter(
+                            email__iexact=candidate.email
+                        ).exists()
+                    ):
+                        raise ValidationError(
+                            _(
+                                "An account with this email already exists. Please contact HR."
+                            )
+                        )
+                    user = HorillaUser.objects.create(
+                        username=candidate.email,
+                        email=candidate.email,
+                        password=account["password"],
+                    )
+                    user.user_permissions.add(
+                        *Permission.objects.filter(
+                            content_type__app_label="employee",
+                            codename__in=["view_ownprofile", "change_ownprofile"],
+                        )
+                    )
+                    employee_personal_info = form.save(commit=False)
+                    employee_personal_info.employee_user_id = user
+                    employee_personal_info.email = candidate.email
+                    if candidate.profile and candidate.profile.storage.exists(
+                        candidate.profile.name
+                    ):
+                        filename = os.path.basename(candidate.profile.name)
+                        employee_personal_info.employee_profile.save(
+                            filename, ContentFile(candidate.profile.read()), save=False
+                        )
+                    employee_personal_info.is_from_onboarding = True
+                    employee_personal_info.save()
+                    position = candidate.job_position_id
+                    EmployeeWorkInformation.objects.update_or_create(
+                        employee_id=employee_personal_info,
+                        defaults={
+                            "department_id": position.department_id
+                            if position
+                            else None,
+                            "job_position_id": position,
+                            "company_id": candidate.recruitment_id.company_id,
+                            "date_joining": candidate.joining_date,
+                            "email": candidate.email,
+                        },
+                    )
+                    Document.objects.bulk_create(
+                        [
+                            Document(
+                                title=doc.title,
+                                employee_id=employee_personal_info,
+                                document=doc.document,
+                                status=doc.status,
+                                reject_reason=doc.reject_reason,
+                            )
+                            for doc in candidate.candidatedocument_set.all()
+                        ]
+                    )
+                    candidate.converted_employee_id = employee_personal_info
+                    candidate.save()
+                    onboarding_portal.count = 3
+                    onboarding_portal.save(update_fields=["count"])
+            except ValidationError as error:
+                form.add_error(None, error.messages)
+            except IntegrityError:
+                logger.exception("Employee creation could not be completed")
+                form.add_error(
+                    None,
                     _(
-                        "User account was not found. Please complete account creation and try again."
+                        "Employee details could not be saved. Please try again or contact HR."
                     ),
                 )
-                return redirect("user-creation", token)
-            if not getattr(user, "pk", None):
-                user.save()
-            login(request, user)
-            employee_personal_info = form.save(commit=False)
-            employee_personal_info.employee_user_id = user
-            employee_personal_info.email = candidate.email
-            if candidate.profile and candidate.profile.storage.exists(
-                candidate.profile.name
-            ):  # 896
-                filename = os.path.basename(candidate.profile.name)
-                employee_personal_info.employee_profile.save(
-                    filename, ContentFile(candidate.profile.read()), save=False
+            else:
+                request.session.pop(_portal_account_key(onboarding_portal), None)
+                # Multiple auth backends are configured; explicitly select the
+                # app's permission backend for this newly created account.
+                login(request, user, backend="base.auth_backends.CompanyScopedBackend")
+                messages.success(
+                    request, _("Employee personal details created successfully..")
                 )
-
-            employee_personal_info.is_from_onboarding = True
-            employee_personal_info.save()
-
-            EmployeeWorkInformation.objects.update_or_create(
-                employee_id=employee_personal_info,
-                defaults={
-                    "department_id": candidate.job_position_id.department_id,
-                    "job_position_id": candidate.job_position_id,
-                    "company_id": candidate.recruitment_id.company_id,
-                    "date_joining": candidate.joining_date,
-                    "email": candidate.email,
-                },
-            )
-
-            Document.objects.bulk_create(
-                [
-                    Document(
-                        title=doc.title,
-                        employee_id=employee_personal_info,
-                        document=doc.document,
-                        status=doc.status,
-                        reject_reason=doc.reject_reason,
-                    )
-                    for doc in candidate.candidatedocument_set.all()
-                ]
-            )
-
-            onboarding_portal.count = 3
-            onboarding_portal.save()
-            messages.success(
-                request, _("Employee personal details created successfully..")
-            )
-            return redirect("employee-bank-details", token)
+                return redirect("employee-bank-details", token)
     return render(
         request,
         "onboarding/employee_creation.html",
@@ -1362,6 +1448,8 @@ def employee_creation(request, token):
     )
 
 
+@transaction.atomic
+@require_http_methods(["GET", "POST"])
 def employee_bank_details(request, token):
     """
     function used to create employee bank details creation.
@@ -1374,14 +1462,19 @@ def employee_bank_details(request, token):
     GET : return bank details creation template
     POST : return employee_bank_details_save function
     """
-    onboarding_portal = OnboardingPortal.objects.filter(token=token).first()
-    if not onboarding_portal:
-        return HorillaRedirect(request, message=_("Onboarding portal not found."))
-
-    user = HorillaUser.objects.filter(
-        username=onboarding_portal.candidate_id.email
-    ).first()
-    employee = Employee.objects.filter(employee_user_id=user).first()
+    onboarding_portal = _active_portal(request, token)
+    employee = _portal_employee(onboarding_portal)
+    if employee is None:
+        return redirect(
+            "employee-creation"
+            if _pending_portal_account(request, onboarding_portal)
+            else "user-creation",
+            token,
+        )
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path())
+    if employee.employee_user_id_id != request.user.pk:
+        raise PermissionDenied
     bank_info = EmployeeBankDetails.objects.filter(employee_id=employee).first()
     form = BankDetailsCreationForm(instance=bank_info)
     if request.method == "POST":
@@ -1391,7 +1484,6 @@ def employee_bank_details(request, token):
         )
         if form.is_valid():
             return employee_bank_details_save(form, request, onboarding_portal)
-        return redirect(welcome_aboard)
     return render(
         request,
         "onboarding/employee_bank_details.html",
@@ -1415,7 +1507,9 @@ def employee_bank_details_save(form, request, onboarding_portal):
     GET : return welcome onboard view
     """
     employee_bank_detail = form.save(commit=False)
-    employee = Employee.objects.get(employee_user_id=request.user)
+    employee = _portal_employee(onboarding_portal)
+    if employee is None or employee.employee_user_id_id != request.user.pk:
+        raise PermissionDenied
     employee_bank_detail.employee_id = employee
     candidate = onboarding_portal.candidate_id
     candidate.converted_employee_id = employee
