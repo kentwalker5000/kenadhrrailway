@@ -510,10 +510,17 @@
     #sidebar .sidebar-reference-toggle svg {
         position: relative;
         z-index: 1;
+        width: 0.9rem;
+        height: 0.9rem;
+        transform: translateX(-0.52rem);
         transition: transform 180ms ease;
     }
-    #sidebar:not(.sidebar-pinned) .sidebar-reference-toggle svg {
-        transform: rotate(180deg);
+    #sidebar.sidebar-pinned .sidebar-reference-toggle svg {
+        transform: translateX(0.52rem) rotate(180deg);
+    }
+    #sidebar .sidebar-reference-toggle:focus-visible {
+        outline: 3px solid rgba(29, 78, 216, 0.28);
+        outline-offset: 2px;
     }
     #sidebar #sidebarPinBtn {
         display: none !important;
@@ -864,7 +871,7 @@
         title="{% trans 'Collapse sidebar' %}"
     >
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7" />
         </svg>
     </button>
 </div>
