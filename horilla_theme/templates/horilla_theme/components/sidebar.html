@@ -460,24 +460,44 @@
         position: absolute;
         z-index: 10070;
         top: 4.25rem;
-        right: -0.875rem;
+        right: -1.5rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 1.75rem;
-        height: 1.75rem;
+        width: 3rem;
+        height: 1.9rem;
         padding: 0;
         border: 1px solid #e4e9ef;
         border-radius: 9999px;
-        background: #fff;
+        background: #f1f5f9;
         color: #52606f;
-        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.10);
         cursor: pointer;
-        transition: color 150ms ease, box-shadow 150ms ease, transform 180ms ease;
+        transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
     }
-    #sidebar .sidebar-reference-toggle:hover {
+    #sidebar .sidebar-reference-toggle::before {
+        position: absolute;
+        top: 0.18rem;
+        left: 0.18rem;
+        width: 1.42rem;
+        height: 1.42rem;
+        border-radius: 9999px;
+        background: #fff;
+        box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+        content: "";
+        transition: transform 180ms ease;
+    }
+    #sidebar.sidebar-pinned .sidebar-reference-toggle {
+        background: #e8f0ff;
         color: #1d4ed8;
-        box-shadow: 0 4px 14px rgba(29, 78, 216, 0.2);
+    }
+    #sidebar.sidebar-pinned .sidebar-reference-toggle::before {
+        transform: translateX(1.08rem);
+    }
+    #sidebar .sidebar-reference-toggle svg {
+        position: relative;
+        z-index: 1;
+        transition: transform 180ms ease;
     }
     #sidebar:not(.sidebar-pinned) .sidebar-reference-toggle svg {
         transform: rotate(180deg);
@@ -524,6 +544,13 @@
         border-radius: 0.6rem !important;
         color: #657180 !important;
     }
+    #sidebar .sideboxmain:hover:not(.sidebox-current):not(.sidebox-active) {
+        background: transparent !important;
+        color: #657180 !important;
+    }
+    #sidebar .sideboxmain:hover:not(.sidebox-current):not(.sidebox-active) .oh-sidebar-label {
+        color: #657180 !important;
+    }
     #sidebar:not(.sidebar-pinned) .sideboxmain {
         width: 2.75rem !important;
         height: 2.75rem !important;
@@ -535,7 +562,7 @@
         padding: 0.625rem 0.7rem !important;
         gap: 0.7rem !important;
     }
-    #sidebar .sideboxmain:hover,
+    #sidebar .sidebar-item.sidebar-open .sideboxmain,
     #sidebar .sideboxmain.sidebox-active:not(.sidebox-current) {
         background: #f3f5f7 !important;
         color: #1f2937 !important;
@@ -563,8 +590,7 @@
         padding: 0 0 0 0.7rem !important;
         border-left: 1px solid #e8edf2;
     }
-    #sidebar.sidebar-pinned .sidebar-item:hover .sidebar-subnav,
-    #sidebar.sidebar-pinned .sidebar-item:focus-within .sidebar-subnav {
+    #sidebar.sidebar-pinned .sidebar-item.sidebar-open .sidebar-subnav {
         display: block !important;
     }
     #sidebar.sidebar-pinned .sidebar-subnav-link {
@@ -800,6 +826,7 @@
         type="button"
         class="sidebar-reference-toggle"
         aria-label="{% trans 'Collapse sidebar' %}"
+        aria-pressed="true"
         title="{% trans 'Collapse sidebar' %}"
     >
         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" class="w-4 h-4">
@@ -1013,24 +1040,49 @@
           if (currentFlyoutBtn) { currentFlyoutBtn.classList.remove("sidebox-active"); currentFlyoutBtn = null; }
         }
 
-        function scheduleFlyoutClose() {
-          clearTimeout(flyoutCloseTimer);
-          flyoutCloseTimer = setTimeout(hideFlyout, 120);
+        function closeSidebarMenus(exceptItem) {
+          document.querySelectorAll("#sidebar .sidebar-item.sidebar-open").forEach(function (item) {
+            if (item !== exceptItem) {
+              item.classList.remove("sidebar-open");
+              var button = item.querySelector(".sideboxmain");
+              if (button) button.setAttribute("aria-expanded", "false");
+            }
+          });
         }
 
-        function cancelFlyoutClose() {
-          clearTimeout(flyoutCloseTimer);
+        function toggleSidebarMenu(item, btn) {
+          var subnav = item && item.querySelector(".sidebar-subnav");
+          if (!subnav || !subnav.querySelector("li")) return;
+
+          if (sidebarEl.classList.contains("sidebar-pinned")) {
+            var isOpen = item.classList.contains("sidebar-open");
+            closeSidebarMenus(item);
+            item.classList.toggle("sidebar-open", !isOpen);
+            btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
+            if (!isOpen) setActiveSidebarMenu(btn);
+            hideFlyout();
+            return;
+          }
+
+          if (currentFlyoutBtn === btn && flyoutEl && flyoutEl.classList.contains("is-visible")) {
+            hideFlyout();
+            btn.setAttribute("aria-expanded", "false");
+            return;
+          }
+          closeSidebarMenus();
+          showFlyout(item, btn);
+          btn.setAttribute("aria-expanded", "true");
+          setActiveSidebarMenu(btn);
         }
 
+        /* Legacy hover listeners intentionally disabled: module menus are click-only. */
+        /*
         // Attach hover listeners to all sidebar items
         document.querySelectorAll(".sidebar-item").forEach(function (item) {
           var btn = item.querySelector(".sideboxmain");
           if (!btn) return;
-          item.addEventListener("mouseenter", function () {
-            cancelFlyoutClose();
-            showFlyout(item, btn);
-          });
-          item.addEventListener("mouseleave", function (e) {
+          // Module menus are deliberately click-controlled.
+          if (false) item.addEventListener("mouseleave", function (e) {
             // If the mouse moved directly into the flyout panel, keep the hover indicator alive
             if (flyoutEl && flyoutEl.contains(e.relatedTarget)) return;
             // Don't strip the highlight synchronously: there's a 6px gap between the
@@ -1046,15 +1098,40 @@
         // Top-menu links (e.g. Dashboard) are direct <a> tags, not inside .sidebar-item.
         // Clear any leftover hover indicator the moment the mouse enters them.
         document.querySelectorAll("a.sideboxmain").forEach(function (link) {
-          link.addEventListener("mouseenter", function () {
+          if (false) link.addEventListener("mouseenter", function () {
             if (currentFlyoutBtn) { currentFlyoutBtn.classList.remove("sidebox-active"); currentFlyoutBtn = null; }
             scheduleFlyoutClose();
           });
         });
 
+        document.addEventListener("click", function (e) {
+          if (sidebarEl && sidebarEl.contains(e.target)) return;
+          if (flyoutEl && flyoutEl.contains(e.target)) return;
+          closeSidebarMenus();
+          hideFlyout();
+        });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key !== "Escape") return;
+          closeSidebarMenus();
+          hideFlyout();
+        });
+
+        */
+        document.addEventListener("click", function (e) {
+          if (sidebarEl && sidebarEl.contains(e.target)) return;
+          if (flyoutEl && flyoutEl.contains(e.target)) return;
+          closeSidebarMenus();
+          hideFlyout();
+        });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key !== "Escape") return;
+          closeSidebarMenus();
+          hideFlyout();
+        });
+
         if (flyoutEl) {
-          flyoutEl.addEventListener("mouseenter", cancelFlyoutClose);
-          flyoutEl.addEventListener("mouseleave", scheduleFlyoutClose);
           flyoutEl.addEventListener("click", function (e) {
             var link = e.target.closest("a[href], a[hx-get]");
             if (!link) return;
@@ -1178,6 +1255,7 @@
           var label = sidebarPinned ? "{% trans 'Collapse sidebar' %}" : "{% trans 'Expand sidebar' %}";
           referenceToggle.title = label;
           referenceToggle.setAttribute("aria-label", label);
+          referenceToggle.setAttribute("aria-pressed", sidebarPinned ? "true" : "false");
         }
         syncReferenceToggleLabel();
         if (referenceToggle) {
@@ -1185,13 +1263,6 @@
             e.stopPropagation();
             applySidebarPin(!sidebarPinned, true);
             syncReferenceToggleLabel();
-          });
-        }
-
-        // When cursor leaves sidebar, close any open flyout
-        if (sidebarEl) {
-          sidebarEl.addEventListener("mouseleave", function () {
-            scheduleFlyoutClose();
           });
         }
 
@@ -1281,10 +1352,11 @@
             if (e.target.closest(".sidebar-subnav")) return;
             if (e.target.closest("a")) return;
 
-            // Module button click opens flyout via hover; do not mark active without navigation
+            // Module menus open only when their button is clicked.
             var btn = e.target.closest(".sideboxmain");
             if (!btn) return;
             e.stopPropagation();
+            toggleSidebarMenu(btn.closest(".sidebar-item"), btn);
           });
         }
 
