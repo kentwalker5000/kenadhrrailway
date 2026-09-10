@@ -185,7 +185,7 @@
         }
         .am-chart-card {
             position: relative;
-            overflow: hidden;
+            overflow: visible;
             border: 1px solid rgba(128, 128, 128, 0.09);
             border-radius: 16px;
             background: #ffffff;
@@ -1090,6 +1090,7 @@
             const subTextColor = isDark ? '#64748b' : '#94a3b8';
             const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
             const cardBg = isDark ? '#242424' : '#ffffff';
+            const appBlue = getComputedStyle(document.documentElement).getPropertyValue('--primary-600').trim() || '#1d4ed8';
             const COLORS = ['#E54F38','#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
             const ANIM = { enabled: true, easing: 'easeinout', speed: 700, animateGradually: { enabled: true, delay: 80 }, dynamicAnimation: { enabled: true, speed: 500 } };
             const GRID = { borderColor: gridColor, strokeDashArray: 5, padding: { left: 4, right: 4 } };
@@ -1689,9 +1690,8 @@
                                 });
                             }}
                         },
-                        colors: ['#E54F38'],
-                        fill: { type: 'gradient', gradient: { type: 'vertical', shadeIntensity: 0.4, opacityFrom: 1, opacityTo: 0.75,
-                            colorStops: [{ offset: 0, color: '#E54F38', opacity: 1 }, { offset: 100, color: '#a855f7', opacity: 0.8 }] } },
+                        colors: [appBlue],
+                        fill: { type: 'solid', opacity: 1 },
                         plotOptions: { bar: { borderRadius: 8, borderRadiusApplication: 'end', columnWidth: '52%' } },
                         xaxis: { ...XAXIS_STYLE, categories: data.hours },
                         yaxis: { ...YAXIS_STYLE },
