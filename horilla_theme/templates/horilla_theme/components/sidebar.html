@@ -1145,7 +1145,6 @@
         document.addEventListener("click", function (e) {
           if (sidebarEl && sidebarEl.contains(e.target)) return;
           if (flyoutEl && flyoutEl.contains(e.target)) return;
-          closeSidebarMenus();
           hideFlyout();
         });
 
