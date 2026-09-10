@@ -588,6 +588,26 @@
         opacity: 1 !important;
         flex-shrink: 0 !important;
     }
+    #sidebar:not(.sidebar-pinned):hover nav .sideboxmain {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    #sidebar:not(.sidebar-pinned):hover nav .sideboxmain img,
+    #sidebar:not(.sidebar-pinned):hover nav .sideboxmain svg:not(.sidebar-chevron) {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        filter: brightness(0) opacity(0.62) !important;
+    }
+    #sidebar:not(.sidebar-pinned):hover nav .sideboxmain:hover img,
+    #sidebar:not(.sidebar-pinned):hover nav .sideboxmain:hover svg:not(.sidebar-chevron) {
+        filter: brightness(0) invert(1) !important;
+    }
+    #sidebar:not(.sidebar-pinned):hover nav .sideboxmain.sidebox-current img,
+    #sidebar:not(.sidebar-pinned):hover nav .sideboxmain.sidebox-current svg:not(.sidebar-chevron) {
+        filter: brightness(0) saturate(100%) invert(29%) sepia(93%) saturate(1713%) hue-rotate(215deg) brightness(90%) contrast(96%) !important;
+    }
     #sidebar.sidebar-pinned .sideboxmain {
         padding: 0.625rem 0.7rem !important;
         gap: 0.7rem !important;
