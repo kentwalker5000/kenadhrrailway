@@ -43,7 +43,10 @@
             opacity: 0.6;
         }
         .em-btn-back {
+            display: inline-flex;
+            align-items: center;
             padding: 6px 14px;
+            gap: 6px;
             border: 1px solid rgba(128, 128, 128, 0.2);
             border-radius: 8px;
             background: none;
@@ -132,41 +135,16 @@
             height: 38px;
             margin-bottom: 10px;
             border-radius: 10px;
-            font-size: 18px;
+            background: #f1f3f5;
+            color: #163a63;
         }
-        .em-kpi-card__icon--indigo {
-            background: var(--primary-100, #eff6ff);
-            color: var(--primary-800, #172554);
+        .em-kpi-card__icon svg {
+            width: 20px;
+            height: 20px;
         }
-        .em-kpi-card__icon--contractual {
-            background: var(--primary-200, #dbeafe);
-            color: var(--primary-700, #1e3a8a);
-        }
-        .em-kpi-card__icon--internship {
-            background: #dbeafe;
-            color: var(--primary-600, #1d4ed8);
-        }
-        .em-kpi-card__icon--service {
-            border: 1px solid var(--primary-200, #dbeafe);
-            background: var(--secondary-100, #f8fafc);
-            color: var(--primary-800, #172554);
-        }
-        .dark .em-kpi-card__icon--indigo {
-            background: rgba(59, 130, 246, 0.16);
-            color: #bfdbfe;
-        }
-        .dark .em-kpi-card__icon--contractual {
-            background: rgba(29, 78, 216, 0.26);
-            color: #dbeafe;
-        }
-        .dark .em-kpi-card__icon--internship {
-            background: rgba(59, 130, 246, 0.2);
-            color: #93c5fd;
-        }
-        .dark .em-kpi-card__icon--service {
-            border-color: rgba(147, 197, 253, 0.2);
-            background: rgba(15, 23, 42, 0.7);
-            color: #bfdbfe;
+        .dark .em-kpi-card__icon {
+            background: #3a3a3a;
+            color: #8db5e0;
         }
         .em-kpi-card__label {
             margin-bottom: 6px;
@@ -230,6 +208,32 @@
             align-items: center;
             justify-content: space-between;
             padding: 16px 18px 4px;
+        }
+        .em-chart-card__heading,
+        .em-panel__heading {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            gap: 9px;
+        }
+        .em-section-icon {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: #f1f3f5;
+            color: #163a63;
+        }
+        .em-section-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+        .dark .em-section-icon {
+            background: #3a3a3a;
+            color: #8db5e0;
         }
         .em-chart-card__title {
             font-weight: 700;
@@ -458,7 +462,13 @@
                 <h1>{% trans "Employee Dashboard" %}</h1>
                 <div class="em-header__date" id="em-today-date"></div>
             </div>
-            <a href="{% url 'employee-view-new' %}" class="em-btn-back">{% trans "View All Employees" %} →</a>
+            <a href="{% url 'employee-view-new' %}" class="em-btn-back">
+                {% trans "View All Employees" %}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M5 12h14" />
+                    <path d="m13 6 6 6-6 6" />
+                </svg>
+            </a>
         </div>
 
         <div class="em-section-heading">
@@ -565,18 +575,28 @@
                 <div class="em-chart-grid">
                     <div class="em-chart-card" data-accent="indigo">
                         <div class="em-chart-card__header">
-                            <div>
-                                <div class="em-chart-card__title">{% trans "By Department" %}</div>
-                                <div class="em-chart-card__subtitle">{% trans "Active headcount per department" %}</div>
+                            <div class="em-chart-card__heading">
+                                <span class="em-section-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21V5l6-3 6 3v16"/><path d="M9 9h.01M9 13h.01M9 17h.01M15 9h.01M15 13h.01M15 17h.01"/></svg>
+                                </span>
+                                <div>
+                                    <div class="em-chart-card__title">{% trans "By Department" %}</div>
+                                    <div class="em-chart-card__subtitle">{% trans "Active headcount per department" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="em-chart-card__body"><div id="chart-em-dept"></div></div>
                     </div>
                     <div class="em-chart-card" data-accent="green">
                         <div class="em-chart-card__header">
-                            <div>
-                                <div class="em-chart-card__title">{% trans "Gender Distribution" %}</div>
-                                <div class="em-chart-card__subtitle">{% trans "Active employees by gender" %}</div>
+                            <div class="em-chart-card__heading">
+                                <span class="em-section-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M17 11h6"/></svg>
+                                </span>
+                                <div>
+                                    <div class="em-chart-card__title">{% trans "Gender Distribution" %}</div>
+                                    <div class="em-chart-card__subtitle">{% trans "Active employees by gender" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="em-chart-card__body"><div id="chart-em-gender"></div></div>
@@ -587,18 +607,28 @@
                 <div class="em-chart-grid">
                     <div class="em-chart-card" data-accent="amber">
                         <div class="em-chart-card__header">
-                            <div>
-                                <div class="em-chart-card__title">{% trans "Employment Type" %}</div>
-                                <div class="em-chart-card__subtitle">{% trans "Active employees by type" %}</div>
+                            <div class="em-chart-card__heading">
+                                <span class="em-section-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8" cy="11" r="2"/><path d="M6 16c.7-1.3 1.3-2 2-2s1.3.7 2 2M13 10h5M13 14h5"/></svg>
+                                </span>
+                                <div>
+                                    <div class="em-chart-card__title">{% trans "Employment Type" %}</div>
+                                    <div class="em-chart-card__subtitle">{% trans "Active employees by type" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="em-chart-card__body"><div id="chart-em-type"></div></div>
                     </div>
                     <div class="em-chart-card" data-accent="blue">
                         <div class="em-chart-card__header">
-                            <div>
-                                <div class="em-chart-card__title">{% trans "By Job Position" %}</div>
-                                <div class="em-chart-card__subtitle">{% trans "Top 10 positions" %}</div>
+                            <div class="em-chart-card__heading">
+                                <span class="em-section-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2"/></svg>
+                                </span>
+                                <div>
+                                    <div class="em-chart-card__title">{% trans "By Job Position" %}</div>
+                                    <div class="em-chart-card__subtitle">{% trans "Top 10 positions" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="em-chart-card__body"><div id="chart-em-position"></div></div>
@@ -609,10 +639,15 @@
                 <div class="em-chart-grid">
                     <div class="em-chart-card em-chart-card--wide" data-accent="indigo">
                         <div class="em-chart-card__header">
-                            <div>
-                                <div class="em-chart-card__title">{% trans "Monthly Joinings" %}</div>
-                                <div class="em-chart-card__subtitle">
-                                    {% trans "New hires over the last 6 months" %}
+                            <div class="em-chart-card__heading">
+                                <span class="em-section-icon" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-7"/><path d="M16 7h4v4"/></svg>
+                                </span>
+                                <div>
+                                    <div class="em-chart-card__title">{% trans "Monthly Joinings" %}</div>
+                                    <div class="em-chart-card__subtitle">
+                                        {% trans "New hires over the last 6 months" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -626,7 +661,12 @@
                 <!-- Recent Employees -->
                 <div class="em-panel">
                     <div class="em-panel__header">
-                        <span class="em-panel__title">{% trans "Recent Employees" %}</span>
+                        <div class="em-panel__heading">
+                            <span class="em-section-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></svg>
+                            </span>
+                            <span class="em-panel__title">{% trans "Recent Employees" %}</span>
+                        </div>
                         <a
                             href="{% url 'employee-view-new' %}"
                             style="font-size: 11px; color: var(--em-indigo); font-weight: 700; text-decoration: none"
@@ -640,7 +680,12 @@
                 <!-- Upcoming Birthdays -->
                 <div class="em-panel">
                     <div class="em-panel__header">
-                        <span class="em-panel__title">🎂 {% trans "Upcoming Birthdays" %}</span>
+                        <div class="em-panel__heading">
+                            <span class="em-section-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h16v10H4z"/><path d="M8 10V7M12 10V7M16 10V7"/><path d="M8 4h.01M12 4h.01M16 4h.01"/><path d="M4 14c2 0 2 2 4 2s2-2 4-2 2 2 4 2 2-2 4-2"/></svg>
+                            </span>
+                            <span class="em-panel__title">{% trans "Upcoming Birthdays" %}</span>
+                        </div>
                     </div>
                     <div class="em-panel__body" id="em-bday-list">
                         <div class="em-panel__empty">{% trans "Loading..." %}</div>
@@ -865,10 +910,11 @@
                 .then(data => {
                     const container = document.getElementById('em-bday-list');
                     if (!data.birthdays.length) { container.innerHTML = '<div class="em-panel__empty">{% trans "No upcoming birthdays" %}</div>'; return; }
+                    const birthdayIcon = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h16v10H4z"/><path d="M8 10V7M12 10V7M16 10V7"/><path d="M8 4h.01M12 4h.01M16 4h.01"/></svg>';
                     container.innerHTML = data.birthdays.map(b => {
                         const avatar = b.avatar
                             ? `<img src="${b.avatar}" alt="{% trans '${b.name}' %}">`
-                            : '🎂';
+                            : birthdayIcon;
                         const daysLabel = b.days_left === 0 ? '{% trans "Today!" %}' : b.days_left === 1 ? '{% trans "Tomorrow" %}' : `${b.days_left} {% trans "days" %}`;
                         return `<div class="em-bday-item">
                     <div class="em-bday-item__avatar">${avatar}</div>
