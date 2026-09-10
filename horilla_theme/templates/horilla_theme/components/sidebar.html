@@ -37,7 +37,7 @@
 
     /* Hide open accordion subnavs when sidebar is collapsed so they
        don't bleed through the narrow sidebar as clipped text */
-    #sidebar:not(:hover):not(.sidebar-pinned) .sidebar-subnav:not(.hidden) {
+    #sidebar:not(.sidebar-pinned) .sidebar-subnav:not(.hidden) {
         display: none !important;
     }
 
@@ -242,33 +242,33 @@
     /* Collapsed: minimal horizontal padding → 56 px inner width for icon circles.
        0.25 rem (4 px) each side gives the 2.5 rem (40 px) circle 8 px breathing
        room per side, and removes the scrollbar-width problem on Windows. */
-    #sidebar:not(:hover):not(.sidebar-pinned) > div {
+    #sidebar:not(.sidebar-pinned) > div {
         padding-right: 0.25rem !important;
         padding-left: 0.25rem !important;
     }
 
     /* Collapsed: increase spacing between icon circles from 4 px to 10 px. */
-    #sidebar:not(:hover):not(.sidebar-pinned) nav > * + * {
+    #sidebar:not(.sidebar-pinned) nav > * + * {
         margin-top: 0.625rem !important;
     }
 
     /* Collapsed: hide the scrollbar so it doesn't consume horizontal space
        and clip the right edge of circles on Windows / Linux. */
-    #sidebar:not(:hover):not(.sidebar-pinned) nav {
+    #sidebar:not(.sidebar-pinned) nav {
         scrollbar-width: none;
         -ms-overflow-style: none;
     }
-    #sidebar:not(:hover):not(.sidebar-pinned) nav::-webkit-scrollbar {
+    #sidebar:not(.sidebar-pinned) nav::-webkit-scrollbar {
         display: none;
     }
 
     /* Collapsed header: centre the row and collapse the gap so the logo
        sits alone, centred, with no phantom space from the hidden hamburger. */
-    #sidebar:not(:hover):not(.sidebar-pinned) > div > div:first-child {
+    #sidebar:not(.sidebar-pinned) > div > div:first-child {
         justify-content: center !important;
         gap: 0 !important;
     }
-    #sidebar:not(:hover):not(.sidebar-pinned) > div > div:first-child > div {
+    #sidebar:not(.sidebar-pinned) > div > div:first-child > div {
         flex: 0 0 auto !important;
         justify-content: center !important;
         gap: 0 !important;
@@ -276,13 +276,13 @@
 
     /* Collapsed: hide the hamburger (pin button); user hovers to expand, then
        clicks the hamburger that appears in expanded state. */
-    #sidebar:not(:hover):not(.sidebar-pinned) #sidebarPinBtn {
+    #sidebar:not(.sidebar-pinned) #sidebarPinBtn {
         display: none !important;
     }
 
     /* Collapsed: show the brand logo centred at the top of the rail, overriding
        the general oh-sidebar-label opacity:0 rule just for this element. */
-    #sidebar:not(:hover):not(.sidebar-pinned) > div > div:first-child img.oh-sidebar-label {
+    #sidebar:not(.sidebar-pinned) > div > div:first-child img.oh-sidebar-label {
         flex: 0 0 auto !important;
         width: 2rem !important;
         height: 2rem !important;
@@ -294,7 +294,7 @@
        inner container with 4 px breathing room each side.
        The oh.css gray background is preserved (no override here) so buttons
        look identical to the reference design: gray circles, active = red circle. */
-    #sidebar:not(:hover):not(.sidebar-pinned) .sideboxmain {
+    #sidebar:not(.sidebar-pinned) .sideboxmain {
         justify-content: center !important;
         width: 2.5rem !important;
         height: 2.5rem !important;
@@ -307,8 +307,8 @@
 
     /* Collapse label/chevron to zero-width so justify-content:center only sees
        the icon. The invisible label still occupies flex space without this. */
-    #sidebar:not(:hover):not(.sidebar-pinned) .oh-sidebar-label,
-    #sidebar:not(:hover):not(.sidebar-pinned) .sidebar-chevron {
+    #sidebar:not(.sidebar-pinned) .oh-sidebar-label,
+    #sidebar:not(.sidebar-pinned) .sidebar-chevron {
         flex: 0 0 0 !important;
         width: 0 !important;
         overflow: hidden !important;
