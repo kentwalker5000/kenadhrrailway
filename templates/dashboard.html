@@ -589,6 +589,33 @@
             text-decoration: underline;
         }
 
+        .md-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 10px;
+            border: 1px solid #dbe4ef;
+            border-radius: 8px;
+            background: #f8fafc;
+            color: #1d4ed8;
+            font-size: 11px;
+            font-weight: 700;
+            line-height: 1;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+        }
+        .md-link:hover {
+            border-color: #1d4ed8;
+            background: #1d4ed8;
+            color: #ffffff;
+        }
+        .dark .md-link {
+            border-color: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06);
+            color: #93c5fd;
+        }
+
         .md-btn-add {
             display: inline-flex;
             align-items: center;
@@ -1455,7 +1482,13 @@
                             <a
                                 class="md-link"
                                 href="{% url 'employee-dashboard' %}"
-                            >{% trans "Open Employee dashboard" %}</a>
+                            >
+                                {% trans "View dashboard" %}
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M5 12h14" />
+                                    <path d="m13 6 6 6-6 6" />
+                                </svg>
+                            </a>
                         </div>
                         <div class="md-chart-card__body"><div id="chart-employee-status"></div></div>
                     </div>
@@ -2705,7 +2738,7 @@
                 .then(data => {
                     if (!data.dataSet || !data.dataSet.length) { document.querySelector("#chart-employee-status").innerHTML = emptyHtml('{% trans "No data" %}'); return; }
                     {# keyed on the API's stable series keys, not on the translated labels #}
-                    const sc = { 'active': '#22c55e', 'inactive': '#ef4444' };
+                    const sc = { 'active': '#1d4ed8', 'inactive': '#ef4444' };
                     const statusKeys = data.keys || ['active', 'inactive'];
                     renderChart('employee-status', document.querySelector("#chart-employee-status"), {
                         series: data.dataSet[0].data,
