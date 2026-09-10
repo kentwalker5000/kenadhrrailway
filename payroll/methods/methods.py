@@ -167,7 +167,7 @@ if apps.is_installed("attendance"):
         leave_dates = get_leaves(employee, start_date, end_date)["leave_dates"]
         conflict_dates = list(
             set(working_days_between_range)
-            - set(attendances_on_period)
+            - set(present_on)
             - set(leave_dates)
         )
         conflict_dates = conflict_dates + [
@@ -735,7 +735,10 @@ def compute_salary_on_period(
             )
             loss_of_pay += custom_leave_deduction
 
-            basic_pay = paid_days * wage
+            # Start with the whole covered period. Unpaid days are already
+            # represented by loss_of_pay; subtracting them from paid_days as
+            # well would charge the same absence twice.
+            basic_pay = total_days * wage
             if contract.deduct_leave_from_basic_pay:
                 basic_pay = basic_pay - loss_of_pay
 
@@ -784,7 +787,8 @@ def compute_salary_on_period(
             )
             if month_summary.get("unresolved_conflicts", 0):
                 unpaid_days = total_days
-            per_day_amount = wage / total_days if total_days and wage else 0.0
+            pay_period_days = month_summary.get("pay_period_days", total_days)
+            per_day_amount = wage / pay_period_days if pay_period_days and wage else 0.0
             loss_of_pay = unpaid_days * per_day_amount
 
             leave_data = get_leaves(employee, start_date, end_date)
@@ -798,9 +802,11 @@ def compute_salary_on_period(
             )
             loss_of_pay += custom_leave_deduction
 
-            basic_pay = wage
+            # Batch generation can clip one employee's window to their contract.
+            # Retain the requested pay-period denominator for that employee.
+            basic_pay = total_days * per_day_amount
             if contract.deduct_leave_from_basic_pay:
-                basic_pay = wage - loss_of_pay
+                basic_pay -= loss_of_pay
 
             data = {
                 "basic_pay": basic_pay,

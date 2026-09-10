@@ -171,7 +171,12 @@
             </p>
         </div>
         <div class="flex gap-3 text-sm justify-between mb-2 px-2">
-            <p class="w-1/2 text-sm">{% trans "Loss of Pay" %}</p>
+            <p class="w-1/2 text-sm">
+                {% trans "Loss of Pay" %}
+                {% if loss_of_pay_deducted_from_basic %}
+                    <small>({% trans "Already deducted from basic pay" %})</small>
+                {% endif %}
+            </p>
             <p class="flex-1 font-medium">
                 {{ loss_of_pay|floatformat:2|currency_symbol_position }}
             </p>

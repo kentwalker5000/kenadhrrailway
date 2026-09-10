@@ -95,7 +95,7 @@ def _count_leave_days_in_range(leave_qs, from_date, to_date, off_dates):
 # ---------------------------------------------------------------------------
 
 
-def build_monthly_summary(from_date, to_date, employee_qs):
+def build_monthly_summary(from_date, to_date, employee_qs, *, validated_only=False):
     """
     Compute per-employee attendance summary for [from_date, to_date].
 
@@ -103,6 +103,8 @@ def build_monthly_summary(from_date, to_date, employee_qs):
         from_date   : datetime.date  — range start (inclusive)
         to_date     : datetime.date  — range end   (inclusive)
         employee_qs : Employee queryset filtered to the relevant company/dept
+        validated_only : Payroll excludes unvalidated attendance and does not
+            replace the attendance page's cached totals with this subset.
 
     Returns:
         rows            : list of dicts, one per employee
@@ -147,10 +149,13 @@ def build_monthly_summary(from_date, to_date, employee_qs):
     if _dg:
         grace_secs = _dg.allowed_time_in_secs or 0
 
-    att_records = Attendance.objects.filter(
+    attendance_qs = Attendance.objects.filter(
         employee_id__in=emp_pks,
         attendance_date__range=(from_date, to_date),
-    ).values(
+    )
+    if validated_only:
+        attendance_qs = attendance_qs.filter(attendance_validated=True)
+    att_records = attendance_qs.values(
         "employee_id_id",
         "at_work_second",
         "overtime_second",
@@ -530,7 +535,7 @@ def build_monthly_summary(from_date, to_date, employee_qs):
         total_conflicts += conflict_days
 
     # Bulk-upsert computed hours (only for non-manually-edited records)
-    if hours_upsert:
+    if hours_upsert and not validated_only:
         AttendanceSummaryHours.objects.bulk_create(
             hours_upsert,
             update_conflicts=True,

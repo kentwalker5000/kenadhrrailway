@@ -273,7 +273,7 @@ def payroll_calculation(employee, start_date, end_date, month_summary=None):
         + total_post_tax_deduction
         + total_tax_deductions
         + federal_tax
-        + loss_of_pay  # 1022
+        + loss_of_pay_amount  # Only deduct here when it was not taken from basic pay.
     )
 
     net_pay = gross_pay - total_deductions
@@ -330,6 +330,7 @@ def payroll_calculation(employee, start_date, end_date, month_summary=None):
         "net_deductions": net_pay_deduction_list,
         "total_deductions": total_deductions,
         "loss_of_pay": loss_of_pay,
+        "loss_of_pay_deducted_from_basic": contract.deduct_leave_from_basic_pay,
         "custom_leave_deduction": custom_leave_deduction,
         "custom_leave_breakdown": custom_leave_breakdown,
         "federal_tax": federal_tax,
@@ -1027,29 +1028,55 @@ def generate_payslip(request):
 
             from attendance.views.summary import build_monthly_summary
 
-            att_rows, _total_working, _summary_totals = build_monthly_summary(
-                start_date, end_date, employees
-            )
-            att_summary = {row["employee"].pk: row for row in att_rows}
-
+            # Resolve each employee's dates independently. Never mutate the
+            # requested period while iterating: it also belongs to later staff.
+            employee_periods = {}
+            period_employees = defaultdict(list)
             for employee in employees:
                 contract = Contract.objects.filter(
                     employee_id=employee, contract_status="active"
                 ).first()
-                if start_date < contract.contract_start_date:
-                    start_date = contract.contract_start_date
-
-                if end_date < start_date:
+                if contract is None:
                     messages.error(
-                        request, _(f"{employee}'s contract has not started yet.")
+                        request,
+                        _("%(employee)s has no active contract.")
+                        % {"employee": employee},
                     )
                     emp_count -= 1
                     continue
+                employee_start = max(start_date, contract.contract_start_date)
+                employee_end = min(end_date, contract.contract_end_date or end_date)
+                if employee_end < employee_start:
+                    messages.error(
+                        request,
+                        _("%(employee)s has no contract covering this period.")
+                        % {"employee": employee},
+                    )
+                    emp_count -= 1
+                    continue
+                employee_periods[employee.pk] = (employee_start, employee_end)
+                period_employees[(employee_start, employee_end)].append(employee.pk)
 
+            att_summary = {}
+            for (period_start, period_end), employee_ids in period_employees.items():
+                att_rows, _total_working, _summary_totals = build_monthly_summary(
+                    period_start,
+                    period_end,
+                    employees.filter(pk__in=employee_ids),
+                    validated_only=True,
+                )
+                for row in att_rows:
+                    row["pay_period_days"] = (end_date - start_date).days + 1
+                    att_summary[row["employee"].pk] = row
+
+            for employee in employees:
+                if employee.pk not in employee_periods:
+                    continue
+                employee_start, employee_end = employee_periods[employee.pk]
                 payslip = payroll_calculation(
                     employee,
-                    start_date,
-                    end_date,
+                    employee_start,
+                    employee_end,
                     month_summary=att_summary.get(employee.pk, dict({})),
                 )
                 payslips.append(payslip)
