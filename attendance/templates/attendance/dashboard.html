@@ -111,35 +111,16 @@
             height: 38px;
             margin-bottom: 10px;
             border-radius: 10px;
-            font-size: 18px;
+            background: #f1f3f5;
+            color: #163a63;
         }
-        .am-kpi-card__icon--green {
-            background: #dcfce7;
-            color: var(--am-green);
+        .am-kpi-card__icon svg {
+            width: 20px;
+            height: 20px;
         }
-        .am-kpi-card__icon--blue {
-            background: #dbeafe;
-            color: var(--am-blue);
-        }
-        .am-kpi-card__icon--amber {
-            background: #fef3c7;
-            color: var(--am-amber);
-        }
-        .am-kpi-card__icon--red {
-            background: #fee2e2;
-            color: var(--am-red);
-        }
-        .dark .am-kpi-card__icon--green {
-            background: #14532d;
-        }
-        .dark .am-kpi-card__icon--blue {
-            background: #1e3a5f;
-        }
-        .dark .am-kpi-card__icon--amber {
-            background: #78350f;
-        }
-        .dark .am-kpi-card__icon--red {
-            background: #7f1d1d;
+        .dark .am-kpi-card__icon {
+            background: #3a3a3a;
+            color: #8db5e0;
         }
 
         .am-kpi-card__label {
@@ -236,6 +217,32 @@
             align-items: center;
             justify-content: space-between;
             padding: 16px 18px 4px;
+        }
+        .am-chart-card__heading,
+        .am-info-panel__heading {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            gap: 9px;
+        }
+        .am-section-icon {
+            display: inline-flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: #f1f3f5;
+            color: #163a63;
+        }
+        .am-section-icon svg {
+            width: 16px;
+            height: 16px;
+        }
+        .dark .am-section-icon {
+            background: #3a3a3a;
+            color: #8db5e0;
         }
         .am-chart-card__title {
             font-weight: 700;
@@ -802,10 +809,13 @@
                         data-chart-label="{% trans 'Clock-in Distribution' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Clock-in Distribution" %}</div>
-                                <div class="am-chart-card__subtitle" id="clockin-subtitle">
-                                    {% trans "When employees clock in today" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Clock-in Distribution" %}</div>
+                                    <div class="am-chart-card__subtitle" id="clockin-subtitle">
+                                        {% trans "When employees clock in today" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -820,10 +830,13 @@
                         data-chart-label="{% trans 'Department Attendance' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Department Attendance" %}</div>
-                                <div class="am-chart-card__subtitle" id="dept-attendance-subtitle">
-                                    {% trans "Today's attendance rate by department" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M6 21V5l6-3 6 3v16"/><path d="M9 9h.01M9 13h.01M15 9h.01M15 13h.01"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Department Attendance" %}</div>
+                                    <div class="am-chart-card__subtitle" id="dept-attendance-subtitle">
+                                        {% trans "Today's attendance rate by department" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -839,10 +852,13 @@
                         data-chart-wide="1"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Daily Attendance Rate" %}</div>
-                                <div class="am-chart-card__subtitle" id="calendar-month">
-                                    {% trans "Present rate by day" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18M8 15h.01M12 15h.01M16 15h.01"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Daily Attendance Rate" %}</div>
+                                    <div class="am-chart-card__subtitle" id="calendar-month">
+                                        {% trans "Present rate by day" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -858,10 +874,13 @@
                         data-chart-wide="1"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Attendance Trend" %}</div>
-                                <div class="am-chart-card__subtitle" id="weekly-trend-subtitle">
-                                    {% trans "Headcount across the selected period" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 6-7"/><path d="M16 7h4v4"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Attendance Trend" %}</div>
+                                    <div class="am-chart-card__subtitle" id="weekly-trend-subtitle">
+                                        {% trans "Headcount across the selected period" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -877,10 +896,13 @@
                         data-chart-wide="1"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Attendance Overview" %}</div>
-                                <div class="am-chart-card__subtitle" id="att-overview-subtitle">
-                                    {% trans "On-time, late arrivals & early departures by department" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 16V9M12 16V6M17 16v-4"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Attendance Overview" %}</div>
+                                    <div class="am-chart-card__subtitle" id="att-overview-subtitle">
+                                        {% trans "On-time, late arrivals & early departures by department" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -896,9 +918,12 @@
                         data-chart-wide="1"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Absenteeism Rate" %}</div>
-                                <div class="am-chart-card__subtitle">{% trans "Monthly trend — last 6 months" %}</div>
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6M16 11h6"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Absenteeism Rate" %}</div>
+                                    <div class="am-chart-card__subtitle">{% trans "Monthly trend — last 6 months" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="am-chart-card__body"><div id="chart-absenteeism"></div></div>
@@ -912,10 +937,13 @@
                         data-chart-label="{% trans 'Late Arrival & Early Departure' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Late Arrival & Early Departure" %}</div>
-                                <div class="am-chart-card__subtitle" id="late-early-subtitle">
-                                    {% trans "Today — by department" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2M12 3v2"/><path d="M5.6 5.6 7 7"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Late Arrival & Early Departure" %}</div>
+                                    <div class="am-chart-card__subtitle" id="late-early-subtitle">
+                                        {% trans "Today — by department" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -930,10 +958,13 @@
                         data-chart-label="{% trans 'Avg Working Hours' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Avg Working Hours" %}</div>
-                                <div class="am-chart-card__subtitle" id="avg-hours-month">
-                                    {% trans "Per day by department — this month" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5h5"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Avg Working Hours" %}</div>
+                                    <div class="am-chart-card__subtitle" id="avg-hours-month">
+                                        {% trans "Per day by department — this month" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -948,9 +979,12 @@
                         data-chart-label="{% trans 'Work Type Distribution' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Work Type Distribution" %}</div>
-                                <div class="am-chart-card__subtitle">{% trans "Remote, on-site, hybrid, etc." %}</div>
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M8 13h3M8 17h6"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Work Type Distribution" %}</div>
+                                    <div class="am-chart-card__subtitle">{% trans "Remote, on-site, hybrid, etc." %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="am-chart-card__body"><div id="chart-work-types"></div></div>
@@ -964,9 +998,12 @@
                         data-chart-label="{% trans 'Overtime by Department' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Overtime by Department" %}</div>
-                                <div class="am-chart-card__subtitle"><span id="ot-month">{% trans "This month" %}</span> — {% trans "Approved vs other hours" %}</div>
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="12" r="8"/><path d="M11 8v4l3 2M19 5v6M16 8h6"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Overtime by Department" %}</div>
+                                    <div class="am-chart-card__subtitle"><span id="ot-month">{% trans "This month" %}</span> — {% trans "Approved vs other hours" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="am-chart-card__body"><div id="chart-overtime"></div></div>
@@ -980,10 +1017,13 @@
                         data-chart-label="{% trans 'Hours Distribution' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Hours Distribution" %}</div>
-                                <div class="am-chart-card__subtitle">
-                                    {% trans "Worked vs pending hours by department" %}
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 17v-5M12 17V7M17 17V9"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Hours Distribution" %}</div>
+                                    <div class="am-chart-card__subtitle">
+                                        {% trans "Worked vs pending hours by department" %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -998,9 +1038,12 @@
                         data-chart-label="{% trans 'Shift Distribution' %}"
                     >
                         <div class="am-chart-card__header">
-                            <div>
-                                <div class="am-chart-card__title">{% trans "Shift Distribution" %}</div>
-                                <div class="am-chart-card__subtitle">{% trans "Active employees by shift" %}</div>
+                            <div class="am-chart-card__heading">
+                                <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><circle cx="12" cy="15" r="2"/></svg></span>
+                                <div>
+                                    <div class="am-chart-card__title">{% trans "Shift Distribution" %}</div>
+                                    <div class="am-chart-card__subtitle">{% trans "Active employees by shift" %}</div>
+                                </div>
                             </div>
                         </div>
                         <div class="am-chart-card__body"><div id="chart-shifts"></div></div>
@@ -1012,7 +1055,10 @@
             <div class="am-sidebar">
                 <div class="am-info-panel">
                     <div class="am-info-panel__header">
-                        <div class="am-info-panel__title">{% trans "Top Absentees" %}</div>
+                        <div class="am-info-panel__heading">
+                            <span class="am-section-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6M16 11h6"/></svg></span>
+                            <div class="am-info-panel__title">{% trans "Top Absentees" %}</div>
+                        </div>
                         <span style="font-size: 11px; opacity: 0.5" id="absentees-month">{% trans "This month" %}</span>
                     </div>
                     <div class="am-info-panel__body" id="am-absentees">
