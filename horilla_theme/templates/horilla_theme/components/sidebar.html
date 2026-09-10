@@ -422,6 +422,216 @@
             display: none !important;
         }
     }
+
+    /* Reference navigation layout: a deliberate compact rail, an edge toggle,
+       and a clean, light expanded sidebar. */
+    #sidebar,
+    #sidebar.sidebar-pinned {
+        width: 4.5rem !important;
+        overflow: visible !important;
+        border-right: 1px solid #e8edf2 !important;
+        box-shadow: 1px 0 16px rgba(15, 23, 42, 0.04);
+    }
+    #sidebar:hover:not(.sidebar-pinned) {
+        width: 4.5rem !important;
+    }
+    #sidebar.sidebar-pinned {
+        width: 15.75rem !important;
+    }
+    #sidebar:not(.sidebar-pinned) .oh-sidebar-label,
+    #sidebar:not(.sidebar-pinned) .sidebar-chevron {
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    #sidebar:hover:not(.sidebar-pinned) .oh-sidebar-label,
+    #sidebar:hover:not(.sidebar-pinned) .sidebar-chevron {
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    #sidebar.sidebar-pinned .oh-sidebar-label {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+    #sidebar .sidebar-chevron,
+    #sidebar.sidebar-pinned .sidebar-chevron {
+        display: none !important;
+    }
+    #sidebar .sidebar-reference-toggle {
+        position: absolute;
+        z-index: 10070;
+        top: 4.25rem;
+        right: -0.875rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.75rem;
+        height: 1.75rem;
+        padding: 0;
+        border: 1px solid #e4e9ef;
+        border-radius: 9999px;
+        background: #fff;
+        color: #52606f;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.12);
+        cursor: pointer;
+        transition: color 150ms ease, box-shadow 150ms ease, transform 180ms ease;
+    }
+    #sidebar .sidebar-reference-toggle:hover {
+        color: #1d4ed8;
+        box-shadow: 0 4px 14px rgba(29, 78, 216, 0.2);
+    }
+    #sidebar:not(.sidebar-pinned) .sidebar-reference-toggle svg {
+        transform: rotate(180deg);
+    }
+    #sidebar #sidebarPinBtn {
+        display: none !important;
+    }
+    #sidebar > div {
+        padding: 1rem 0.75rem !important;
+    }
+    #sidebar.sidebar-pinned > div {
+        padding: 1.125rem 0.875rem !important;
+    }
+    #sidebar > div > div:first-child {
+        min-height: 2.75rem;
+        margin-bottom: 1.25rem !important;
+        justify-content: center !important;
+    }
+    #sidebar.sidebar-pinned > div > div:first-child {
+        justify-content: flex-start !important;
+        gap: 0.65rem !important;
+    }
+    #sidebar:not(.sidebar-pinned) > div > div:first-child img.oh-sidebar-label {
+        width: 2.25rem !important;
+        height: 2.25rem !important;
+        border-radius: 0.7rem !important;
+        opacity: 1 !important;
+    }
+    #sidebar.sidebar-pinned > div > div:first-child img.oh-sidebar-label {
+        width: 2.4rem !important;
+        height: 2.4rem !important;
+        border-radius: 0.7rem !important;
+    }
+    #sidebar nav {
+        height: calc(100vh - 5.5rem) !important;
+        overflow-y: auto !important;
+        overflow-x: visible !important;
+    }
+    #sidebar:not(.sidebar-pinned) nav > * + * {
+        margin-top: 0.5rem !important;
+    }
+    #sidebar .sideboxmain {
+        min-height: 2.75rem;
+        border-radius: 0.6rem !important;
+        color: #657180 !important;
+    }
+    #sidebar:not(.sidebar-pinned) .sideboxmain {
+        width: 2.75rem !important;
+        height: 2.75rem !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        border-radius: 0.65rem !important;
+    }
+    #sidebar.sidebar-pinned .sideboxmain {
+        padding: 0.625rem 0.7rem !important;
+        gap: 0.7rem !important;
+    }
+    #sidebar .sideboxmain:hover,
+    #sidebar .sideboxmain.sidebox-active:not(.sidebox-current) {
+        background: #f3f5f7 !important;
+        color: #1f2937 !important;
+        box-shadow: none !important;
+    }
+    #sidebar .sideboxmain.sidebox-current {
+        background: #e8f0ff !important;
+        color: #1d4ed8 !important;
+        box-shadow: none !important;
+    }
+    #sidebar .sideboxmain.sidebox-current .oh-sidebar-label {
+        color: #1d4ed8 !important;
+    }
+    #sidebar nav .sideboxmain img,
+    #sidebar nav .sideboxmain svg:not(.sidebar-chevron) {
+        filter: brightness(0) opacity(0.62) !important;
+    }
+    #sidebar nav .sideboxmain.sidebox-current img,
+    #sidebar nav .sideboxmain.sidebox-current svg:not(.sidebar-chevron) {
+        filter: brightness(0) saturate(100%) invert(29%) sepia(93%) saturate(1713%) hue-rotate(215deg) brightness(90%) contrast(96%) !important;
+    }
+    #sidebar.sidebar-pinned .sidebar-subnav {
+        display: none !important;
+        margin: 0.15rem 0 0.3rem 1.7rem !important;
+        padding: 0 0 0 0.7rem !important;
+        border-left: 1px solid #e8edf2;
+    }
+    #sidebar.sidebar-pinned .sidebar-item:hover .sidebar-subnav,
+    #sidebar.sidebar-pinned .sidebar-item:focus-within .sidebar-subnav {
+        display: block !important;
+    }
+    #sidebar.sidebar-pinned .sidebar-subnav-link {
+        padding: 0.48rem 0.65rem !important;
+        color: #7b8490 !important;
+    }
+    #sidebar.sidebar-pinned .sidebar-subnav-link:hover,
+    #sidebar.sidebar-pinned .sidebar-subnav-link.oh-sidebar-active-link {
+        background: #f3f5f7 !important;
+        color: #1d4ed8 !important;
+        border-left: 0 !important;
+        padding-left: 0.65rem !important;
+    }
+    #sidebarFlyout {
+        min-width: 13.75rem;
+        padding: 0.625rem;
+        border-color: #e6ebf0;
+        border-radius: 0.75rem;
+        background: #fff;
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+    }
+    #sidebarFlyout .sidebar-flyout-title {
+        padding: 0.3rem 0.65rem 0.5rem;
+        color: #1f2937;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+    #sidebarFlyout a.sidebar-subnav-link {
+        padding: 0.6rem 0.7rem !important;
+        border-radius: 0.45rem;
+        color: #657180;
+    }
+    #sidebarFlyout a.sidebar-subnav-link:hover,
+    #sidebarFlyout a.sidebar-subnav-link.oh-sidebar-active-link {
+        border-left: 0 !important;
+        padding-left: 0.7rem !important;
+        background: #f3f5f7 !important;
+        color: #1d4ed8 !important;
+    }
+    .oh-main-content,
+    #sidebar ~ .oh-main-content .oh-main-header {
+        margin-left: 4.5rem !important;
+        left: 4.5rem !important;
+    }
+    #sidebar.sidebar-pinned ~ .oh-main-content,
+    #sidebar.sidebar-pinned ~ .oh-main-content .oh-main-header {
+        margin-left: 15.75rem !important;
+        left: 15.75rem !important;
+    }
+    #sidebar ~ #floating-buttons .fab-container {
+        left: 4.5rem !important;
+    }
+    #sidebar.sidebar-pinned ~ #floating-buttons .fab-container {
+        left: 15.75rem !important;
+    }
+    @media (max-width: 991.98px) {
+        #sidebar,
+        #sidebar.sidebar-pinned { width: 4.5rem !important; }
+        #sidebar.sidebar-pinned .oh-sidebar-label { opacity: 0 !important; pointer-events: none !important; }
+        .oh-main-content,
+        #sidebar.sidebar-pinned ~ .oh-main-content,
+        #sidebar ~ .oh-main-content .oh-main-header,
+        #sidebar.sidebar-pinned ~ .oh-main-content .oh-main-header {
+            margin-left: 4.5rem !important;
+            left: 4.5rem !important;
+        }
+    }
 </style>
 <div id="sidebar" class="fixed inset-y-0 left-0 bg-white border-r border-r-dark-50 z-50">
     <div class="p-4">
@@ -585,6 +795,17 @@
     <div id="sidebarFlyout">
         <ul id="sidebarFlyoutList" class="space-y-0.5"></ul>
     </div>
+    <button
+        id="sidebarReferenceToggle"
+        type="button"
+        class="sidebar-reference-toggle"
+        aria-label="{% trans 'Collapse sidebar' %}"
+        title="{% trans 'Collapse sidebar' %}"
+    >
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true" class="w-4 h-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7" />
+        </svg>
+    </button>
 </div>
 <script>
     function highlightRow(checkbox) {
@@ -723,9 +944,9 @@
           // so `right` can read as 64px even though the sidebar will expand
           // to 208px. Clamp to the expanded target width whenever the sidebar
           // is in hover/pinned state so the flyout never lands inside it.
-          if (sidebarEl.matches(':hover') || sidebarEl.classList.contains('sidebar-pinned')) {
+          if (sidebarEl.classList.contains('sidebar-pinned')) {
             var rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-            var expandedRight = sidebarRect.left + rootFontSize * 13; /* 13rem */
+            var expandedRight = sidebarRect.left + rootFontSize * 15.75;
             if (expandedRight > sidebarRight) sidebarRight = expandedRight;
           }
 
@@ -743,6 +964,10 @@
         }
 
         function showFlyout(item, btn) {
+          if (sidebarEl && sidebarEl.classList.contains("sidebar-pinned")) {
+            hideFlyout();
+            return;
+          }
           var subnav = item.querySelector(".sidebar-subnav");
           if (!subnav) return;
           var liItems = subnav.querySelectorAll("li");
@@ -752,6 +977,12 @@
 
           var label = btn.querySelector(".oh-sidebar-label");
           flyoutListEl.innerHTML = "";
+          if (label && label.textContent.trim()) {
+            var title = document.createElement("li");
+            title.className = "sidebar-flyout-title";
+            title.textContent = label.textContent.trim();
+            flyoutListEl.appendChild(title);
+          }
           liItems.forEach(function (li) { flyoutListEl.appendChild(li.cloneNode(true)); });
           if (window.htmx) htmx.process(flyoutListEl);
 
@@ -912,7 +1143,7 @@
           if (!animate && content) content.style.transition = "none";
 
           sidebarEl.classList.toggle("sidebar-pinned", pinned);
-          if (content) content.style.marginLeft = pinned ? "13rem" : "";
+          if (content) content.style.marginLeft = pinned ? "15.75rem" : "4.5rem";
 
           // Keep the lock button's tooltip/aria-label in sync with the state.
           // (The open vs closed padlock icon itself is swapped via CSS on .sidebar-pinned.)
@@ -938,6 +1169,22 @@
           pinBtn.addEventListener("click", function (e) {
             e.stopPropagation();
             applySidebarPin(!sidebarPinned, true);
+          });
+        }
+
+        var referenceToggle = document.getElementById("sidebarReferenceToggle");
+        function syncReferenceToggleLabel() {
+          if (!referenceToggle) return;
+          var label = sidebarPinned ? "{% trans 'Collapse sidebar' %}" : "{% trans 'Expand sidebar' %}";
+          referenceToggle.title = label;
+          referenceToggle.setAttribute("aria-label", label);
+        }
+        syncReferenceToggleLabel();
+        if (referenceToggle) {
+          referenceToggle.addEventListener("click", function (e) {
+            e.stopPropagation();
+            applySidebarPin(!sidebarPinned, true);
+            syncReferenceToggleLabel();
           });
         }
 
