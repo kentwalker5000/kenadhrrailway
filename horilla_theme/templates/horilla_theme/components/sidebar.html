@@ -474,13 +474,13 @@
         width: 3rem;
         height: 1.9rem;
         padding: 0;
-        border: 1px solid #e4e9ef;
+        border: 1px solid var(--primary-600, #1d4ed8);
         border-radius: 9999px;
-        background: #f1f5f9;
-        color: #52606f;
-        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.10);
+        background: var(--primary-600, #1d4ed8);
+        color: var(--primary-600, #1d4ed8);
+        box-shadow: 0 4px 14px rgba(29, 78, 216, 0.28);
         cursor: pointer;
-        transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+        transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
     }
     #sidebar .sidebar-reference-toggle::before {
         position: absolute;
@@ -495,8 +495,8 @@
         transition: transform 180ms ease;
     }
     #sidebar.sidebar-pinned .sidebar-reference-toggle {
-        background: #e8f0ff;
-        color: #1d4ed8;
+        background: var(--primary-600, #1d4ed8);
+        color: var(--primary-600, #1d4ed8);
     }
     #sidebar.sidebar-pinned .sidebar-reference-toggle::before {
         transform: translateX(1.08rem);
@@ -508,6 +508,11 @@
         height: 0.9rem;
         transform: translateX(-0.52rem);
         transition: transform 180ms ease;
+    }
+    #sidebar .sidebar-reference-toggle:hover {
+        border-color: var(--primary-700, #1e40af);
+        background: var(--primary-700, #1e40af);
+        box-shadow: 0 6px 18px rgba(29, 78, 216, 0.36);
     }
     #sidebar.sidebar-pinned .sidebar-reference-toggle svg {
         transform: translateX(0.52rem) rotate(180deg);
