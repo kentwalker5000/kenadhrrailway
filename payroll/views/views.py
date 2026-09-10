@@ -453,9 +453,16 @@ def settings(request):
     This method is used to render settings template
     """
     tracking_company = get_session_company(request)
-    instance, _created = PayrollSettings.objects.get_or_create(
-        company_id=tracking_company
+    # Older/demo databases may contain duplicate unscoped settings rows.
+    # Selecting the canonical oldest row keeps this page and the shared
+    # Settings screen usable while preserving the existing records.
+    instance = (
+        PayrollSettings.objects.filter(company_id=tracking_company)
+        .order_by("id")
+        .first()
     )
+    if instance is None:
+        instance = PayrollSettings.objects.create(company_id=tracking_company)
     currency_form = PayrollSettingsForm(instance=instance)
 
     if request.method == "POST":

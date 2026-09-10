@@ -6008,9 +6008,19 @@ def _system_preferences_context(request):
         )
         from payroll.forms.component_forms import PayrollSettingsForm
 
-        currency_instance, _created = PayrollSettings.objects.get_or_create(
-            company_id=tracking_company
+        # Legacy/demo databases can contain more than one unscoped payroll
+        # settings row. ``get_or_create`` raises MultipleObjectsReturned in
+        # that case and makes the global Settings button appear unresponsive.
+        # Reuse the oldest row without deleting any existing configuration.
+        currency_instance = (
+            PayrollSettings.objects.filter(company_id=tracking_company)
+            .order_by("id")
+            .first()
         )
+        if currency_instance is None:
+            currency_instance = PayrollSettings.objects.create(
+                company_id=tracking_company
+            )
         currency_form = PayrollSettingsForm(instance=currency_instance)
     else:
         currency_form = None
