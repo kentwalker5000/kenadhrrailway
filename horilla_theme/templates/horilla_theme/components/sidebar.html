@@ -13,7 +13,6 @@
         overflow: hidden !important;
         transition: width 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    #sidebar:hover,
     #sidebar.sidebar-pinned {
         width: 13rem !important; /* 208 px — expanded */
     }
@@ -26,9 +25,7 @@
         pointer-events: none !important;
         transition: opacity 0.12s ease !important;
     }
-    #sidebar:hover .oh-sidebar-label,
     #sidebar.sidebar-pinned .oh-sidebar-label,
-    #sidebar:hover .sidebar-chevron,
     #sidebar.sidebar-pinned .sidebar-chevron {
         opacity: 1 !important;
         pointer-events: auto !important;
@@ -87,7 +84,6 @@
         left: 4rem;
         transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease, box-shadow 0.3s ease;
     }
-    #sidebar:hover ~ #floating-buttons .fab-container,
     #sidebar.sidebar-pinned ~ #floating-buttons .fab-container {
         left: 13rem;
     }
@@ -400,11 +396,6 @@
         #sidebar.sidebar-pinned .sidebar-chevron {
             opacity: 0 !important;
             pointer-events: none !important;
-        }
-        #sidebar:hover .oh-sidebar-label,
-        #sidebar:hover .sidebar-chevron {
-            opacity: 1 !important;
-            pointer-events: auto !important;
         }
         .oh-main-content,
         #sidebar.sidebar-pinned ~ .oh-main-content {
