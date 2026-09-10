@@ -328,7 +328,7 @@ class Ticket(HorillaModel):
         elif self.status == "on_hold":
             return "row-status--red"
         elif self.status == "resolved":
-            return "row-status--yellowgreen"
+            return "row-status--helpdesk-blue"
         elif self.status == "canceled":
             return "row-status--gray"
 

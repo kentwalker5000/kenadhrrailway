@@ -25,8 +25,8 @@
     .hd-kpi-card__value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
     .hd-kpi-card__sub { font-size: 12px; opacity: 0.6; }
     .hd-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
-    .hd-badge--green { background: #dcfce7; color: #166534; } .hd-badge--amber { background: #fef3c7; color: #92400e; } .hd-badge--red { background: #fee2e2; color: #991b1b; }
-    .dark .hd-badge--green { background: #166534; color: #bbf7d0; } .dark .hd-badge--amber { background: #92400e; color: #fde68a; } .dark .hd-badge--red { background: #7f1d1d; color: #fca5a5; }
+    .hd-badge--green { background: #dcfce7; color: #166534; } .hd-badge--blue { background: #dbeafe; color: #1d4ed8; } .hd-badge--amber { background: #fef3c7; color: #92400e; } .hd-badge--red { background: #fee2e2; color: #991b1b; }
+    .dark .hd-badge--green { background: #166534; color: #bbf7d0; } .dark .hd-badge--blue { background: #1e3a5f; color: #bfdbfe; } .dark .hd-badge--amber { background: #92400e; color: #fde68a; } .dark .hd-badge--red { background: #7f1d1d; color: #fca5a5; }
 
     .hd-layout { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
     .hd-main { min-width: 0; } .hd-sidebar { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 90px; }
@@ -234,7 +234,7 @@
     const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
     const cardBg = isDark ? '#242424' : '#ffffff';
     const COLORS = ['#1d4ed8','#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
-    const statusColors = { new: '#3b82f6', in_progress: '#f59e0b', on_hold: '#ef4444', resolved: '#22c55e', canceled: '#94a3b8' };
+    const statusColors = { new: '#3b82f6', in_progress: '#f59e0b', on_hold: '#ef4444', resolved: '#1d4ed8', canceled: '#94a3b8' };
     const priorityColors = { low: '#22c55e', medium: '#f59e0b', high: '#ef4444' };
     const emptyHtml = (msg) => `<div class="hd-empty"><img src="/static/images/ui/no_records.svg" alt="">${msg}</div>`;
 
@@ -648,7 +648,7 @@
         .then(data => {
             const el = document.getElementById('hd-recent');
             if (!data.tickets.length) { el.innerHTML = '<div class="hd-info-panel__empty">{% trans "No tickets" %}</div>'; return; }
-            const sc = { new: 'hd-badge--amber', in_progress: 'hd-badge--amber', on_hold: 'hd-badge--red', resolved: 'hd-badge--green', canceled: '' };
+            const sc = { new: 'hd-badge--amber', in_progress: 'hd-badge--amber', on_hold: 'hd-badge--red', resolved: 'hd-badge--blue', canceled: '' };
             const sl = { new: '{% trans "New" %}', in_progress: '{% trans "In Progress" %}', on_hold: '{% trans "On Hold" %}', resolved: '{% trans "Resolved" %}', canceled: '{% trans "Canceled" %}' };
             el.innerHTML = data.tickets.map(t => `
                 <a href="/helpdesk/ticket-detail/${t.id}/" class="hd-ticket-item">
