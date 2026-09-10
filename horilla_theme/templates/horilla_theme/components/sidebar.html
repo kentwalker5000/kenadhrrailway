@@ -1082,7 +1082,6 @@
 
           if (sidebarEl.classList.contains("sidebar-pinned")) {
             var isOpen = item.classList.contains("sidebar-open");
-            closeSidebarMenus(item);
             item.classList.toggle("sidebar-open", !isOpen);
             btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
             if (!isOpen) setActiveSidebarMenu(btn);
@@ -1133,7 +1132,6 @@
         document.addEventListener("click", function (e) {
           if (sidebarEl && sidebarEl.contains(e.target)) return;
           if (flyoutEl && flyoutEl.contains(e.target)) return;
-          closeSidebarMenus();
           hideFlyout();
         });
 
