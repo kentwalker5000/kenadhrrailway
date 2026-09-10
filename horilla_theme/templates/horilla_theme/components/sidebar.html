@@ -452,9 +452,22 @@
         opacity: 1 !important;
         pointer-events: auto !important;
     }
-    #sidebar .sidebar-chevron,
-    #sidebar.sidebar-pinned .sidebar-chevron {
+    #sidebar:not(.sidebar-pinned) .sidebar-chevron {
         display: none !important;
+    }
+    #sidebar.sidebar-pinned .sidebar-chevron {
+        display: block !important;
+        opacity: 1 !important;
+        color: #94a3b8 !important;
+        transition: color 150ms ease, transform 180ms ease;
+    }
+    #sidebar.sidebar-pinned .sideboxmain.sidebox-current .sidebar-chevron {
+        transform: none;
+        color: #1d4ed8 !important;
+    }
+    #sidebar.sidebar-pinned .sidebar-item.sidebar-open .sidebar-chevron {
+        transform: rotate(180deg);
+        color: #1d4ed8 !important;
     }
     #sidebar .sidebar-reference-toggle {
         position: absolute;
@@ -576,6 +589,15 @@
     #sidebar .sideboxmain.sidebox-current .oh-sidebar-label {
         color: #1d4ed8 !important;
     }
+    #sidebar .sideboxmain:hover:not(.sidebox-current) {
+        background: #173a7a !important;
+        color: #fff !important;
+        box-shadow: 0 6px 14px rgba(23, 58, 122, 0.2) !important;
+    }
+    #sidebar .sideboxmain:hover:not(.sidebox-current) .oh-sidebar-label,
+    #sidebar .sideboxmain:hover:not(.sidebox-current) .sidebar-chevron {
+        color: #fff !important;
+    }
     #sidebar nav .sideboxmain img,
     #sidebar nav .sideboxmain svg:not(.sidebar-chevron) {
         filter: brightness(0) opacity(0.62) !important;
@@ -583,6 +605,10 @@
     #sidebar nav .sideboxmain.sidebox-current img,
     #sidebar nav .sideboxmain.sidebox-current svg:not(.sidebar-chevron) {
         filter: brightness(0) saturate(100%) invert(29%) sepia(93%) saturate(1713%) hue-rotate(215deg) brightness(90%) contrast(96%) !important;
+    }
+    #sidebar nav .sideboxmain:hover:not(.sidebox-current) img,
+    #sidebar nav .sideboxmain:hover:not(.sidebox-current) svg:not(.sidebar-chevron) {
+        filter: brightness(0) invert(1) !important;
     }
     #sidebar.sidebar-pinned .sidebar-subnav {
         display: none !important;
