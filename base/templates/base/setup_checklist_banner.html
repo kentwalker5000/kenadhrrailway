@@ -156,6 +156,105 @@
 }
 .hcl-action-btn:hover { box-shadow: 0 6px 14px rgba(29,78,216,0.25); transform: translateY(-1px); color: #ffffff; }
 
+/* Kenad dashboard treatment */
+.hcl-banner {
+    --hcl-blue: #1d4ed8;
+    --hcl-navy: #173a7a;
+    background: #ffffff;
+    border-color: #e2e8f0;
+    border-radius: 14px;
+    padding: 20px 22px;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.055);
+}
+.hcl-header {
+    align-items: center;
+    margin-bottom: 16px;
+}
+.hcl-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 11px;
+    background: #f1f5f9;
+    color: var(--hcl-navy);
+}
+.hcl-title {
+    color: #0f172a;
+    font-size: 16px;
+    line-height: 1.3;
+}
+.hcl-subtitle {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 12.5px;
+}
+.hcl-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 18px;
+}
+.hcl-progress__track {
+    height: 5px;
+    flex: 1;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8edf3;
+}
+.hcl-progress__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--hcl-blue);
+    transition: width 240ms ease;
+}
+.hcl-progress__value {
+    min-width: 34px;
+    color: var(--hcl-navy);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: right;
+}
+.hcl-circle-done {
+    background: var(--hcl-blue);
+    border-color: var(--hcl-blue);
+}
+.hcl-circle-active {
+    border-color: var(--hcl-blue);
+    box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.12);
+}
+.hcl-circle-num-active,
+.hcl-label-done { color: var(--hcl-blue); }
+.hcl-label-active { color: var(--hcl-navy); }
+.hcl-line-active { background: var(--hcl-blue); }
+.hcl-action {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid #dbe4ef;
+    border-left: 1px solid #dbe4ef;
+    border-radius: 11px;
+    background: #f8fafc;
+}
+.hcl-action-title {
+    color: #0f172a;
+    font-weight: 700;
+}
+.hcl-action-btn {
+    padding: 10px 17px;
+    background: var(--hcl-blue);
+    box-shadow: 0 4px 12px rgba(29, 78, 216, 0.18);
+}
+.hcl-action-btn:hover {
+    background: var(--hcl-navy);
+    box-shadow: 0 6px 15px rgba(23, 58, 122, 0.24);
+}
+.hcl-dismiss:hover {
+    color: var(--hcl-navy);
+    background: #eef2f7;
+}
+.dark .hcl-banner { background: #242424; }
+.dark .hcl-icon,
+.dark .hcl-action { background: rgba(255, 255, 255, 0.06); }
+
 /* ── Mobile adjustments ─────────────────────────────────────────────────── */
 @media (max-width: 480px) {
     .hcl-banner { padding: 18px 16px 16px; }
@@ -172,7 +271,7 @@
         <div class="hcl-header">
             <div style="display:flex; align-items:center; gap:12px;">
                 <div class="hcl-icon" aria-hidden="true">
-                    <svg width="20" height="20" fill="none" stroke="white" stroke-width="2"
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
                          stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                     </svg>
@@ -209,6 +308,15 @@
         </div>
 
         {# ── Step circles ── #}
+        <div class="hcl-progress" role="progressbar"
+             aria-label="{% trans 'Setup progress' %}"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ setup_progress_pct }}">
+            <div class="hcl-progress__track" aria-hidden="true">
+                <span class="hcl-progress__fill" style="width: {{ setup_progress_pct }}%;"></span>
+            </div>
+            <span class="hcl-progress__value">{{ setup_completed }}/{{ setup_total }}</span>
+        </div>
+
         <div class="hcl-steps" role="list" aria-label="{% trans 'Setup steps' %}">
             {% for step in setup_steps %}
                 {% if step.done %}
