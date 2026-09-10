@@ -1415,11 +1415,12 @@ def get_holiday_dates(range_start: date, range_end: date, employee=None) -> list
     return list(set(holiday_dates))
 
 
-def get_company_leave_dates(year):
+def get_company_leave_dates(year, *, company_leaves=None):
     """
     :return: This function returns a list of all company leave dates
     """
-    company_leaves = CompanyLeaves.objects.all()
+    if company_leaves is None:
+        company_leaves = CompanyLeaves.objects.all()
     company_leave_dates = []
     for company_leave in company_leaves:
         based_on_week = company_leave.based_on_week
@@ -1427,8 +1428,11 @@ def get_company_leave_dates(year):
         for month in range(1, 13):
             if based_on_week is not None:
                 # Set Sunday as the first day of the week
-                calendar.setfirstweekday(6)
-                month_calendar = calendar.monthcalendar(year, month)
+                month_calendar = calendar.Calendar(firstweekday=6).monthdayscalendar(
+                    year, month
+                )
+                if int(based_on_week) >= len(month_calendar):
+                    continue
                 weeks = month_calendar[int(based_on_week)]
                 weekdays_in_weeks = [day for day in weeks if day != 0]
                 for day in weekdays_in_weeks:
@@ -1442,8 +1446,9 @@ def get_company_leave_dates(year):
                         company_leave_dates.append(leave_date)
             else:
                 # Set Monday as the first day of the week
-                calendar.setfirstweekday(0)
-                month_calendar = calendar.monthcalendar(year, month)
+                month_calendar = calendar.Calendar(firstweekday=0).monthdayscalendar(
+                    year, month
+                )
                 for week in month_calendar:
                     if week[int(based_on_week_day)] != 0:
                         leave_date = datetime.strptime(

@@ -1073,11 +1073,22 @@ def generate_payslip(request):
                 if employee.pk not in employee_periods:
                     continue
                 employee_start, employee_end = employee_periods[employee.pk]
+                employee_summary = att_summary[employee.pk]
+                if employee_summary.get("unresolved_conflicts", 0):
+                    messages.error(
+                        request,
+                        _(
+                            "%(employee)s was skipped: resolve attendance/leave conflicts in Attendance > Monthly Summary, then generate the payslip again."
+                        )
+                        % {"employee": employee},
+                    )
+                    emp_count -= 1
+                    continue
                 payslip = payroll_calculation(
                     employee,
                     employee_start,
                     employee_end,
-                    month_summary=att_summary.get(employee.pk, dict({})),
+                    month_summary=employee_summary,
                 )
                 payslips.append(payslip)
                 json_data.append(payslip["json_data"])

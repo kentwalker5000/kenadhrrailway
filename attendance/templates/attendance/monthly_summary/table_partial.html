@@ -285,7 +285,7 @@
   </div>
   <div class="ms-stat-card" style="border-top: 3px solid #495057;">
     <div class="ms-stat-card__label">{% trans "Working Days" %}</div>
-    <p class="ms-stat-card__value ms-working-days-val">{{ total_working }}</p>
+    <p class="ms-stat-card__value ms-working-days-val">{{ working_days_label }}</p>
   </div>
   <div class="ms-stat-card" style="border-top: 3px solid #6610f2;">
     <div class="ms-stat-card__label">{% trans "Week Off" %}</div>
@@ -416,7 +416,7 @@ reloadSelectedCount($('.count_msAttendance'),'selectedInstances');">
     <p style="font-size:.82rem;color:#6c757d;margin:0;white-space:nowrap;">
       <ion-icon name="calendar-outline"></ion-icon>
       {% trans "Period" %}: <strong>{{ from_date }}</strong> &mdash; <strong>{{ to_date }}</strong>
-      &nbsp;|&nbsp; {% trans "Working days" %}: <strong>{{ total_working }}</strong>
+      &nbsp;|&nbsp; {% trans "Working days" %}: <strong>{{ working_days_label }}</strong>
     </p>
   </div>
 </div>

@@ -60,12 +60,36 @@ For a four-day period at 100/day, with the other days fully worked:
 The correction affects newly calculated payslips. It does not automatically
 recalculate, replace, or change the payment status of existing payslips.
 
+## Employee calendars and bulk conflict checks
+
+- Shared calendars apply company scope and employee/department/job-position
+  holiday assignments. Single-day holidays with a null end date are supported.
+- A roster entry changes its date only; unspecified dates retain company weekly
+  offs. An explicit workday removes the weekly off, but not a public holiday.
+  Draft/published roster behavior is unchanged: both remain HR calendar inputs.
+- Summary rows, calendar details, exports, attendance minimum-hour classification,
+  leave exclusions, hourly breakdowns and approved overtime components now use
+  these employee calendars. Overtime payment requires both validated attendance
+  and overtime approval.
+- The summary header displays a range when employees have different numbers of
+  working days, while rows and exports retain the individual counts.
+- Bulk payslip generation skips employees with unresolved attendance/leave
+  conflicts and tells HR where to resolve them. Clear employees can proceed in
+  the same batch. A skipped employee's existing payslip is not replaced.
+- Weekly-off expansion no longer changes the process-wide first weekday, and
+  skips fifth-week rules in months without a fifth calendar week.
+
+No existing attendance or payslip records are backfilled by these changes.
+Historical attendance with minimum hours computed before a roster change still
+needs review; this pass does not silently rewrite it.
+
 ## Remaining before live payroll
 
-This is not a certification of the complete payroll system. Employee-specific
-holiday/roster exceptions, genuinely unresolved attendance/leave conflicts,
-closed contracts, multi-month periods, hourly-contract leave-pay policy, and
-company-specific proration rules still need verification. The existing rule that
-holds the period's pay for unresolved conflicts has not been redesigned here;
-percentage leave is not deducted again on top of that hold.
+This is not a certification of the complete payroll system. Individual and
+scheduled payslip creation still use separate legacy calculation paths; the new
+conflict skip is for bulk generation. Recurring holiday expansion, historical
+roster edits, closed contracts, multi-month periods, hourly-contract leave-pay
+policy and company-specific proration still need verification. The underlying
+calculation's conflict-hold rule remains unchanged; bulk generation now stops
+before saving a draft based on it.
 No bank transfer, payment posting, or real employee email is part of these tests.

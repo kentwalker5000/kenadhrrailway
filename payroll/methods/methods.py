@@ -22,6 +22,7 @@ from base.methods import (
     get_working_days,
 )
 from base.models import CompanyLeaves, Holidays
+from base.work_calendar import employee_work_calendar
 from horilla.methods import get_horilla_model_class
 from leave.duration import iter_leave_day_units, leave_payment_type
 from payroll.models.models import Contract, Deduction, Payslip
@@ -76,9 +77,8 @@ def get_leaves(employee, start_date, end_date):
     custom_leave_units = []
     # (leave_type_name, payment_percentage) -> fractional days for the breakdown
     custom_days_by_type = defaultdict(float)
-    company_leave_dates = get_working_days(start_date, end_date, employee)[
-        "company_leave_dates"
-    ]
+    work_calendar = employee_work_calendar(employee, start_date, end_date)
+    company_leave_dates = set(work_calendar["holidays"]) | work_calendar["week_off"]
 
     if approved_leaves and approved_leaves.exists():
         for instance in approved_leaves:
@@ -218,10 +218,9 @@ def hourly_computation(employee, wage, start_date, end_date):
     attendance_data = get_attendance(employee, start_date, end_date)
     attendances_on_period = attendance_data["attendances_on_period"]
 
-    working_day_dates = set(
-        get_working_days(start_date, end_date, employee)["working_days_on"]
-    )
-    holiday_dates = set(get_holiday_dates(start_date, end_date, employee))
+    work_calendar = employee_work_calendar(employee, start_date, end_date)
+    working_day_dates = work_calendar["working_dates"]
+    holiday_dates = set(work_calendar["holidays"])
     # A holiday/week-off day HR has regularized away from that
     # classification (Full Present/Half Day) is treated as a normal
     # working day here too, matching build_monthly_summary's same rule.

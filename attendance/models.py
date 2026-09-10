@@ -31,7 +31,6 @@ from attendance.methods.utils import (
     validate_time_in_minutes,
 )
 from base.horilla_company_manager import HorillaCompanyManager
-from base.methods import is_company_leave, is_holiday
 from base.models import Company, EmployeeShift, EmployeeShiftDay, WorkType
 from employee.models import Employee
 
@@ -682,8 +681,14 @@ class Attendance(HorillaModel):
         """
         Set minimum_hour to 00:00 if the attendance date falls on a holiday or company leave.
         """
-        if is_holiday(self.attendance_date, self.employee_id) or is_company_leave(
-            self.attendance_date
+        from base.work_calendar import employee_work_calendar
+
+        work_calendar = employee_work_calendar(
+            self.employee_id, self.attendance_date, self.attendance_date
+        )
+        if (
+            self.attendance_date in work_calendar["holidays"]
+            or self.attendance_date in work_calendar["week_off"]
         ):
             self.minimum_hour = "00:00"
             self.is_holiday = True

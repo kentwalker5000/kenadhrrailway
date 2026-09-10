@@ -14,7 +14,8 @@ from attendance.models import (
     AttendanceSummaryHours,
     WorkRecords,
 )
-from base.models import Holidays
+from base.models import CompanyLeaves, Department, Holidays, Roster
+from base.work_calendar import employee_work_calendar
 from employee.models import Employee
 from horilla.testkit import clear_selected_company, make_company, make_employee
 from horilla.testkit.factories import make_attendance, make_leave_request
@@ -25,6 +26,7 @@ from payroll.methods.methods import (
     get_attendance,
     get_daily_salary,
     get_leaves,
+    hourly_computation,
 )
 from payroll.models.models import Contract, Payslip
 from payroll.views.component_views import payroll_calculation
@@ -666,3 +668,328 @@ class AttendanceLeavePayrollHandoffTests(TestCase):
                 self.assertEqual(result["loss_of_pay"], 400)
                 self.assertEqual(result["net_pay"], 0)
                 self.assertEqual(result["custom_leave_deduction"], 0)
+
+    def weekly_off(self, day):
+        rule = CompanyLeaves.objects.create(based_on_week_day=str(day.weekday()))
+        rule.company_id.add(self.company)
+        return rule
+
+    def roster(self, day, is_off=False):
+        department = Department.objects.create(department="Roster Dept")
+        department.company_id.add(self.company)
+        return Roster.objects.create(
+            employee=self.employee,
+            date=day,
+            department=department,
+            is_off=is_off,
+            is_published=True,
+        )
+
+    def test_assigned_holiday_only_counts_for_its_employee(self):
+        other = make_employee(company=self.company, email="no-holiday@test.horilla")
+        holiday = Holidays.objects.create(
+            name="Assigned Holiday",
+            start_date=self.start,
+            end_date=self.start,
+            company_id=self.company,
+            is_specific=True,
+            assigning_type="employee",
+        )
+        holiday.employees.add(self.employee)
+        rows = build_monthly_summary(
+            self.start,
+            self.end,
+            Employee.objects.filter(pk__in=[self.employee.pk, other.pk]),
+        )[0]
+        by_employee = {row["employee"].pk: row for row in rows}
+        self.assertEqual(by_employee[self.employee.pk]["holiday"], 1)
+        self.assertEqual(by_employee[self.employee.pk]["total_working"], 3)
+        self.assertEqual(by_employee[other.pk]["holiday"], 0)
+        self.assertEqual(by_employee[other.pk]["absent"], 4)
+        self.assertEqual(by_employee[other.pk]["total_working"], 4)
+        self.assertEqual(
+            _build_calendar_context(other, self.start, self.end)["cal_summary"][
+                "holiday"
+            ],
+            0,
+        )
+
+    def test_another_company_holiday_and_weekly_off_do_not_leak(self):
+        other_company = make_company("Other Calendar Co")
+        Holidays.objects.create(
+            name="Other Holiday",
+            start_date=self.start,
+            end_date=self.start,
+            company_id=other_company,
+        )
+        rule = CompanyLeaves.objects.create(based_on_week_day=str(self.end.weekday()))
+        rule.company_id.add(other_company)
+        summary = self.summary()
+        self.assertEqual(summary["holiday"], 0)
+        self.assertEqual(summary["week_off"], 0)
+        self.assertEqual(summary["absent"], 4)
+
+    def test_department_holiday_uses_current_assignment(self):
+        department = Department.objects.create(department="Holiday Dept")
+        department.company_id.add(self.company)
+        info = self.employee.employee_work_info
+        info.department_id = department
+        info.save()
+        holiday = Holidays.objects.create(
+            name="Department Day",
+            start_date=self.start,
+            end_date=self.start,
+            company_id=self.company,
+            is_specific=True,
+            assigning_type="department",
+        )
+        holiday.department.add(department)
+        self.assertEqual(self.summary()["holiday"], 1)
+        holiday.employees.add(self.employee)  # An old materialized assignment.
+        info.department_id = None
+        info.save()
+        self.assertEqual(self.summary()["holiday"], 0)
+
+    def test_null_end_holiday_is_a_single_day(self):
+        Holidays.objects.create(
+            name="Single Day",
+            start_date=self.start,
+            end_date=None,
+            company_id=self.company,
+        )
+        self.assertEqual(self.summary()["holiday"], 1)
+        self.assertEqual(
+            _build_calendar_context(self.employee, self.start, self.end)["cal_summary"][
+                "holiday"
+            ],
+            1,
+        )
+
+    def test_partial_roster_keeps_other_dates_weekly_off(self):
+        self.weekly_off(self.end)
+        self.roster(self.start)
+        summary = self.summary()
+        self.assertEqual(summary["week_off"], 1)
+        self.assertEqual(summary["absent"], 3)
+        self.assertEqual(summary["total_working"], 3)
+        self.assertEqual(
+            _build_calendar_context(self.employee, self.start, self.end)["cal_summary"][
+                "week_off"
+            ],
+            1,
+        )
+
+    def test_roster_workday_overrides_company_off_without_losing_the_day(self):
+        self.weekly_off(self.start)
+        self.roster(self.start, is_off=False)
+        summary = self.summary()
+        self.assertEqual(summary["week_off"], 0)
+        self.assertEqual(summary["absent"], 4)
+        self.assertEqual(summary["total_working"], 4)
+        attendance = self.half_attendance()
+        self.assertEqual(attendance.minimum_hour, "08:00")
+        self.assertEqual(self.summary()["present"], 0.5)
+        self.assertEqual(
+            hourly_computation(self.employee, 10, self.start, self.end)[
+                "regular_seconds"
+            ],
+            14400,
+        )
+
+    def test_roster_day_off_excludes_custom_leave_charge(self):
+        self.roster(self.start, is_off=True)
+        self.fractional_leave(self.custom_type(50), half="full_day")
+        self.fill_remaining_days()
+        result = payroll_calculation(
+            self.employee, self.start, self.end, month_summary=self.summary()
+        )
+        self.assertEqual(result["net_pay"], 400)
+        self.assertEqual(
+            get_leaves(self.employee, self.start, self.end)["partial_pay_days"], 0
+        )
+
+    def test_roster_off_attendance_is_week_off_overtime(self):
+        self.roster(self.start, is_off=True)
+        attendance = self.attendance(self.start)
+        self.assertEqual(attendance.minimum_hour, "00:00")
+        summary = self.summary()
+        self.assertEqual(summary["ot_week_off_seconds"], 28800)
+        salary = hourly_computation(self.employee, 10, self.start, self.end)
+        self.assertEqual(salary["regular_seconds"], 0)
+        self.assertEqual(salary["ot_week_off_seconds"], 28800)
+        from payroll.methods.payslip_calc import _classify_approved_overtime_seconds
+
+        self.assertEqual(
+            _classify_approved_overtime_seconds(self.employee, self.start, self.end),
+            (0, 0, 0),
+        )
+        attendance.attendance_overtime_approve = True
+        attendance.save()
+        self.assertEqual(
+            _classify_approved_overtime_seconds(self.employee, self.start, self.end),
+            (0, 28800, 0),
+        )
+        attendance.attendance_validated = False
+        attendance.save()
+        self.assertEqual(
+            _classify_approved_overtime_seconds(self.employee, self.start, self.end),
+            (0, 0, 0),
+        )
+
+    def test_holiday_wins_over_rostered_workday(self):
+        self.roster(self.start)
+        Holidays.objects.create(
+            name="Public Day",
+            start_date=self.start,
+            end_date=self.start,
+            company_id=self.company,
+        )
+        self.assertEqual(self.summary()["holiday"], 1)
+        self.assertNotIn(
+            self.start,
+            employee_work_calendar(self.employee, self.start, self.end)[
+                "working_dates"
+            ],
+        )
+
+    def test_conflicting_employee_is_skipped_without_a_zero_pay_draft(self):
+        self.fractional_leave(self.paid)
+        self.attendance(self.start)
+        self.login_hr()
+        response = self.generate([self.employee])
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Payslip.objects.filter(employee_id=self.employee).exists())
+        from django.contrib.messages import get_messages
+
+        self.assertTrue(
+            any(
+                "was skipped" in str(message)
+                for message in get_messages(response.wsgi_request)
+            )
+        )
+
+    def test_resolving_conflict_allows_generation(self):
+        self.fractional_leave(self.paid)
+        self.attendance(self.start)
+        self.fill_remaining_days()
+        AttendanceConflictResolution.objects.create(
+            employee_id=self.employee,
+            date=self.start,
+            resolution="full_present",
+            conflict_type="paid_leave",
+        )
+        self.login_hr()
+        self.assertEqual(self.generate([self.employee]).status_code, 302)
+        self.assertEqual(Payslip.objects.get(employee_id=self.employee).net_pay, 400)
+
+    def test_batch_skips_conflict_but_saves_clear_employee(self):
+        self.fractional_leave(self.paid)
+        self.attendance(self.start)
+        other = make_employee(company=self.company, email="clear-payroll@test.horilla")
+        self.activate(other)
+        for offset in range(4):
+            self.attendance(self.start + timedelta(days=offset), employee=other)
+        self.login_hr()
+        self.assertEqual(self.generate([self.employee, other]).status_code, 302)
+        self.assertFalse(Payslip.objects.filter(employee_id=self.employee).exists())
+        self.assertEqual(Payslip.objects.get(employee_id=other).net_pay, 400)
+
+    def test_holiday_detail_excludes_unassigned_holiday(self):
+        Holidays.objects.create(
+            name="Not Assigned",
+            start_date=self.start,
+            end_date=self.start,
+            company_id=self.company,
+            is_specific=True,
+            assigning_type="employee",
+        )
+        self.login_hr()
+        self.assertNotContains(self.detail("holiday"), "Not Assigned")
+
+    def test_week_off_details_keep_fallback_when_roster_is_partial(self):
+        self.weekly_off(self.end)
+        self.roster(self.start)
+        self.login_hr()
+        response = self.detail("week_off")
+        self.assertEqual(response.context["records"][0]["date"], self.end)
+
+    def test_conflict_skip_does_not_replace_existing_payslip(self):
+        self.fill_remaining_days()
+        self.attendance(self.start)
+        self.login_hr()
+        self.generate([self.employee])
+        original = Payslip.objects.get(employee_id=self.employee)
+        self.fractional_leave(self.paid)
+        self.generate([self.employee])
+        original.refresh_from_db()
+        self.assertEqual(original.net_pay, 400)
+        self.assertEqual(Payslip.objects.filter(employee_id=self.employee).count(), 1)
+
+    def test_calendar_panel_respects_rostered_workday(self):
+        self.weekly_off(self.start)
+        self.roster(self.start)
+        self.login_hr()
+        response = self.client.get(
+            reverse("attendance-monthly-summary-conflict-resolve"),
+            {
+                "employee_id": self.employee.pk,
+                "date": str(self.start),
+                "from_date": str(self.start),
+                "to_date": str(self.end),
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["conflict_type"], "")
+
+    def test_summary_header_shows_range_for_different_employee_calendars(self):
+        holiday = Holidays.objects.create(
+            name="Selected Day",
+            start_date=self.start,
+            end_date=self.start,
+            is_specific=True,
+            assigning_type="employee",
+            company_id=self.company,
+        )
+        holiday.employees.add(self.employee)
+        self.login_hr()
+        response = self.client.get(
+            reverse("attendance-monthly-summary-table"),
+            {
+                "from_date": str(self.start),
+                "to_date": str(self.end),
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["working_days_label"], "3–4")
+
+    def test_calendar_expansion_handles_a_missing_fifth_week(self):
+        from base.methods import get_company_leave_dates
+        import calendar
+
+        rule = CompanyLeaves.objects.create(based_on_week="4", based_on_week_day="6")
+        first_weekday = calendar.firstweekday()
+        dates = get_company_leave_dates(2026, company_leaves=[rule])
+        self.assertNotIn(date(2026, 2, 1), dates)
+        self.assertTrue(all(day.weekday() == 6 for day in dates))
+        self.assertEqual(calendar.firstweekday(), first_weekday)
+
+    def test_batch_payslips_respect_employee_specific_holiday(self):
+        other = make_employee(
+            company=self.company, email="other-calendar-pay@test.horilla"
+        )
+        self.activate(other)
+        holiday = Holidays.objects.create(
+            name="Personal Day",
+            start_date=self.start,
+            end_date=self.start,
+            company_id=self.company,
+            is_specific=True,
+            assigning_type="employee",
+        )
+        holiday.employees.add(self.employee)
+        self.login_hr()
+        self.assertEqual(self.generate([self.employee, other]).status_code, 302)
+        self.assertEqual(Payslip.objects.get(employee_id=self.employee).net_pay, 100)
+        self.assertEqual(Payslip.objects.get(employee_id=other).net_pay, 0)

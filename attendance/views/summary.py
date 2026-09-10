@@ -24,7 +24,6 @@ from attendance.models import Attendance, AttendanceDailyHours, AttendanceSummar
 from base.methods import (
     filtersubordinatesemployeemodel,
     get_company_leave_dates,
-    get_holiday_dates,
     get_working_days,
     paginator_qry,
 )
@@ -40,6 +39,7 @@ from base.models import (
 from employee.filters import EmployeeFilter
 from employee.models import Employee, EmployeeTag
 from horilla.decorators import hx_request_required, login_required, manager_can_enter
+from base.work_calendar import employee_work_calendar, employee_work_calendars
 from leave.duration import iter_leave_day_units, leave_payment_type
 
 # ---------------------------------------------------------------------------
@@ -120,22 +120,6 @@ def build_monthly_summary(
     # -- 1. Working days (respects CompanyLeaves + public Holidays) ----------
     working_data = get_working_days(from_date, to_date)
     total_working = working_data["total_working_days"]
-    off_dates = working_data["company_leave_dates"]  # combined, used for leave counting
-
-    # -- 1b. Public holidays (separate column) --------------------------------
-    holiday_dates_set = set(
-        d for d in get_holiday_dates(from_date, to_date) if from_date <= d <= to_date
-    )
-    total_holidays = len(holiday_dates_set)
-
-    # -- 1c. Company leave dates (fallback week-off when no roster) -----------
-    raw_cl = list(
-        set(
-            get_company_leave_dates(from_date.year)
-            + get_company_leave_dates(to_date.year)
-        )
-    )
-    total_company_leaves = len([d for d in raw_cl if from_date <= d <= to_date])
 
     # -- 2. Attendance per employee (single DB hit, hour-based) ---------------
     # Fetch worked seconds + minimum per record; classify as full (1.0),
@@ -146,7 +130,13 @@ def build_monthly_summary(
     from attendance.methods.utils import strtime_seconds as _strtime_secs
     from attendance.models import GraceTime as _GraceTime
 
-    emp_pks = list(employee_qs.values_list("pk", flat=True))
+    employees = list(
+        employee_qs.select_related(
+            "employee_work_info__department_id", "employee_work_info__job_position_id"
+        )
+    )
+    emp_pks = [emp.pk for emp in employees]
+    work_calendars = employee_work_calendars(employees, from_date, to_date)
 
     grace_secs = 0
     _dg = _GraceTime.objects.filter(is_default=True, is_active=True).first()
@@ -287,19 +277,6 @@ def build_monthly_summary(
                 (fraction, _lr.leave_type_id)
             )
 
-    # -- 4. Roster-based week-off per employee (single DB hit) ---------------
-    roster_qs = Roster.objects.filter(
-        employee_id__in=emp_pks,
-        date__range=(from_date, to_date),
-    ).values("employee_id", "is_off", "date")
-    roster_has = set()
-    roster_off_dates = defaultdict(set)  # {emp_pk: set(week_off_dates)}
-    for entry in roster_qs:
-        pk = entry["employee_id"]
-        roster_has.add(pk)
-        if entry["is_off"]:
-            roster_off_dates[pk].add(entry["date"])
-
     # -- 5. Batch-fetch conflict resolutions (with type) for all employees ----
     from attendance.models import AttendanceConflictResolution
 
@@ -320,8 +297,6 @@ def build_monthly_summary(
     total_holiday = 0
     total_conflicts = 0
 
-    off_set = frozenset(off_dates)  # company leaves + public holidays
-    company_off_dates = {d for d in raw_cl if from_date <= d <= to_date}
     all_dates_in_range = list(_iter_dates(from_date, to_date))
 
     # Resolution → (bucket, value) for direct overrides
@@ -338,18 +313,13 @@ def build_monthly_summary(
     emp_computed_hours = {}  # {emp_pk: hours_second} — filled per employee below
     hours_upsert = []  # AttendanceSummaryHours instances to bulk-upsert
 
-    for emp in employee_qs.select_related(
-        "employee_work_info__department_id",
-        "employee_work_info__job_position_id",
-    ):
+    for emp in employees:
         _att_vals = att_date_value_map.get(emp.pk, {})
         _att_secs = att_date_secs_map.get(emp.pk, {})
         _leave_units = leave_units_per_emp.get(emp.pk, {})
-        _emp_off = (
-            roster_off_dates.get(emp.pk, set())
-            if emp.pk in roster_has
-            else company_off_dates
-        )
+        emp_calendar = work_calendars[emp.pk]
+        _emp_off = emp_calendar["week_off"]
+        holiday_dates_set = set(emp_calendar["holidays"])
         _resolutions = resolutions_per_emp.get(emp.pk, {})
         _shift_pk = emp_shift_map.get(emp.pk)
         _shift_sched = shift_day_secs.get(_shift_pk, {}) if _shift_pk else {}
@@ -445,10 +415,9 @@ def build_monthly_summary(
                             pct = leave_type.get_payment_percentage()
                             custom_leave_units.append((d, pct, used))
                             custom_days_by_type[(leave_type.name, pct)] += used
-                if d not in off_set:
-                    absent += remaining
-                    if remaining:
-                        absent_day_units[d] = remaining
+                absent += remaining
+                if remaining:
+                    absent_day_units[d] = remaining
 
         # Conflict detection (uses raw data, not overrides). Attendance on a
         # holiday/week-off is normal overtime work, not a data discrepancy —
@@ -528,7 +497,7 @@ def build_monthly_summary(
                 },
                 "absent": absent,
                 "absent_day_units": absent_day_units,
-                "total_working": total_working,
+                "total_working": len(emp_calendar["working_dates"]),
                 "week_off": int(week_off),
                 "holiday": int(holiday_c),
                 "conflict_days": conflict_days,
@@ -757,12 +726,21 @@ def attendance_monthly_summary_table(request):
     # guarantees they can never disagree.
     select_all_ids = json.dumps([row["employee"].pk for row in rows])
     total_employee_count = len(rows)
+    working_counts = sorted({row["total_working"] for row in rows})
+    working_days_label = (
+        str(working_counts[0])
+        if len(working_counts) == 1
+        else f"{working_counts[0]}–{working_counts[-1]}"
+        if working_counts
+        else "0"
+    )
 
     rows = paginator_qry(rows, request.GET.get("page"))
 
     context = {
         "rows": rows,
         "total_working": total_working,
+        "working_days_label": working_days_label,
         "summary_totals": summary_totals,
         "from_date": from_date.isoformat(),
         "to_date": to_date.isoformat(),
@@ -839,7 +817,7 @@ def attendance_monthly_summary_export(request):
                 str(_("Absent Days")): row["absent"],
                 str(_("Paid Leave Days")): row["paid_leave"],
                 str(_("Unpaid Leave Days")): row["unpaid_leave"],
-                str(_("Working Days")): total_working,
+                str(_("Working Days")): row["total_working"],
                 str(_("Week Off")): row["week_off"],
                 str(_("Holiday")): row["holiday"],
                 str(_("Hours")): row.get("hours_label", "0h 00m"),
@@ -1289,23 +1267,23 @@ def attendance_monthly_summary_detail(request):
             .order_by("date")
             .values("date", "is_off")
         )
-        if roster_entries:
-            _wo_dates = {e["date"] for e in roster_entries if e["is_off"]}
-            context["source"] = "roster"
-        else:
-            _raw_cl = list(
-                set(
-                    get_company_leave_dates(from_date.year)
-                    + get_company_leave_dates(to_date.year)
-                )
-            )
-            _wo_dates = {d for d in _raw_cl if from_date <= d <= to_date}
-            context["source"] = "company"
+        _wo_dates = employee_work_calendar(emp, from_date, to_date)["week_off"]
+        context["source"] = "roster" if roster_entries else "company"
 
         # Include resolution="week_off" dates not already in the list
         for _d, _res in resolution_map.items():
             if _res == "week_off":
                 _wo_dates.add(_d)
+            elif _res in {
+                "full_present",
+                "half_present",
+                "partial_hours",
+                "absent",
+                "paid_leave",
+                "unpaid_leave",
+                "holiday",
+            }:
+                _wo_dates.discard(_d)
         context["records"] = [
             {"date": d, "is_regularized": d in resolution_map}
             for d in sorted(_wo_dates)
@@ -1314,14 +1292,13 @@ def attendance_monthly_summary_detail(request):
     elif metric == "holiday":
         holiday_objs = list(
             Holidays.objects.filter(
-                start_date__lte=to_date,
-                end_date__gte=from_date,
+                pk__in=employee_work_calendar(emp, from_date, to_date)["holiday_ids"],
             ).order_by("start_date")
         )
         # Annotate each holiday with is_regularized if any date in its range was overridden.
         for h in holiday_objs:
             h_start = max(h.start_date, from_date)
-            h_end = min(h.end_date, to_date)
+            h_end = min(h.end_date or h.start_date, to_date)
             h.is_regularized = any(
                 d in resolution_map for d in _iter_dates(h_start, h_end)
             )
@@ -1402,27 +1379,9 @@ def _build_calendar_context(emp, from_date, to_date):
     leave_conflict_dates = set(summary_row["leave_conflict_dates"])
 
     # -- Holiday dates --------------------------------------------------------
-    holiday_map = {}
-    for h in Holidays.objects.filter(start_date__lte=to_date, end_date__gte=from_date):
-        for d in _iter_dates(max(h.start_date, from_date), min(h.end_date, to_date)):
-            holiday_map[d] = h.name
-
-    # -- Week-off dates -------------------------------------------------------
-    roster_entries = list(
-        Roster.objects.filter(employee_id=emp, date__range=(from_date, to_date)).values(
-            "date", "is_off"
-        )
-    )
-    if roster_entries:
-        week_off_dates = {e["date"] for e in roster_entries if e["is_off"]}
-    else:
-        raw_cl = list(
-            set(
-                get_company_leave_dates(from_date.year)
-                + get_company_leave_dates(to_date.year)
-            )
-        )
-        week_off_dates = {d for d in raw_cl if from_date <= d <= to_date}
+    work_calendar = employee_work_calendar(emp, from_date, to_date)
+    holiday_map = work_calendar["holidays"]
+    week_off_dates = work_calendar["week_off"]
 
     # -- Existing resolutions {date: "attendance"|"leave"} -------------------
     resolutions_map = {
@@ -1920,7 +1879,9 @@ def attendance_monthly_summary_conflict_resolve(request):
         end_date__gte=date,
     ).select_related("leave_type_id"):
         conflict_type = (
-            "paid_leave" if _lr.leave_type_id.payment == "paid" else "unpaid_leave"
+            "unpaid_leave"
+            if leave_payment_type(_lr.leave_type_id) == "unpaid"
+            else "paid_leave"
         )
         conflict_label = _lr.leave_type_id.name
         break
@@ -1932,24 +1893,19 @@ def attendance_monthly_summary_conflict_resolve(request):
             end_date__isnull=True,
         ).select_related("leave_type_id"):
             conflict_type = (
-                "paid_leave" if _lr.leave_type_id.payment == "paid" else "unpaid_leave"
+                "unpaid_leave"
+                if leave_payment_type(_lr.leave_type_id) == "unpaid"
+                else "paid_leave"
             )
             conflict_label = _lr.leave_type_id.name
             break
-    if not conflict_type:
-        _h = Holidays.objects.filter(start_date__lte=date, end_date__gte=date).first()
-        if _h:
-            # attendance on holiday = OT; no attendance = just a holiday
-            conflict_type = "holiday_ot" if att_row else "holiday"
-            conflict_label = _h.name
-    if not conflict_type:
-        _roster = Roster.objects.filter(employee_id=emp, date=date, is_off=True).first()
-        if _roster:
-            conflict_type = "week_off_ot" if att_row else "week_off"
-        else:
-            _raw_cl = list(set(get_company_leave_dates(date.year)))
-            if date in _raw_cl:
-                conflict_type = "week_off_ot" if att_row else "week_off"
+    work_calendar = employee_work_calendar(emp, date, date)
+    if date in work_calendar["holidays"]:
+        conflict_type = "holiday_ot" if att_row else "holiday"
+        conflict_label = work_calendar["holidays"][date]
+    elif date in work_calendar["week_off"]:
+        conflict_type = "week_off_ot" if att_row else "week_off"
+        conflict_label = ""
 
     # Overall day status for display purposes — computed independently of
     # any AttendanceConflictResolution, so it always reflects the "natural"
@@ -1963,8 +1919,6 @@ def attendance_monthly_summary_conflict_resolve(request):
         day_status = "holiday"
     elif conflict_type == "week_off":
         day_status = "week_off"
-    elif date.weekday() >= 5:
-        day_status = "weekend"
     else:
         day_status = "absent"
 

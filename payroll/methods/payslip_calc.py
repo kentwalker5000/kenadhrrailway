@@ -972,13 +972,12 @@ def _classify_approved_overtime_seconds(employee, start_date, end_date):
         return 0, 0, 0
 
     from attendance.models import AttendanceConflictResolution
-    from base.methods import get_holiday_dates, get_working_days
+    from base.work_calendar import employee_work_calendar
 
     Attendance = get_horilla_model_class(app_label="attendance", model="attendance")
-    working_day_dates = set(
-        get_working_days(start_date, end_date, employee)["working_days_on"]
-    )
-    holiday_dates = set(get_holiday_dates(start_date, end_date, employee))
+    work_calendar = employee_work_calendar(employee, start_date, end_date)
+    working_day_dates = work_calendar["working_dates"]
+    holiday_dates = set(work_calendar["holidays"])
     regularized_dates = set(
         AttendanceConflictResolution.objects.filter(
             employee_id=employee,
@@ -991,6 +990,7 @@ def _classify_approved_overtime_seconds(employee, start_date, end_date):
         employee_id=employee,
         attendance_date__range=(start_date, end_date),
         attendance_overtime_approve=True,
+        attendance_validated=True,
     )
     regular_ot = week_off_ot = holiday_ot = 0
     for attendance in attendances:
