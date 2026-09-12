@@ -1,10 +1,19 @@
 """Biometric device model / validator smoke tests."""
 
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
+from django.urls import resolve, reverse
 
 from biometric.models import BiometricDevices, validate_schedule_time_format
 from horilla.testkit import make_company
+
+
+class BiometricRouteSmokeTests(SimpleTestCase):
+    def test_device_management_route_is_available_for_settings_links(self):
+        path = reverse("view-biometric-devices")
+
+        self.assertEqual(path, "/biometric/view-biometric-devices/")
+        self.assertEqual(resolve(path).url_name, "view-biometric-devices")
 
 
 class ScheduleTimeFormatTests(TestCase):
