@@ -623,6 +623,11 @@ urlpatterns = [
         recruitment_survey.SurveyTemplateFormView.as_view(),
         name="survey-template-create",
     ),
+    path(
+        "survey-template-update/",
+        surveys.create_template,
+        name="survey-template-update",
+    ),
     # path(
     #     "survey-template-create",
     #     surveys.create_template,
