@@ -1872,7 +1872,7 @@
                 recruitment: {% if perms.recruitment.view_recruitment or request.user.is_superuser %}true{% else %}false{% endif %},
             };
 
-            const emptyHtml = (msg) => `<div class="md-empty"><img src="/static/images/ui/no_records.svg" alt="">${msg}</div>`;
+            const emptyHtml = (msg) => `<div class="md-empty"><img src="/static/horilla_theme/assets/img/no-records.png" alt="">${msg}</div>`;
             const hideCard  = id => document.querySelector(`[data-chart-id="${id}"]`)?.classList.add('md-chart-card--hidden');
             const kpiCard   = (href, perm, svg, label, value, sub) => {
                 const body = `<div class="md-kpi-card__icon">${svg}</div><div class="md-kpi-card__label">${label}</div><div class="md-kpi-card__value">${value}</div>`;

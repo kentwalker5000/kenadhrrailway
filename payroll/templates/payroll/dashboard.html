@@ -299,7 +299,7 @@
     const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
     const cardBg = isDark ? '#242424' : '#ffffff';
     const COLORS = ['#E54F38','#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
-    const emptyHtml = (msg) => `<div class="pd-empty"><img src="/static/images/ui/no_records.svg" alt="">${msg}</div>`;
+    const emptyHtml = (msg) => `<div class="pd-empty"><img src="/static/horilla_theme/assets/img/no-records.png" alt="">${msg}</div>`;
     const fmt = v => Number(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     const empViewUrl = "{% url 'employee-view-individual' obj_id=0 %}";
     const empUrlFor = id => id ? empViewUrl.replace('/0/', '/' + id + '/') : '#';

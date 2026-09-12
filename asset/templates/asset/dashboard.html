@@ -831,7 +831,7 @@
             const cardBg = isDark ? '#242424' : '#ffffff';
             const appBlue = getComputedStyle(document.documentElement).getPropertyValue('--as-indigo').trim() || '#1d4ed8';
             const COLORS = [appBlue,'#22c55e','#f59e0b','#ef4444','#3b82f6','#a855f7','#06b6d4','#ec4899','#14b8a6','#f97316'];
-            const emptyHtml = (msg) => `<div class="as-empty"><img src="/static/images/ui/no_records.svg" alt="">${msg}</div>`;
+            const emptyHtml = (msg) => `<div class="as-empty"><img src="/static/horilla_theme/assets/img/no-records.png" alt="">${msg}</div>`;
             const fmt = v => Number(v).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
             document.getElementById('as-date').textContent = new Date().toLocaleDateString('en-US', {
