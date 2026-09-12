@@ -603,11 +603,11 @@ urlpatterns = [
         surveys.candidate_survey,
         name="candidate-survey",
     ),
-    # path(
-    #     "filter-survey/",
-    #     search.filter_survey,
-    #     name="rec-filter-survey",
-    # ),
+    path(
+        "filter-survey/",
+        search.filter_survey,
+        name="rec-filter-survey",
+    ),
     # path(
     #     "single-survey-view/<int:survey_id>/",
     #     surveys.single_survey,
@@ -781,7 +781,11 @@ urlpatterns = [
         views.delete_individual_note_file,
         name="delete-individual-note-file",
     ),
-    # path("get-mail-log-rec/", views.get_mail_log, name="get-mail-log-rec"),
+    path(
+        "get-mail-log-rec/<int:pk>/",
+        views.get_mail_log,
+        name="get-mail-log-rec",
+    ),
     path(
         "candidate-self-tracking/",
         views.candidate_self_tracking,

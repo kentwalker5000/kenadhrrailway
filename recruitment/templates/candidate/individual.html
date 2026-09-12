@@ -311,7 +311,7 @@
                         </li>
                     {% endif %}
                     <li class="oh-general__tab">
-                        <span hx-get="{% url 'get-mail-log-rec' %}?candidate_id={{candidate.id}}" hx-target="#maillog"
+                        <span hx-get="{% url 'get-mail-log-rec' candidate.id %}" hx-target="#maillog"
                             hx-trigger="load" class="oh-general__tab-link" data-action="general-tab"
                             data-target="#maillog" style="cursor: pointer;">{% trans "Mail Log" %}</span>
                     </li>
