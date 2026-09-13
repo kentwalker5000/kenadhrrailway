@@ -3,6 +3,7 @@ from django.urls import path, re_path
 from django.utils.translation import gettext_lazy as _
 
 from base import announcement
+from base import developer_dashboard
 from base import dashboard as dashboard_module
 from base import ess_dashboard, request_and_approve, views
 from base.cbv import (
@@ -66,6 +67,16 @@ from horilla_audit.models import AuditTag
 
 urlpatterns = [
     path("", views.home, name="home-page"),
+    path(
+        "developer/",
+        developer_dashboard.developer_dashboard,
+        name="developer-dashboard",
+    ),
+    path(
+        "developer/companies/<int:pk>/",
+        developer_dashboard.developer_company_edit,
+        name="developer-company-edit",
+    ),
     path(
         "legal/open-source-notices/",
         views.open_source_notices,

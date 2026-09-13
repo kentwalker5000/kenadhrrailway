@@ -1,0 +1,55 @@
+{% load i18n static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% trans "Developer dashboard" %} · KenadHr</title>
+  <link rel="icon" href="{% static 'favicons/kenadhr-32.png' %}">
+  <style>
+    :root { color-scheme: light; --blue:#1d4ed8; --ink:#182235; --muted:#5e6b82; --line:#dce3ef; --wash:#f5f7fb; --green:#16794a; --amber:#9a6400; }
+    * { box-sizing:border-box; } body { margin:0; background:var(--wash); color:var(--ink); font:15px/1.5 Arial,sans-serif; }
+    main { max-width:1360px; margin:auto; padding:32px 24px 56px; } .top { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; margin-bottom:24px; }
+    h1 { margin:0; font-size:28px; } h2 { margin:0; font-size:18px; } p { color:var(--muted); } .brand { color:var(--blue); font-weight:700; text-decoration:none; font-size:20px; }
+    .signout, .button { display:inline-block; border:1px solid var(--line); border-radius:7px; background:white; color:var(--ink); padding:9px 13px; text-decoration:none; font:inherit; cursor:pointer; }
+    .button-primary { border-color:var(--blue); background:var(--blue); color:white; } .stats { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; margin:22px 0; }
+    .stat, .panel { background:white; border:1px solid var(--line); border-radius:12px; padding:18px; } .stat strong { display:block; font-size:28px; margin-top:3px; } .stat span { color:var(--muted); font-size:13px; }
+    .panel { padding:0; overflow:hidden; } .panel-head { display:flex; justify-content:space-between; gap:18px; align-items:center; padding:18px; border-bottom:1px solid var(--line); }
+    form.search { display:flex; gap:8px; } input { min-width:245px; padding:9px 10px; border:1px solid var(--line); border-radius:7px; font:inherit; }
+    table { width:100%; border-collapse:collapse; } th,td { padding:14px 18px; text-align:left; vertical-align:top; border-bottom:1px solid #edf0f5; } th { color:var(--muted); font-size:12px; letter-spacing:.03em; text-transform:uppercase; }
+    tr:last-child td { border-bottom:0; } .company { display:flex; gap:10px; align-items:center; font-weight:700; } .logo { width:34px; height:34px; object-fit:cover; border-radius:8px; background:#e8eefb; }
+    .muted { color:var(--muted); font-size:13px; } .tag { display:inline-block; border-radius:999px; padding:3px 8px; font-size:12px; font-weight:700; } .active { color:var(--green); background:#e8f8ef; } .archived { color:var(--amber); background:#fff4db; }
+    .notice { margin-bottom:16px; padding:11px 14px; background:#eaf1ff; border:1px solid #b8cef9; border-radius:8px; color:#173d90; } .empty { padding:38px 18px; text-align:center; }
+    @media (max-width:850px) { main { padding:22px 12px; } .top,.panel-head { display:block; } .top .signout { margin-top:12px; } .stats { grid-template-columns:repeat(2,1fr); } form.search { margin-top:14px; } input { min-width:0; width:100%; } table { min-width:950px; } .scroll { overflow:auto; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="top">
+      <div><a class="brand" href="{% url 'developer-dashboard' %}">KenadHr</a><h1>{% trans "Developer dashboard" %}</h1><p>{% trans "Platform-wide company registration and account oversight." %}</p></div>
+      <a class="signout" href="{% url 'logout' %}">{% trans "Sign out" %}</a>
+    </div>
+    {% if messages %}{% for message in messages %}<div class="notice">{{ message }}</div>{% endfor %}{% endif %}
+    <section class="stats" aria-label="{% trans 'Company summary' %}">
+      <div class="stat"><span>{% trans "Registered companies" %}</span><strong>{{ total_companies }}</strong></div>
+      <div class="stat"><span>{% trans "Active companies" %}</span><strong>{{ active_companies }}</strong></div>
+      <div class="stat"><span>{% trans "Archived companies" %}</span><strong>{{ archived_companies }}</strong></div>
+      <div class="stat"><span>{% trans "Older registrations without owner" %}</span><strong>{{ unrecorded_registrations }}</strong></div>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>{% trans "Companies" %}</h2><p>{% trans "Registration owner is recorded for new company registrations. Older records are clearly marked when that history was not available." %}</p></div>
+        <form class="search" method="get"><input name="q" value="{{ search_query }}" placeholder="{% trans 'Search company or location' %}" aria-label="{% trans 'Search companies' %}"><button class="button" type="submit">{% trans "Search" %}</button></form>
+      </div>
+      <div class="scroll"><table><thead><tr><th>{% trans "Company" %}</th><th>{% trans "Registration" %}</th><th>{% trans "Company administrators" %}</th><th>{% trans "People" %}</th><th>{% trans "Status" %}</th><th>{% trans "Manage" %}</th></tr></thead>
+      <tbody>{% for company in companies %}<tr>
+        <td><div class="company">{% if company.icon %}<img class="logo" src="{{ company.icon.url }}" alt="">{% else %}<span class="logo"></span>{% endif %}<span>{{ company.company }}<small class="muted">{{ company.city }}{% if company.city and company.country %}, {% endif %}{{ company.country }}</small></span></div></td>
+        <td>{% if company.created_by %}<strong>{{ company.created_by.get_full_name|default:company.created_by.username }}</strong><div class="muted">{{ company.created_by.email|default:company.created_by.username }} · {{ company.created_at|date:"j M Y" }}</div>{% else %}<span class="muted">{% trans "Not recorded for this older company" %}{% if company.created_at %}<br>{{ company.created_at|date:"j M Y" }}{% endif %}</span>{% endif %}</td>
+        <td>{% for administrator in company.company_administrators %}<div>{{ administrator.get_full_name }} <span class="muted">{{ administrator.email }}</span></div>{% empty %}<span class="muted">{% trans "No superuser employee found" %}</span>{% endfor %}</td>
+        <td><strong>{{ company.active_employee_count }}</strong> {% trans "active" %}<div class="muted">{{ company.employee_count }} {% trans "total employees" %}</div></td>
+        <td>{% if company.is_active %}<span class="tag active">{% trans "Active" %}</span>{% else %}<span class="tag archived">{% trans "Archived" %}</span>{% endif %}</td>
+        <td><a class="button button-primary" href="{% url 'developer-company-edit' company.pk %}">{% trans "Open" %}</a></td>
+      </tr>{% empty %}<tr><td class="empty" colspan="6">{% trans "No companies match this search." %}</td></tr>{% endfor %}</tbody></table></div>
+    </section>
+  </main>
+</body>
+</html>

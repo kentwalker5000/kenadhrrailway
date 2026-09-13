@@ -125,9 +125,12 @@ class Company(HorillaModel):
     def clean(self):
         super().clean()
         from base.auth_backends import get_home_company_id, single_company_login_active
+        from base.platform_access import is_platform_developer
 
         request = getattr(_thread_locals, "request", None)
         if single_company_login_active() and request and request.user.is_authenticated:
+            if is_platform_developer(request.user):
+                return
             home_company_id = get_home_company_id(request.user)
             if not self.pk or self.pk != home_company_id:
                 raise ValidationError(_("You can only edit your assigned company."))

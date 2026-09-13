@@ -62,6 +62,7 @@ from base.password_reset import (
     reset_request_allowed,
     send_employee_reset_link,
 )
+from base.platform_access import employee_or_platform_required
 from base.decorators import (
     shift_request_change_permission,
     work_type_request_change_permission,
@@ -621,7 +622,11 @@ def initialize_database_company(request):
     if request.method == "POST":
         form = CompanyForm(request.POST, request.FILES)
         if form.is_valid():
-            company = form.save()
+            # The setup user is not authenticated until this company exists,
+            # so retain the registration owner for the developer dashboard.
+            company = form.save(commit=False)
+            company.created_by = user
+            company.save()
             EmployeeWorkInformation.objects.update_or_create(
                 employee_id=employee, defaults={"company_id": company}
             )
@@ -850,14 +855,17 @@ def login_user(request):
             messages.error(request, _("Invalid username or password."))
             return redirect("login")
 
+        from base.platform_access import is_platform_developer
+
+        platform_developer = is_platform_developer(user)
         employee = getattr(user, "employee_get", None)
-        if employee is None:
+        if employee is None and not platform_developer:
             messages.error(
                 request,
                 _("An employee related to this user's credentials does not exist."),
             )
             return redirect("login")
-        if not employee.is_active:
+        if employee is not None and not employee.is_active:
             messages.warning(
                 request,
                 _(
@@ -868,7 +876,11 @@ def login_user(request):
 
         from base.auth_backends import get_home_company_id, single_company_login_active
 
-        if single_company_login_active() and get_home_company_id(user) is None:
+        if (
+            single_company_login_active()
+            and get_home_company_id(user) is None
+            and not platform_developer
+        ):
             messages.error(
                 request,
                 _("Your account is not assigned to a company. Contact an administrator."),
@@ -1193,12 +1205,16 @@ class Workinfo:
         pass
 
 
-@login_required
+@employee_or_platform_required
 def home(request):
     """
     Role-aware home: employees → ESS; managers/HR/leadership → analytics dashboard.
     """
     from base.dashboard_roles import can_see_analytics_home, resolve_home_role
+    from base.platform_access import is_platform_developer
+
+    if is_platform_developer(request.user):
+        return redirect("developer-dashboard")
 
     if can_see_analytics_home(resolve_home_role(request)):
         return redirect("dashboard")

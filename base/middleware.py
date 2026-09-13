@@ -245,6 +245,22 @@ class CompanyMiddleware:
         """
         Set the company session data based on the company ID.
         """
+        from base.platform_access import is_platform_developer
+
+        # The platform console has a dedicated unassigned technical account.
+        # It receives an explicit all-company context without impersonating an
+        # employee or making company accounts cross-company.
+        if is_platform_developer(request.user):
+            all_company = AllCompany()
+            request.session["selected_company"] = "all"
+            request.selected_company_instance = None
+            request.session["selected_company_instance"] = {
+                "company": all_company.company,
+                "icon": all_company.icon.url,
+                "text": all_company.text,
+                "id": all_company.id,
+            }
+            return
         try:
             user = request.user.employee_get
         except Exception:
@@ -359,23 +375,29 @@ class CompanyMiddleware:
             return self.get_response(request)
 
         from base.auth_backends import single_company_login_active
+        from base.platform_access import is_platform_developer
 
         # An employee account belongs to one tenant. Derive its company from
         # the authenticated employee record on every request so a stale or
         # tampered session cannot change the data scope. This applies to HR
         # administrators too: superuser controls permissions, not tenancy.
         home_company = self._get_user_default_company(request)
+        platform_developer = is_platform_developer(request.user)
         if single_company_login_active():
             if home_company is None:
-                logout(request)
-                messages.error(
-                    request,
-                    _("Your account is not assigned to a company. Contact an administrator."),
-                )
-                set_selected_company(None)
-                return redirect("login")
-            company_id = home_company.id
-            request.session["selected_company"] = str(company_id)
+                if not platform_developer:
+                    logout(request)
+                    messages.error(
+                        request,
+                        _("Your account is not assigned to a company. Contact an administrator."),
+                    )
+                    set_selected_company(None)
+                    return redirect("login")
+                company_id = "all"
+                request.session["selected_company"] = "all"
+            else:
+                company_id = home_company.id
+                request.session["selected_company"] = str(company_id)
         else:
             selected_company = request.session.get("selected_company")
 
@@ -411,7 +433,7 @@ class CompanyMiddleware:
 
         if (
             (
-                single_company_login_active()
+                (single_company_login_active() and not platform_developer)
                 or (company_scoped_active() and not request.user.is_superuser)
             )
             and request.user.is_authenticated

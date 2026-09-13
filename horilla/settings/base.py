@@ -38,6 +38,15 @@ CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 HORILLA_ENV = env("HORILLA_ENV", default="")
 REDIS_URL = env("REDIS_URL", default=None)
 
+# Dedicated technical accounts allowed to use the cross-company developer
+# console. They must also be active staff superusers without an Employee row.
+# Keep this empty until a separate developer account has been created.
+KENADHR_PLATFORM_DEVELOPER_USERNAMES = tuple(
+    username.strip().casefold()
+    for username in env("KENADHR_PLATFORM_DEVELOPER_USERNAMES", default="").split(",")
+    if username.strip()
+)
+
 # Default site ID for django.contrib.sites framework.
 SITE_ID = 1
 
