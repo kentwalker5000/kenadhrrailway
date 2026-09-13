@@ -332,6 +332,13 @@ def send_mail_to_employee(request):
     uploaded_attachments = [
         (file.name, file.read(), file.content_type) for file in other_attachments
     ]
+    email_backend = ConfiguredEmailBackend(fail_silently=False)
+    sender = email_backend.dynamic_from_email_with_display_name
+    reply_to = email_backend.dynamic_mail_sent_from
+    if not email_backend.configuration or not sender or not reply_to:
+        messages.error(request, _("Email server is not configured."))
+        return HorillaRedirect(request)
+
     outbound_messages = []
     for employee, recipient_email in recipients:
         attachments = list(uploaded_attachments)
@@ -373,7 +380,10 @@ def send_mail_to_employee(request):
         email = EmailMessage(
             subject=subject,
             body=render_bdy,
+            from_email=sender,
             to=[recipient_email],
+            reply_to=[reply_to],
+            connection=email_backend,
         )
         email.content_subtype = "html"
         email.attachments = attachments

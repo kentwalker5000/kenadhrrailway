@@ -1,7 +1,7 @@
 """Tests for the employee-page mail workflow."""
 
 from inspect import unwrap
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
@@ -9,7 +9,7 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 
-from base.models import HorillaMailTemplate
+from base.models import DynamicEmailConfiguration, HorillaMailTemplate
 from employee.models import Employee
 from employee.not_in_out_dashboard import send_mail_to_employee
 from horilla.horilla_middlewares import set_selected_company
@@ -39,6 +39,19 @@ class StaffMailTests(TestCase):
         cls.attachment_template = HorillaMailTemplate.objects.create(
             title="Mail attachment", body="<p>Attachment body</p>", company_id=cls.company
         )
+        cls.email_configuration = DynamicEmailConfiguration.objects.create(
+            company_id=cls.company,
+            host="smtp.example.test",
+            port=465,
+            username="mailer@example.test",
+            password="synthetic-only-password",
+            from_email="mailer@example.test",
+            display_name="KenadHr",
+            use_ssl=True,
+            use_tls=False,
+            fail_silently=False,
+            is_primary=True,
+        )
 
     def setUp(self):
         set_selected_company(self.company.pk)
@@ -67,10 +80,19 @@ class StaffMailTests(TestCase):
             id=str(self.recipient.pk), subject="Hello", body="<p>Test message</p>"
         )
 
-        with patch("employee.not_in_out_dashboard.EmailMessage.send", return_value=1) as send:
+        with patch("employee.not_in_out_dashboard.EmailMessage") as email_class:
+            email_class.return_value.send.return_value = 1
             self.send_view(request)
 
-        send.assert_called_once()
+        email_class.assert_called_once_with(
+            subject="Hello",
+            body="<p>Test message</p>",
+            from_email="KenadHr <mailer@example.test>",
+            to=["recipient@example.test"],
+            reply_to=["mailer@example.test"],
+            connection=ANY,
+        )
+        email_class.return_value.send.assert_called_once()
         self.assertIn("Mail sent to Mail Recipient.", self.messages_for(request))
 
     def test_rejects_invalid_recipient_before_attempting_delivery(self):
