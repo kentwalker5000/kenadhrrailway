@@ -14,12 +14,18 @@ from django.contrib.auth.models import AnonymousUser
 from django.db import connection
 from django.template import Context, Engine
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+from django.utils import timezone
 from django.utils.translation import override
 from openpyxl import load_workbook
 from PIL import Image
 
 from base.context_processors import white_labelling_company
-from horilla.testkit import make_company, make_employee, make_user
+from horilla.testkit import (
+    CompanyFilterTestMixin,
+    make_company,
+    make_employee,
+    make_user,
+)
 from horilla_auth.models import HorillaUser
 from report.export import export_xlsx
 
@@ -121,3 +127,131 @@ class CompanyBrandingPreservationTests(TestCase):
         self.assertEqual(default.description, original.replace("Horilla", "KenadHr"))
         self.assertEqual(step.description, "Our custom Horilla training notes")
         self.assertEqual(list(default.steps.values_list("pk", flat=True)), step_ids)
+
+
+class TourBrandingMigrationTests(CompanyFilterTestMixin, TestCase):
+    """Exercise both migration directions without touching customer-owned copy."""
+
+    def setUp(self):
+        self.clear_company_context()
+        self.migration = importlib.import_module(
+            "horilla_tour.migrations.0088_rebrand_default_tours"
+        )
+        self.schema_editor = SimpleNamespace(connection=connection)
+
+    def make_copy(self, company=None, branded=False):
+        from horilla_tour.models import Tour, TourStep
+
+        tours = {}
+        records = []
+        for model, mappings in (
+            (Tour, self.migration.TOUR_COPY),
+            (TourStep, self.migration.STEP_COPY),
+        ):
+            for sequence, (slug, field, original) in enumerate(mappings):
+                if slug not in tours:
+                    tours[slug] = Tour._base_manager.create(
+                        slug=slug, title="Branding test tour", company_id=company
+                    )
+                value = original.replace("Horilla", "KenadHr") if branded else original
+                if model is Tour:
+                    record = tours[slug]
+                    model._base_manager.filter(pk=record.pk).update(**{field: value})
+                else:
+                    fields = {"title": "Branding test step", "description": ""}
+                    fields[field] = value
+                    record = model._base_manager.create(
+                        tour=tours[slug], sequence=sequence, **fields
+                    )
+                records.append((model, record.pk, field, value))
+        return records
+
+    def assert_copy(self, records, branded=False):
+        for model, pk, field, original in records:
+            with self.subTest(model=model.__name__, pk=pk, field=field):
+                expected = original.replace("Horilla", "KenadHr") if branded else original
+                self.assertEqual(getattr(model._base_manager.get(pk=pk), field), expected)
+
+    def snapshot(self):
+        from horilla_tour.models import Tour, TourProgress, TourStep
+
+        return {
+            model.__name__: list(model._base_manager.order_by("pk").values())
+            for model in (Tour, TourStep, TourProgress)
+        }
+
+    def test_every_default_copy_mapping_is_reversible(self):
+        records = self.make_copy()
+        self.migration.forwards(apps, self.schema_editor)
+        self.assert_copy(records, branded=True)
+        self.migration.backwards(apps, self.schema_editor)
+        self.assert_copy(records)
+
+    def test_both_directions_are_idempotent(self):
+        self.make_copy()
+        for migrate in (self.migration.forwards, self.migration.backwards):
+            with self.subTest(direction=migrate.__name__):
+                migrate(apps, self.schema_editor)
+                after_first_run = self.snapshot()
+                migrate(apps, self.schema_editor)
+                self.assertEqual(self.snapshot(), after_first_run)
+
+    def test_company_owned_copy_is_untouched_in_both_directions(self):
+        records = self.make_copy(company=make_company("Original company tour"))
+        records += self.make_copy(
+            company=make_company("Branded company tour"), branded=True
+        )
+        for migrate in (self.migration.forwards, self.migration.backwards):
+            migrate(apps, self.schema_editor)
+            self.assert_copy(records)
+
+    def test_custom_global_copy_and_unrelated_tours_are_untouched(self):
+        from horilla_tour.models import Tour, TourStep
+
+        slug, field, original = self.migration.TOUR_COPY[0]
+        step_original = next(
+            text for key, name, text in self.migration.STEP_COPY
+            if key == slug and name == "description"
+        )
+        records = []
+        for key, suffix in ((slug, " Custom training notes."), ("custom-tour", "")):
+            tour = Tour._base_manager.create(
+                slug=key, title="Custom tour", **{field: original + suffix}
+            )
+            step = TourStep._base_manager.create(
+                tour=tour, title="Custom step", description=step_original + suffix
+            )
+            records.extend([
+                (Tour, tour.pk, field, original + suffix),
+                (TourStep, step.pk, "description", step_original + suffix),
+            ])
+        for migrate in (self.migration.forwards, self.migration.backwards):
+            migrate(apps, self.schema_editor)
+            self.assert_copy(records)
+
+    def test_completion_progress_and_step_structure_are_preserved(self):
+        from horilla_tour.models import TourProgress, TourStep
+
+        records = self.make_copy()
+        tour_id = records[0][1]
+        for index, status in enumerate(("in_progress", "completed", "skipped")):
+            TourProgress._base_manager.create(
+                tour_id=tour_id,
+                user=make_user(f"tour-branding-{index}"),
+                status=status,
+                last_step=2,
+                completed_at=None if status == "in_progress" else timezone.now(),
+            )
+        progress_before = self.snapshot()["TourProgress"]
+        structure_before = list(TourStep._base_manager.order_by("pk").values(
+            "pk", "tour_id", "sequence", "element_selector", "side", "align", "page_match"
+        ))
+        for migrate in (self.migration.forwards, self.migration.backwards):
+            migrate(apps, self.schema_editor)
+            self.assertEqual(self.snapshot()["TourProgress"], progress_before)
+            self.assertEqual(
+                list(TourStep._base_manager.order_by("pk").values(
+                    "pk", "tour_id", "sequence", "element_selector", "side", "align", "page_match"
+                )),
+                structure_before,
+            )
