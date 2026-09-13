@@ -327,7 +327,7 @@ THEMES_DATA = [
     },
     {
         "name": "Navy Steel Theme",
-        "description": "KenadHR's professional navy-blue brand theme",
+        "description": "KenadHr's professional navy-blue brand theme",
         "is_default": True,
         "primary_50": "#f8fafc",
         "primary_100": "#eff6ff",

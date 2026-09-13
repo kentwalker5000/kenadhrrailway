@@ -1,15 +1,20 @@
 {
-    "name": "Kenad HR",
-    "short_name": "Kenad HR",
-    "description": "Kenad HR management software",
+    "name": "KenadHr",
+    "short_name": "KenadHr",
+    "description": "KenadHr management software",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "orangered",
-    "theme_color": "orangered",
+    "background_color": "#ffffff",
+    "theme_color": "#1d4ed8",
     "icons": [
       {
-        "src": "/static/favicons/apple-touch-icon.png",
+        "src": "/static/favicons/kenadhr-192.png",
         "sizes": "192x192",
+        "type": "image/png"
+      },
+      {
+        "src": "/static/favicons/kenadhr-512.png",
+        "sizes": "512x512",
         "type": "image/png"
       }
     ]

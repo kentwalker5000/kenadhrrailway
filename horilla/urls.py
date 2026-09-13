@@ -32,6 +32,10 @@ from . import settings
 
 logger = logging.getLogger(__name__)
 
+admin.site.site_header = "KenadHr Administration"
+admin.site.site_title = "KenadHr"
+admin.site.index_title = "Administration"
+
 
 def health_check(request):
     """Liveness probe — cheap, no dependency checks (Docker HEALTHCHECK)."""

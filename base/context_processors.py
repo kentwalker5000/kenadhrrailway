@@ -239,12 +239,12 @@ def white_labelling_company(request):
             company = hq
 
         return {
-            "white_label_company_name": company.company if company else "Kenad HR",
+            "white_label_company_name": company.company if company else "KenadHr",
             "white_label_company": company,
         }
     else:
         return {
-            "white_label_company_name": "Kenad HR",
+            "white_label_company_name": "KenadHr",
             "white_label_company": None,
         }
 

@@ -187,7 +187,7 @@ def deliver_subscription(
         )
         filters_pairs = filters.summary_pairs()
         meta = {
-            "product_name": "Horilla HR · Standard Reports",
+            "product_name": "KenadHr · Standard Reports",
             "company": company,
             "user": (
                 str(subscription.owner)
@@ -230,14 +230,14 @@ def deliver_subscription(
 
         report_title = str(definition.name)
         body = (
-            f"{_('Attached is your scheduled Horilla report:')}\n\n"
+            f"{_('Attached is your scheduled KenadHr report:')}\n\n"
             f"{report_title}\n"
             f"{_('Period')}: {filters.from_date} → {filters.to_date}\n"
             f"{_('Subscription')}: {subscription.name}\n"
             f"{_('Format')}: {fmt.upper()}\n"
         )
         email = EmailMessage(
-            subject=f"[Horilla] {subscription.name}",
+            subject=f"[KenadHr] {subscription.name}",
             body=body,
             from_email=from_email,
             to=recipients,

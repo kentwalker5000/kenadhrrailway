@@ -1345,7 +1345,7 @@ def _permission_app_label(app_name):
     except LookupError:
         label = app_name.replace("_", " ")
 
-    label = re.sub(r"(?i)^horilla[\s_\-]*", "", label).strip()
+    label = re.sub(r"(?i)^(?:horilla|kenadhr)[\s_\-]*", "", label).strip()
     label = label.replace("_", " ").strip()
     if not label:
         label = app_name.replace("_", " ")
@@ -2094,8 +2094,8 @@ def mail_server_conf(request):
 def mail_server_test_email(request):
     instance_id = request.GET.get("instance_id")
     white_labelling = getattr(settings, "WHITE_LABELLING", False)
-    image_path = path.join(settings.STATIC_ROOT, "images/ui/horilla-logo.png")
-    company_name = "Kenad HR"
+    image_path = path.join(settings.STATIC_ROOT, "images/ui/kenadhr-wordmark.png")
+    company_name = "KenadHr"
 
     if white_labelling:
         hq = Company.objects.filter(hq=True).last()
@@ -2117,7 +2117,7 @@ def mail_server_test_email(request):
         form = DynamicMailTestForm(request.POST)
         if form.is_valid():
             email_to = form.cleaned_data["to_email"]
-            subject = _("Test mail from Kenad HR")
+            subject = _("Test mail from KenadHr")
 
             # HTML content
             html_content = f"""

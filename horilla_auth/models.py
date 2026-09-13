@@ -6,6 +6,22 @@ from django.utils.translation import gettext_lazy as _
 class HorillaUser(AbstractUser):
     is_new_employee = models.BooleanField(default=False)
 
+    @property
+    def is_system_actor(self):
+        return self.username == "Horilla Bot"
+
+    def __str__(self):
+        # Keep the scheduler's service-account identifier stable. Only its
+        # presentation changes; normal user names are never rebranded.
+        if self.username == "Horilla Bot":
+            return "KenadHr System"
+        return super().__str__()
+
+    def get_full_name(self):
+        if self.username == "Horilla Bot":
+            return "KenadHr System"
+        return super().get_full_name()
+
     class Meta:
         swappable = "AUTH_USER_MODEL"
         verbose_name = _("User")

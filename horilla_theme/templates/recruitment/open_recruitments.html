@@ -10,11 +10,11 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="{% static 'horilla_theme/assets/css/tailwind.css' %}" rel="stylesheet">
-        <title>{% trans "Kenad Careers - Open Recruitments" %}</title>
+        <title>{% trans "KenadHr Careers - Open Recruitments" %}</title>
         <link
             rel="apple-touch-icon"
             sizes="180x180"
-            href="{% if hq_company.icon %}{{hq_company.icon.url}} {% else %}{% static 'favicons/apple-touch-icon.png' %}{% endif %}"
+            href="{% if hq_company.icon %}{{hq_company.icon.url}} {% else %}{% static 'favicons/kenadhr-180.png' %}{% endif %}"
         >
         <link
             rel="stylesheet"
@@ -24,13 +24,13 @@
             rel="icon"
             type="image/png"
             sizes="32x32"
-            href="{% if hq_company.icon %}{{hq_company.icon.url}} {% else %}{% static 'favicons/favicon-32x32.png' %}{% endif %}"
+            href="{% if hq_company.icon %}{{hq_company.icon.url}} {% else %}{% static 'favicons/kenadhr-32.png' %}{% endif %}"
         >
         <link
             rel="icon"
             type="image/png"
             sizes="16x16"
-            href="{% if hq_company.icon %}{{hq_company.icon.url}} {% else %}{% static 'favicons/favicon-16x16.png' %}{% endif %}"
+            href="{% if hq_company.icon %}{{hq_company.icon.url}} {% else %}{% static 'favicons/kenadhr-16.png' %}{% endif %}"
         >
         <link
             rel="stylesheet"
@@ -157,7 +157,7 @@
                 </div>
                 <div>
                     <h1 class="text-xl font-bold leading-tight">
-                        {% trans "Kenad Careers" %}
+                        {% trans "KenadHr Careers" %}
                     </h1>
                     <p class="text-sm text-dark-100 leading-tight">
                         {% trans "Open positions across our teams" %}

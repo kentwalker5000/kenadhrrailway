@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">KenadHr</title>
+  <rect width="64" height="64" rx="16" fill="#1d4ed8"/>
+  <path d="M18 15h8v15l14-15h10L34 32l17 17H40L26 35v14h-8z" fill="#fff"/>
+</svg>
