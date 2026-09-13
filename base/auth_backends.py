@@ -69,6 +69,19 @@ def company_scoped_active():
     return bool(getattr(settings, "COMPANY_SCOPED_PERMISSIONS", False))
 
 
+def single_company_login_active():
+    """True when employee accounts must remain in their home company."""
+    return bool(getattr(settings, "SINGLE_COMPANY_LOGIN", True))
+
+
+def get_home_company_id(user):
+    """Return the company assigned to an employee's work information."""
+    try:
+        return user.employee_get.employee_work_info.company_id_id
+    except Exception:
+        return None
+
+
 def get_assigned_company_ids(user):
     """
     Companies where the user holds a CompanyGroupAssignment (role grant).
@@ -89,13 +102,13 @@ def get_allowed_company_ids(user):
     plus their work-info company (so they can return to their home company
     even when they only hold a role elsewhere).
     """
+    home_company_id = get_home_company_id(user)
+    if single_company_login_active() and not getattr(user, "is_superuser", False):
+        return {home_company_id} if home_company_id else set()
+
     ids = get_assigned_company_ids(user)
-    try:
-        work_company_id = user.employee_get.employee_work_info.company_id_id
-        if work_company_id:
-            ids.add(work_company_id)
-    except Exception:
-        pass
+    if home_company_id:
+        ids.add(home_company_id)
     return ids
 
 

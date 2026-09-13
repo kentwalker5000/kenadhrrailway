@@ -61,6 +61,7 @@ def get_companies(request):
         company_scoped_active,
         get_allowed_company_ids,
         get_assigned_company_ids,
+        single_company_login_active,
     )
 
     scoped = (
@@ -108,6 +109,8 @@ def get_companies(request):
 
     if not request.user.is_authenticated:
         show_switcher = False
+    elif single_company_login_active() and not request.user.is_superuser:
+        show_switcher = False
     elif scoped:
         show_switcher = len(companies) > 1
     else:
@@ -129,12 +132,19 @@ def update_selected_company(request):
         company_scoped_active,
         get_allowed_company_ids,
         get_assigned_company_ids,
+        get_home_company_id,
+        single_company_login_active,
     )
 
     company_id = request.GET.get("company_id")
     next_url = request.META.get("HTTP_REFERER") or "/"
 
-    if company_scoped_active() and not request.user.is_superuser:
+    if single_company_login_active() and not request.user.is_superuser:
+        home_company_id = get_home_company_id(request.user)
+        if not home_company_id or str(company_id) != str(home_company_id):
+            messages.error(request, _("Your account is limited to its assigned company."))
+            return HorillaRedirect(request, redirect_to=next_url)
+    elif company_scoped_active() and not request.user.is_superuser:
         allowed = get_allowed_company_ids(request.user)
         assigned = get_assigned_company_ids(request.user)
         if company_id == "all":

@@ -359,29 +359,47 @@ class CompanyMiddleware:
             set_selected_company(None)
             return self.get_response(request)
 
-        selected_company = request.session.get("selected_company")
+        from base.auth_backends import single_company_login_active
 
-        # --- Determine company ---
-        if selected_company == "all":
-            company_id = "all"
-
-        elif selected_company:
-            company_exists = Company.objects.filter(id=selected_company).exists()
-            company_id = selected_company if company_exists else None
-
+        # HR users are tenants, not cross-company operators. Derive their
+        # company from the authenticated employee record on every request so a
+        # stale or tampered session cannot change the data scope.
+        home_company = self._get_user_default_company(request)
+        if single_company_login_active() and not request.user.is_superuser:
+            if home_company is None:
+                logout(request)
+                messages.error(
+                    request,
+                    _("Your account is not assigned to a company. Contact an administrator."),
+                )
+                set_selected_company(None)
+                return redirect("login")
+            company_id = home_company.id
+            request.session["selected_company"] = str(company_id)
         else:
-            # First login or session expired → set user's own company
-            default_company = self._get_user_default_company(request)
-            if default_company:
-                request.session["selected_company"] = str(default_company.id)
-                company_id = default_company.id
-            else:
-                request.session["selected_company"] = "all"
+            selected_company = request.session.get("selected_company")
+
+            # --- Determine company ---
+            if selected_company == "all":
                 company_id = "all"
 
-        # Scoped mode: clamp to allowed companies, but permit "all"
-        # (= All my companies) when the user has 2+ assignments.
-        company_id = self._clamp_to_allowed(request, company_id)
+            elif selected_company:
+                company_exists = Company.objects.filter(id=selected_company).exists()
+                company_id = selected_company if company_exists else None
+
+            else:
+                # First login or session expired → set user's own company
+                default_company = home_company
+                if default_company:
+                    request.session["selected_company"] = str(default_company.id)
+                    company_id = default_company.id
+                else:
+                    request.session["selected_company"] = "all"
+                    company_id = "all"
+
+            # Scoped mode: clamp to allowed companies, but permit "all"
+            # (= All my companies) when the user has 2+ assignments.
+            company_id = self._clamp_to_allowed(request, company_id)
 
         # Cache allowed / assigned ids on the request for queryset filtering / writes
         from base.auth_backends import (
