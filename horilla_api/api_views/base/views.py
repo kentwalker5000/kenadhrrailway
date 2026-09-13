@@ -249,16 +249,21 @@ class CompanyView(APIView):
     serializer_class = CompanySerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+        from base.auth_backends import get_account_companies
+
+        return get_account_companies(self.request.user)
+
     @method_decorator(permission_required("base.view_company"), name="dispatch")
     def get(self, request, pk=None):
         if pk:
-            company = object_check(Company, pk)
+            company = self.get_queryset().filter(pk=pk).first()
             if company is None:
                 return Response({"error": _("Company not found ")}, status=404)
             serializer = self.serializer_class(company)
             return Response(serializer.data, status=200)
 
-        companies = Company.objects.all()
+        companies = self.get_queryset()
         paginator = PageNumberPagination()
         page = paginator.paginate_queryset(companies, request)
         serializer = self.serializer_class(page, many=True)
@@ -266,7 +271,7 @@ class CompanyView(APIView):
 
     @method_decorator(permission_required("base.change_company"), name="dispatch")
     def put(self, request, pk):
-        company = object_check(Company, pk)
+        company = self.get_queryset().filter(pk=pk).first()
         if company is None:
             return Response({"error": _("Company not found ")}, status=404)
         serializer = self.serializer_class(company, data=request.data)
@@ -277,6 +282,12 @@ class CompanyView(APIView):
 
     @method_decorator(permission_required("base.add_company"), name="dispatch")
     def post(self, request):
+        from base.auth_backends import single_company_login_active
+
+        if single_company_login_active():
+            return Response(
+                {"error": _("Your account already belongs to a company.")}, status=403
+            )
         serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -285,6 +296,12 @@ class CompanyView(APIView):
 
     @method_decorator(permission_required("base.delete_company"), name="dispatch")
     def delete(self, request, pk):
+        from base.auth_backends import single_company_login_active
+
+        if single_company_login_active():
+            return Response(
+                {"error": _("Company deletion is not available.")}, status=403
+            )
         company = object_check(Company, pk)
         if company is None:
             return Response({"error": _("Company not found ")}, status=400)

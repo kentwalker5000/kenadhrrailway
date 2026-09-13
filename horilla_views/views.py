@@ -390,6 +390,16 @@ class HorillaDeleteConfirmationView(View):
     # URL name used by delete_confirmation.html for hx-get / hx-post on this flow
     generic_delete_url_name = "generic-delete"
 
+    def dispatch(self, request, *args, **kwargs):
+        from base.auth_backends import single_company_login_active
+
+        if (
+            single_company_login_active()
+            and request.GET.get("model", "").strip().lower() == "base.company"
+        ):
+            return HttpResponse(status=403)
+        return super().dispatch(request, *args, **kwargs)
+
     def get(self, *args, **kwargs):
         """
         GET method

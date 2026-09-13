@@ -825,6 +825,10 @@ class CompanyForm(ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["icon"].required = False
+        from base.auth_backends import single_company_login_active
+
+        if self.instance.pk and single_company_login_active():
+            self.fields.pop("hq", None)
 
     def validate_image(self, file):
         max_size = 5 * 1024 * 1024

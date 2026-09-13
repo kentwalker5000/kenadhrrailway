@@ -1,0 +1,53 @@
+{% load i18n %}
+<style>
+    .company-profile { padding: 12px; color: inherit; }
+    .company-profile__header { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+    .company-profile h1 { font-size: 22px; font-weight: 600; margin: 0 0 6px; }
+    .company-profile__hint { color: #64748b; font-size: 14px; margin: 0; }
+    .company-profile__edit { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; padding: 11px 18px; border: 0; border-radius: 8px; background: var(--color-primary-600, #1d4ed8); color: #fff; font-size: 14px; cursor: pointer; }
+    .company-profile__identity { display: flex; align-items: center; gap: 20px; padding: 24px 0; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; }
+    .company-profile__logo { width: 80px; height: 80px; object-fit: contain; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px; background: #fff; }
+    .company-profile__identity h2 { font-size: 24px; font-weight: 600; margin: 0 0 4px; }
+    .company-profile__details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 40px; padding: 28px 0; margin: 0; }
+    .company-profile__details dt { font-size: 13px; color: #64748b; margin-bottom: 7px; }
+    .company-profile__details dd { font-size: 15px; line-height: 1.6; margin: 0; overflow-wrap: anywhere; }
+    .company-profile__address { grid-column: 1 / -1; }
+    @media (max-width: 640px) {
+        .company-profile__header { align-items: flex-start; flex-direction: column; }
+        .company-profile__details { grid-template-columns: 1fr; gap: 20px; }
+    }
+</style>
+<section class="company-profile" aria-labelledby="company-profile-title">
+    <header class="company-profile__header">
+        <div>
+            <h1 id="company-profile-title">{% trans "Company" %}</h1>
+            <p class="company-profile__hint">{% trans "Your company's name, logo and contact address." %}</p>
+        </div>
+        {% if company and perms.base.change_company %}
+            <button type="button" class="company-profile__edit"
+                hx-get="{% url 'company-update-form' company.pk %}"
+                hx-target="#genericModalBody" data-toggle="oh-modal-toggle" data-target="#genericModal">
+                <ion-icon name="create-outline" aria-hidden="true"></ion-icon>
+                {% trans "Edit company" %}
+            </button>
+        {% endif %}
+    </header>
+    {% if company %}
+        <div class="company-profile__identity">
+            {% if company.icon %}<img class="company-profile__logo" src="{{ company.icon.url }}" alt="{% trans 'Company logo' %}">{% endif %}
+            <div>
+                <h2>{{ company.company }}</h2>
+                <p class="company-profile__hint">{% trans "Your company" %}</p>
+            </div>
+        </div>
+        <dl class="company-profile__details">
+            <div class="company-profile__address"><dt>{% trans "Address" %}</dt><dd>{{ company.address|default:"—"|linebreaksbr }}</dd></div>
+            <div><dt>{% trans "Country" %}</dt><dd>{{ company.country|default:"—" }}</dd></div>
+            <div><dt>{% trans "State / Region" %}</dt><dd>{{ company.state|default:"—" }}</dd></div>
+            <div><dt>{% trans "City" %}</dt><dd>{{ company.city|default:"—" }}</dd></div>
+            <div><dt>{% trans "Postal code" %}</dt><dd>{{ company.zip|default:"—" }}</dd></div>
+        </dl>
+    {% else %}
+        <p>{% trans "This account is not assigned to a company. Contact your administrator." %}</p>
+    {% endif %}
+</section>

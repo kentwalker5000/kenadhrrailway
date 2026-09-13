@@ -1841,6 +1841,10 @@ def object_delete(request, obj_id, **kwargs):
         return handle_no_permission(request)
 
     model = kwargs.get("model")
+    from base.auth_backends import single_company_login_active
+
+    if model is Company and single_company_login_active():
+        return HttpResponse(status=403)
     redirect_path = kwargs.get("redirect_path")
     delete_error = False
     try:
@@ -2358,6 +2362,10 @@ def company_create(request):
     This method render template and form to create company and save if the form is valid
     """
 
+    from base.auth_backends import single_company_login_active
+
+    if single_company_login_active():
+        return HttpResponse(status=403)
     form = CompanyForm()
     companies = Company.objects.all()
     if request.method == "POST":
@@ -2382,11 +2390,18 @@ def company_view(request):
     """
     This method used to view created companies
     """
-    companies = Company.objects.all()
+    from base.auth_backends import get_account_companies, single_company_login_active
+
+    companies = get_account_companies(request.user)
     return render(
         request,
         "base/company/company.html",
-        {"companies": companies, "model": Company()},
+        {
+            "companies": companies,
+            "company": companies.first(),
+            "single_company": single_company_login_active(),
+            "model": Company(),
+        },
     )
 
 
@@ -2400,17 +2415,16 @@ def company_update(request, id, **kwargs):
         id : company instance id
 
     """
-    company = Company.objects.filter(id=id).first()
-    if not company:
-        messages.error(request, _("Company not found."))
-        return HorillaRedirect(request)
+    from base.auth_backends import get_account_companies
+
+    company = get_object_or_404(get_account_companies(request.user), pk=id)
     form = CompanyForm(instance=company)
     if request.method == "POST":
         form = CompanyForm(request.POST, request.FILES, instance=company)
         if form.is_valid():
             form.save()
             messages.success(request, _("Company updated"))
-            return HorillaRedirect(request)
+            return HorillaRedirect(request, redirect_to=reverse("company-view"))
     return render(
         request, "base/company/company_form.html", {"form": form, "company": company}
     )

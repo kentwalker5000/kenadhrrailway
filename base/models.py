@@ -7,7 +7,7 @@ from datetime import date, datetime
 
 from django.apps import apps
 from django.contrib import messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Case, Q, When
@@ -121,6 +121,30 @@ class Company(HorillaModel):
 
     def __str__(self) -> str:
         return str(self.company)
+
+    def clean(self):
+        super().clean()
+        from base.auth_backends import get_home_company_id, single_company_login_active
+
+        request = getattr(_thread_locals, "request", None)
+        if single_company_login_active() and request and request.user.is_authenticated:
+            home_company_id = get_home_company_id(request.user)
+            if not self.pk or self.pk != home_company_id:
+                raise ValidationError(_("You can only edit your assigned company."))
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        from base.auth_backends import single_company_login_active
+
+        request = getattr(_thread_locals, "request", None)
+        if single_company_login_active() and request and request.user.is_authenticated:
+            raise PermissionDenied(
+                _("Company deletion is not available from an employee account.")
+            )
+        return super().delete(*args, **kwargs)
 
     def company_icon_with_name(self):
 

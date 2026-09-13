@@ -7,14 +7,16 @@ from typing import Any
 from django import forms
 from django.contrib import messages
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
 
+from base.auth_backends import get_account_companies, single_company_login_active
 from base.filters import CompanyFilter
 from base.forms import CompanyForm
 from base.models import Company
+from horilla.http.response import HorillaRedirect
 from horilla_views.cbv_methods import login_required, permission_required
 from horilla_views.forms import DynamicBulkUpdateForm
 from horilla_views.generic.cbv.views import (
@@ -49,7 +51,10 @@ class CompanyListView(HorillaListView):
                       """,
                 }
             )
-        if self.request.user.has_perm("base.delete_company"):
+        if (
+            not single_company_login_active()
+            and self.request.user.has_perm("base.delete_company")
+        ):
             self.actions.append(
                 {
                     "action": _("Delete"),
@@ -68,6 +73,26 @@ class CompanyListView(HorillaListView):
     filter_class = CompanyFilter
     selected_instances_key_id = "selectedInstance"
     bulk_update_fields = ["country", "state", "city", "zip"]
+
+    def get(self, request, *args, **kwargs):
+        if single_company_login_active():
+            return render(
+                request,
+                "base/company/company_profile.html",
+                {"company": get_account_companies(request.user).first()},
+            )
+        return super().get(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        if single_company_login_active():
+            return HttpResponse(status=405)
+        return super().post(request, *args, **kwargs)
+
+    def bulk_update_accessibility(self):
+        return not single_company_login_active() and super().bulk_update_accessibility()
+
+    def import_accessibility(self):
+        return not single_company_login_active() and super().import_accessibility()
 
     def get_bulk_form(self):
         """
@@ -138,7 +163,10 @@ class CompanyNavView(HorillaNavView):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.search_url = reverse("company-list")
-        if self.request.user.has_perm("base.add_company"):
+        if (
+            not single_company_login_active()
+            and self.request.user.has_perm("base.add_company")
+        ):
             self.create_attrs = f"""
                                 onclick = "event.stopPropagation();"
                                 data-toggle="oh-modal-toggle"
@@ -147,13 +175,12 @@ class CompanyNavView(HorillaNavView):
                                 hx-get="{reverse('company-create-form')}"
                                 """
 
-    nav_title = _("Companies")
+    nav_title = _("Company")
     search_swap_target = "#listContainer"
     filter_instance = CompanyFilter()
 
 
 @method_decorator(login_required, name="dispatch")
-@method_decorator(permission_required(perm="base.add_company"), name="dispatch")
 class CompanyCreateForm(HorillaFormView):
     """
     form view for creating and editing company in settings
@@ -163,6 +190,23 @@ class CompanyCreateForm(HorillaFormView):
     form_class = CompanyForm
     new_display_title = _("Create Company")
     template_name = "cbv/company/company_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        if single_company_login_active() and pk is None:
+            return HttpResponse(status=403)
+        permission = "base.change_company" if pk is not None else "base.add_company"
+        if not request.user.has_perm(permission):
+            return HttpResponse(status=403)
+        if pk is not None:
+            get_object_or_404(get_account_companies(request.user), pk=pk)
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_queryset(self):
+        pk = self.kwargs.get("pk")
+        if pk is None:
+            return None
+        return get_object_or_404(get_account_companies(self.request.user), pk=pk)
 
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
@@ -197,14 +241,19 @@ class CompanyCreateForm(HorillaFormView):
 
     def form_valid(self, form: CompanyForm) -> HttpResponse:
         if form.is_valid():
+            updating = bool(form.instance.pk)
             form.save()
-            if getattr(self.form.instance, "pk", None):
+            if updating:
                 messages.success(
-                    self.request, _("Company have been successfully updated.")
+                    self.request, _("Company details updated successfully.")
                 )
             else:
                 messages.success(
-                    self.request, _("Company have been successfully created.")
+                    self.request, _("Company created successfully.")
+                )
+            if single_company_login_active():
+                return HorillaRedirect(
+                    self.request, redirect_to=reverse("company-view")
                 )
             return self.HttpResponse()
 

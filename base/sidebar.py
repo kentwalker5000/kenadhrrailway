@@ -355,7 +355,7 @@ class BaseSettings:
     order = 2
     items = [
         {
-            "label": _("Companies"),
+            "label": _("Company"),
             "url": reverse_lazy("company-view"),
             "accessibility": company_accessibility,
             "search_entries": [

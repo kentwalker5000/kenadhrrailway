@@ -113,6 +113,16 @@ def get_assigned_company_ids(user):
     )
 
 
+def get_account_companies(user):
+    """Company records available to this account's settings and API."""
+    from base.models import Company
+
+    companies = Company.objects.all()
+    if single_company_login_active():
+        companies = companies.filter(pk=get_home_company_id(user))
+    return companies
+
+
 def get_allowed_company_ids(user):
     """
     Companies the user may select in the switcher: assignment companies

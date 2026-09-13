@@ -5,6 +5,9 @@
     {% include "generic/components.html" %}
     <meta name="csrf-token" content="{{ csrf_token }}">
 
+    {% if single_company %}
+        {% include "base/company/company_profile.html" %}
+    {% else %}
     <div class="oh-inner-sidebar-content">
         {% if perms.base.view_company %}
             <div hx-get="{% url 'company-navbar' %}" hx-trigger="load"></div>
@@ -21,4 +24,5 @@
             </div>
         {% endif %}
     </div>
+    {% endif %}
 {% endblock settings %}
