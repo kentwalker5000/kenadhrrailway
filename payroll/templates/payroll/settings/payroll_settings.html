@@ -30,18 +30,10 @@
             <div class="col-sm-12 col-md-12 col-lg-3">
                 <div class="oh-input-group">
                     <div class="oh-label__info" for="currency_symbol">
-                        <label class="oh-label" for="currency_symbol">{% trans "Currency Symbol" %}</label>
+                        <label class="oh-label" for="id_currency_symbol">{% trans "Currency" %}</label>
                     </div>
-                    <input
-                        type="text"
-                        name="currency_symbol"
-                        value="{{currency_form.instance.currency_symbol}}"
-                        maxlength="5"
-                        class="oh-input w-100"
-                        placeholder="{% trans 'Currency Symbol' %}"
-                        required=""
-                        id="id_currency_symbol"
-                    >
+                    {{ currency_form.currency_symbol }}
+                    {{ currency_form.currency_symbol.errors }}
                 </div>
             </div>
             <div class="col-sm-12 col-md-12 col-lg-3">

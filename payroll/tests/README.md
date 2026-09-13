@@ -128,3 +128,17 @@ SMTP transport; no real employee receives a message. They cover:
 For visual QA only, set `PAYSLIP_PDF_QA_OUTPUT` to a temporary PDF path when
 running the tests, then render its pages with `pdftoppm` and inspect them. That
 artifact contains synthetic data only and should not be committed.
+
+## African currency selection
+
+`python manage.py test payroll.tests.test_currencies --keepdb` covers the
+currency selector and company-specific formatting. Settings include 43 African
+currency codes (including Saint Helena), plus EUR for Mayotte/Reunion and other
+commonly used international currencies. Ghanaian Cedi / Cedis (GHS) is listed
+first. Current codes, including SLE, MRU, STN and ZWG, were checked against the
+[SIX ISO 4217 list](https://www.six-group.com/en/products-services/financial-information/market-reference-data/data-standards.html).
+
+Saved legacy symbols remain selectable and are not silently replaced. This is
+a currency-label feature: selecting a currency does **not** convert amounts,
+change decimal-rounding policies, calculate exchange rates or implement country
+tax rules. Existing company settings and payroll amounts are not backfilled.

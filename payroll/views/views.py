@@ -454,7 +454,13 @@ def settings(request):
     """
     This method is used to render settings template
     """
-    tracking_company = get_session_company(request)
+    from base.auth_backends import get_home_company_id
+
+    tracking_company = get_home_company_id(request.user)
+    if not tracking_company:
+        return HttpResponse(_("Your account is not assigned to a company."), status=403)
+    if request.method == "POST" and not request.user.has_perm("payroll.change_payrollsettings"):
+        return HttpResponse(_("Permission denied."), status=403)
     # Older/demo databases may contain duplicate unscoped settings rows.
     # Selecting the canonical oldest row keeps this page and the shared
     # Settings screen usable while preserving the existing records.
@@ -464,7 +470,7 @@ def settings(request):
         .first()
     )
     if instance is None:
-        instance = PayrollSettings.objects.create(company_id=tracking_company)
+        instance = PayrollSettings.objects.create(company_id_id=tracking_company)
     currency_form = PayrollSettingsForm(instance=instance)
 
     if request.method == "POST":
@@ -597,7 +603,9 @@ def view_payslip_pdf(request, payslip_id):
             data["json_data"]["employee"] = payslip.employee_id.id
             data["json_data"]["payslip"] = payslip.id
             data["instance"] = payslip
-            data["currency"] = PayrollSettings.objects.first().currency_symbol
+            from payroll.currencies import get_currency_format
+
+            data["currency"] = get_currency_format()[0]
             data["all_deductions"] = []
             for deduction_list in [
                 data["basic_pay_deductions"],
@@ -1533,6 +1541,7 @@ def payslip_pdf(request, id):
     """
 
     from .component_views import filter_payslip
+    from payroll.currencies import get_currency_format
 
     if Payslip.objects.filter(id=id).exists():
         payslip = Payslip.objects.get(id=id)
@@ -1584,7 +1593,7 @@ def payslip_pdf(request, id):
                     "employee": payslip.employee_id,
                     "payslip": payslip,
                     "json_data": data.copy(),
-                    "currency": PayrollSettings.objects.first().currency_symbol,
+                    "currency": get_currency_format()[0],
                     "all_deductions": [],
                     "all_allowances": data["allowances"].copy(),
                     "host": request.get_host(),

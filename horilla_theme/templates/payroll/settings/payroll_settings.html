@@ -17,19 +17,12 @@
 
         <div class="flex align-center gap-2 items-start">
             <div class="w-full" id="setting-currency-symbol">
-                <label>{% trans "Currency Symbol" %}</label>
+                <label for="id_currency_symbol">{% trans "Currency" %}</label>
                 <p class="text-xs text-gray-500 mt-1">
-                    {% trans "Symbol shown for monetary values (e.g. $, €)." %}
+                    {% trans "Choose the currency displayed on payroll pages and payslips." %}
                 </p>
-                <input
-                    type="text"
-                    name="currency_symbol"
-                    value="{{currency_form.instance.currency_symbol}}"
-                    maxlength="5"
-                    placeholder="{% trans 'Currency Symbol' %}"
-                    required=""
-                    id="id_currency_symbol"
-                >
+                {{ currency_form.currency_symbol }}
+                {{ currency_form.currency_symbol.errors }}
             </div>
             <div class="w-full" id="setting-currency-position">
                 <label> {% trans "Position" %}</label>
@@ -38,9 +31,12 @@
                 </p>
                 {{ currency_form.position }}
             </div>
+            {% if perms.payroll.change_payrollsettings %}
             <button class="h-[36px] btn self-end" type="submit">
                 {% trans 'Save' %}
             </button>
+            {% endif %}
         </div>
+        <p class="text-xs text-gray-500 mt-3">{% trans "Changing currency only changes the display label. It does not convert amounts or recalculate payroll." %}</p>
     </form>
 </div>

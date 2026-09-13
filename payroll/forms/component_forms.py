@@ -561,6 +561,16 @@ class PayrollSettingsForm(ModelForm):
     Form for PayrollSettings model
     """
 
+    currency_symbol = forms.ChoiceField(
+        label=_("Currency"), widget=forms.Select(attrs={"class": "oh-select oh-select-2 w-100"})
+    )
+
+    def __init__(self, *args, **kwargs):
+        from payroll.currencies import currency_choices
+
+        super().__init__(*args, **kwargs)
+        self.fields["currency_symbol"].choices = currency_choices(self.instance.currency_symbol)
+
     class Meta:
         """
         Meta class for additional options

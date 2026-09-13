@@ -205,8 +205,8 @@ class GeneralSettings:
                     "anchor": "setting-badge-id-prefix",
                 },
                 {
-                    "text": _("Currency Symbol"),
-                    "description": _("Symbol shown for monetary values e.g. $ €"),
+                    "text": _("Currency"),
+                    "description": _("Payroll currency including Cedis (GHS) and other African currencies"),
                     "anchor": "setting-currency-symbol",
                 },
                 {
