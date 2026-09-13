@@ -332,6 +332,11 @@ urlpatterns = [
     path("clock-in/", clock_in_out.clock_in, name="clock-in"),
     path("clock-out/", clock_in_out.clock_out, name="clock-out"),
     path(
+        "staff-clock-out/<int:attendance_id>/",
+        clock_in_out.staff_clock_out,
+        name="staff-clock-out",
+    ),
+    path(
         "on-time-view/",
         views.on_time_view,
         name="on-time-view",

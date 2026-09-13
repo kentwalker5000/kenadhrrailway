@@ -16,9 +16,10 @@ from datetime import date, datetime, timedelta
 
 from django.contrib import messages
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_POST
 
 from attendance.methods.utils import (
     activity_datetime,
@@ -329,7 +330,9 @@ def clock_in(request):
         return HorillaRedirect(request)
 
 
-def clock_out_attendance_and_activity(employee, date_today, now, out_datetime=None):
+def clock_out_attendance_and_activity(
+    employee, date_today, now, out_datetime=None, attendance=None
+):
     """
     Clock out the attendance and activity
     args:
@@ -338,9 +341,12 @@ def clock_out_attendance_and_activity(employee, date_today, now, out_datetime=No
         now         : now
     """
 
-    attendance_activities = AttendanceActivity.objects.filter(
-        employee_id=employee,
-    ).order_by("attendance_date", "id")
+    attendance_activities = AttendanceActivity.objects.filter(employee_id=employee)
+    if attendance is not None:
+        attendance_activities = attendance_activities.filter(
+            attendance_date=attendance.attendance_date
+        )
+    attendance_activities = attendance_activities.order_by("attendance_date", "id")
     attendance_activity = None  # Initialize attendance_activity
 
     if attendance_activities.filter(clock_out__isnull=True).exists():
@@ -367,9 +373,10 @@ def clock_out_attendance_and_activity(employee, date_today, now, out_datetime=No
             duration = duration + total_seconds
         duration = format_time(duration)
         # update clock out of attendance
-        attendance = Attendance.objects.filter(employee_id=employee).order_by(
-            "-attendance_date", "-id"
-        )[0]
+        if attendance is None:
+            attendance = Attendance.objects.filter(employee_id=employee).order_by(
+                "-attendance_date", "-id"
+            )[0]
         attendance.attendance_clock_out = now + ":00"
         attendance.attendance_clock_out_date = date_today
         attendance.attendance_worked_hour = duration
@@ -384,6 +391,78 @@ def clock_out_attendance_and_activity(employee, date_today, now, out_datetime=No
 
     logger.error("No attendance clock in activity found that needs clocking out.")
     return
+
+
+def _can_manage_staff_attendance(request, attendance):
+    """HR users can manage all attendance; managers can manage direct reports."""
+    if request.user.has_perm("attendance.change_attendance"):
+        return True
+    manager = getattr(request.user, "employee_get", None)
+    work_info = getattr(attendance.employee_id, "employee_work_info", None)
+    return manager is not None and getattr(work_info, "reporting_manager_id", None) == manager
+
+
+@login_required
+@require_POST
+def staff_clock_out(request, attendance_id):
+    """Allow HR or an employee's manager to close an active staff attendance."""
+    attendance = (
+        Attendance.objects.filter(pk=attendance_id)
+        .select_related("employee_id__employee_work_info", "shift_id", "attendance_day")
+        .first()
+    )
+    if attendance is None:
+        return HttpResponse(status=404)
+    if not _can_manage_staff_attendance(request, attendance):
+        return HttpResponseForbidden()
+
+    now_datetime = timezone.localtime()
+    open_activity_exists = AttendanceActivity.objects.filter(
+        employee_id=attendance.employee_id,
+        attendance_date=attendance.attendance_date,
+        clock_out__isnull=True,
+    ).exists()
+    if attendance.attendance_clock_out or not open_activity_exists:
+        messages.info(request, _("This staff member is already clocked out."))
+        return HttpResponse(status=409)
+
+    if attendance.attendance_date < now_datetime.date() - timedelta(days=1):
+        messages.error(
+            request,
+            _("Use Edit Attendance to correct an older open attendance record."),
+        )
+        return HttpResponse(status=409)
+
+    attendance = clock_out_attendance_and_activity(
+        employee=attendance.employee_id,
+        date_today=now_datetime.date(),
+        now=now_datetime.strftime("%H:%M"),
+        out_datetime=now_datetime,
+        attendance=attendance,
+    )
+    if attendance is None:
+        messages.error(request, _("The staff attendance could not be clocked out."))
+        return HttpResponse(status=409)
+
+    if attendance.shift_id and attendance.attendance_day:
+        minimum_hour, start_time, end_time = shift_schedule_today(
+            day=attendance.attendance_day, shift=attendance.shift_id
+        )
+        early_out_instance = attendance.late_come_early_out.filter(type="early_out")
+        if not early_out_instance.exists():
+            early_out(
+                attendance=attendance,
+                start_time=start_time,
+                end_time=end_time,
+                shift=attendance.shift_id,
+            )
+
+    messages.success(
+        request,
+        _("%(employee)s has been clocked out.")
+        % {"employee": attendance.employee_id.get_full_name()},
+    )
+    return HttpResponse(status=204)
 
 
 def early_out_create(attendance):

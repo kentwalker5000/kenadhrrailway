@@ -6,6 +6,24 @@
     {% if can_change or can_delete or can_manage %}
         <div class="flex items-center justify-center gap-1">
             {% if can_change or can_manage %}
+                {% if instance.attendance_clock_in and not instance.attendance_clock_out %}
+                    <form
+                        hx-post="{% url 'staff-clock-out' instance.id %}"
+                        onclick="event.stopPropagation()"
+                        hx-swap="none"
+                        hx-confirm="{% trans 'Clock out this staff member now?' %}"
+                        hx-on::after-request="event.detail.successful && typeof refreshAttendanceListContainer === 'function' && refreshAttendanceListContainer()"
+                    >
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            class="oh-btn oh-btn--warning oh-btn--sq-sm"
+                            title="{% trans 'Clock Out Staff' %}"
+                        >
+                            <ion-icon name="log-out-outline"></ion-icon>
+                        </button>
+                    </form>
+                {% endif %}
                 <a
                     hx-get="{% url 'attendance-update' instance.id %}?instance_ids={{instance.ordered_ids}}"
                     onclick="event.stopPropagation()"
