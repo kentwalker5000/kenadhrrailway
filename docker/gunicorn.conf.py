@@ -29,9 +29,18 @@ keepalive = 5
 
 # Logging
 accesslog = "-"
+logger_class = "horilla.access_logging.CredentialSafeLogger"
 errorlog = "-"
 loglevel = os.environ.get("GUNICORN_LOG_LEVEL", "info")
 access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
+
+
+def on_reload(server):
+    # Gunicorn retains its logger during HUP. Apply a newly configured logger
+    # before forking replacement workers so credential redaction activates too.
+    if not isinstance(server.log, server.cfg.logger_class):
+        server.log = server.cfg.logger_class(server.cfg)
+
 
 # Process naming
 proc_name = "horilla-hrms"

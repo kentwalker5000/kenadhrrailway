@@ -76,6 +76,12 @@ class RequestIDFilter(logging.Filter):
     """Make ``%(request_id)s`` usable in any formatter."""
 
     def filter(self, record):
+        from horilla.credential_urls import redact_reset_urls
+
+        message = record.getMessage()
+        safe_message = redact_reset_urls(message)
+        if safe_message != message:
+            record.msg, record.args = safe_message, ()
         record.request_id = get_request_id() or "-"
         return True
 
@@ -224,7 +230,9 @@ def _scrub(value, _depth=0):
     if isinstance(value, (list, tuple)):
         scrubbed = [_scrub(item, _depth + 1) for item in value]
         return type(value)(scrubbed) if isinstance(value, tuple) else scrubbed
-    return value
+    from horilla.credential_urls import redact_reset_urls
+
+    return redact_reset_urls(value)
 
 
 def _before_send(event, hint):
