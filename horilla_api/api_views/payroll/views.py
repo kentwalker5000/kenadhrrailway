@@ -2,6 +2,7 @@ import gettext
 from collections import defaultdict
 
 from django.contrib.auth.decorators import permission_required
+from django.db import transaction
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
@@ -10,8 +11,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from base.backends import ConfiguredEmailBackend
+from base.auth_backends import get_home_company_id
 from base.methods import eval_validate, reject_unsafe_pdf_html
+from base.models import DynamicEmailConfiguration
 from payroll.filters import (
     AllowanceFilter,
     ContractFilter,
@@ -93,16 +95,36 @@ class PayslipDownloadView(APIView):
 class PayslipSendMailView(APIView):
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(permission_required("payroll.add_payslip"))
     def post(self, request):
-        email_backend = ConfiguredEmailBackend()
-        if not getattr(
-            email_backend, "dynamic_username_with_display_name", None
-        ) or not len(email_backend.dynamic_username_with_display_name):
+        if not request.user.has_perms(("payroll.add_payslip", "payroll.view_payslip")):
+            return Response({"detail": _("Permission denied.")}, status=403)
+
+        raw_ids = request.data.get("id", [])
+        if not isinstance(raw_ids, list) or not raw_ids or any(
+            not str(value).isdecimal() or int(value) <= 0 for value in raw_ids
+        ):
+            return Response({"error": _("Select at least one valid payslip.")}, status=400)
+        payslip_ids = sorted({int(value) for value in raw_ids})
+        company_id = get_home_company_id(request.user)
+        if not company_id:
+            return Response({"detail": _("Not found.")}, status=404)
+        payslips = list(
+            Payslip.objects.filter(
+                pk__in=payslip_ids,
+                employee_id__employee_work_info__company_id=company_id,
+            ).select_related("employee_id")
+        )
+        if len(payslips) != len(payslip_ids):
+            return Response({"detail": _("Not found.")}, status=404)
+
+        configuration = DynamicEmailConfiguration.objects.filter(company_id=company_id).first()
+        if configuration is None:
+            configuration = DynamicEmailConfiguration.objects.filter(
+                company_id__isnull=True, is_primary=True
+            ).first()
+        if not configuration or not configuration.host or not configuration.from_email:
             return Response({"error": _("Email server is not configured")}, status=400)
 
-        payslip_ids = request.data.get("id", [])
-        payslips = Payslip.objects.filter(id__in=payslip_ids)
         result_dict = defaultdict(
             lambda: {"employee_id": None, "instances": [], "count": 0}
         )
@@ -112,9 +134,12 @@ class PayslipSendMailView(APIView):
             result_dict[employee_id]["employee_id"] = employee_id
             result_dict[employee_id]["instances"].append(payslip)
             result_dict[employee_id]["count"] += 1
-        mail_thread = MailSendThread(request, result_dict=result_dict, ids=payslip_ids)
-        mail_thread.start()
-        return Response({"status": "success"}, status=200)
+        mail_thread = MailSendThread(
+            request, result_dict=result_dict, ids=payslip_ids,
+            company_id=company_id, configuration=configuration,
+        )
+        transaction.on_commit(mail_thread.start)
+        return Response({"status": "queued"}, status=202)
 
 
 class ContractView(APIView):

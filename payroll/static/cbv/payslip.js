@@ -49,9 +49,9 @@ function bulkSendViaMail() {
 
                 $.ajax({
 
-                    type: "GET",
-                    url: "/payroll/send-slip",
-                    data: { id: maildata },
+                    type: "POST",
+                    url: "/payroll/send-slip/",
+                    data: { id: maildata, csrfmiddlewaretoken: getCookie("csrftoken") },
                     traditional: true,
                     success: function (response, textStatus, jqXHR) {
                         if (jqXHR.status === 200) {

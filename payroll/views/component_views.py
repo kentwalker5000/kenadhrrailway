@@ -18,19 +18,27 @@ import pandas as pd
 from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
+from django.db import transaction
 from django.db.models import Sum
-from django.http import HttpResponse, HttpResponseRedirect, JsonResponse, QueryDict
+from django.http import (
+    Http404,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+    JsonResponse,
+    QueryDict,
+)
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
+from django.views.decorators.http import require_POST
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, Side
 from openpyxl.utils import get_column_letter
 
 import payroll.models.models
-from base.backends import ConfiguredEmailBackend
 from base.methods import (
     closest_numbers,
     eval_validate,
@@ -40,7 +48,7 @@ from base.methods import (
     has_export_access,
     sortby,
 )
-from base.models import Company
+from base.models import Company, DynamicEmailConfiguration
 from employee.models import Employee, EmployeeWorkInformation
 from horilla.decorators import (
     handle_no_permission,
@@ -1606,22 +1614,36 @@ def hx_create_allowance(request):
 
 
 @login_required
-# @hx_request_required
 @permission_required("payroll.add_payslip")
+@permission_required("payroll.view_payslip")
+@require_POST
 def send_slip(request):
-    """
-    Send payslip method
-    """
+    """Queue only the caller's company's payslips after a CSRF-protected POST."""
+    from base.auth_backends import get_home_company_id
 
-    email_backend = ConfiguredEmailBackend()
     view = request.GET.get("view")
-    payslip_ids = request.GET.getlist("id")
+    raw_ids = request.POST.getlist("id") or request.GET.getlist("id")
+    if not raw_ids or any(not value.isdecimal() or int(value) <= 0 for value in raw_ids):
+        return HttpResponseBadRequest("Select at least one valid payslip.")
+    payslip_ids = sorted({int(value) for value in raw_ids})
+    company_id = get_home_company_id(request.user)
+    if not company_id:
+        raise Http404
 
-    # payslip_ids = request.GET.get("id")
-    payslips = Payslip.objects.filter(id__in=payslip_ids)
-    if not getattr(
-        email_backend, "dynamic_from_email_with_display_name", None
-    ) or not len(email_backend.dynamic_from_email_with_display_name):
+    payslips = list(
+        Payslip.objects.filter(
+            pk__in=payslip_ids, employee_id__employee_work_info__company_id=company_id
+        ).select_related("employee_id")
+    )
+    if len(payslips) != len(payslip_ids):
+        raise Http404
+
+    configuration = DynamicEmailConfiguration.objects.filter(company_id=company_id).first()
+    if configuration is None:
+        configuration = DynamicEmailConfiguration.objects.filter(
+            company_id__isnull=True, is_primary=True
+        ).first()
+    if not configuration or not configuration.host or not configuration.from_email:
         messages.error(request, _("Email server is not configured"))
         if view:
             return HorillaRedirect(request)
@@ -1637,9 +1659,18 @@ def send_slip(request):
         result_dict[employee_id]["instances"].append(payslip)
         result_dict[employee_id]["count"] += 1
 
-    mail_thread = MailSendThread(request, result_dict=result_dict, ids=payslip_ids)
-    mail_thread.start()
-    messages.info(request, _("Mail processing"))
+    mail_thread = MailSendThread(
+        request,
+        result_dict=result_dict,
+        ids=payslip_ids,
+        company_id=company_id,
+        configuration=configuration,
+    )
+    transaction.on_commit(mail_thread.start)
+    messages.info(
+        request,
+        _("Payslip emails queued. Sent status updates after each email is accepted by the mail server."),
+    )
     if view:
         return HorillaRedirect(request)
     else:

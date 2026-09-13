@@ -457,9 +457,9 @@
         var ids = JSON.parse(idsJson);
         if (ids.length > 0) {
           $.ajax({
-            type: "get",
-            url: `/payroll/send-slip`,
-            data: { id: ids },
+            type: "POST",
+            url: `/payroll/send-slip/`,
+            data: { id: ids, csrfmiddlewaretoken: '{{ csrf_token }}' },
             traditional: true,
             success: function (response) {
                 var mailProcessingMessage = "Mail processing.";

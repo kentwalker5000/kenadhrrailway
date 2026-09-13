@@ -18,7 +18,7 @@
 		{% if perms.payroll.add_payslip %}
 			<button
 				hx-confirm="{% trans 'Do you want to sent the payslip by mail?' %}"
-				hx-get="{% url 'send-slip' %}?id={{instance.id}}"
+				hx-post="{% url 'send-slip' %}?id={{instance.id}}"
 				hx-target="#listContainer"
 				title="{% trans 'Send via mail' %}"
 				type="button"

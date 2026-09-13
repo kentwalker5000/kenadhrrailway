@@ -93,3 +93,38 @@ policy and company-specific proration still need verification. The underlying
 calculation's conflict-hold rule remains unchanged; bulk generation now stops
 before saving a draft based on it.
 No bank transfer, payment posting, or real employee email is part of these tests.
+
+## Payslip email delivery
+
+```sh
+python manage.py test payroll.tests.test_payslip_mail payroll.tests.test_pdf_xss_guard --keepdb
+node --test horilla_theme/tests/htmx_confirm.test.cjs
+```
+
+The email tests use synthetic records in the separate test database and mock
+SMTP transport; no real employee receives a message. They cover:
+
+- Web sends require POST, CSRF and payroll permissions. The API reports HTTP
+  202 with `status: queued`, not a claim that delivery has completed.
+- Both routes reject mixed-company selections and pass the exact company mail
+  configuration to the worker. A different company's primary server is never
+  used as a fallback.
+- One email groups the selected payslips for each employee, addressed to their
+  work email (or personal email when work email is blank). The sender is the
+  configured mail address, not the HR user's address.
+- A failed or non-PDF attachment prevents that employee's email. SMTP rejection,
+  a zero send result, or an invalid recipient leaves its payslips unsent, while
+  other employees in a batch can succeed.
+- Sent flags update only after SMTP acceptance. Acceptance is not proof of
+  inbox delivery; a later bounce remains possible. Existing sent flags are not
+  backfilled, and queued background work is not a durable/retryable job queue.
+- Company context reaches the worker and database connections are cleaned up.
+- A real synthetic payslip and mail template are rendered. When wkhtmltopdf is
+  absent, the installed xhtml2pdf library produces the PDF with compact print
+  spacing. Its assets are restricted to local static/media files; remote logos
+  are omitted. Active HTML is still rejected and browser cookies are not passed
+  to the PDF renderer.
+
+For visual QA only, set `PAYSLIP_PDF_QA_OUTPUT` to a temporary PDF path when
+running the tests, then render its pages with `pdftoppm` and inspect them. That
+artifact contains synthetic data only and should not be committed.
