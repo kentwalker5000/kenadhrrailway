@@ -10,6 +10,7 @@ import json
 import logging
 import mimetypes
 import os
+import smtplib
 import threading
 import uuid
 from datetime import datetime, timedelta
@@ -41,7 +42,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils._os import safe_join
 from django.utils.decorators import method_decorator
-from django.utils.html import format_html, strip_tags
+from django.utils.html import escape, format_html, strip_tags
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views import View
@@ -2092,25 +2093,32 @@ def mail_server_conf(request):
 @hx_request_required
 @permission_required("base.view_dynamicemailconfiguration")
 def mail_server_test_email(request):
+    from base.auth_backends import get_home_company_id
+
     instance_id = request.GET.get("instance_id")
+    company_id = get_home_company_id(request.user)
+    if not company_id or not instance_id or not instance_id.isdecimal():
+        raise Http404
+    emailconfig = get_object_or_404(
+        DynamicEmailConfiguration.objects.filter(
+            Q(company_id=company_id) | Q(company_id__isnull=True, is_primary=True)
+        ),
+        pk=instance_id,
+    )
     white_labelling = getattr(settings, "WHITE_LABELLING", False)
     image_path = path.join(settings.STATIC_ROOT, "images/ui/kenadhr-wordmark.png")
     company_name = "KenadHr"
 
     if white_labelling:
-        hq = Company.objects.filter(hq=True).last()
-        try:
-            company = (
-                request.user.employee_get.get_company()
-                if request.user.employee_get.get_company()
-                else hq
-            )
-        except:
-            company = hq
-
+        company = request.user.employee_get.get_company()
         if company:
             company_name = company.company
-            image_path = path.join(settings.MEDIA_ROOT, company.icon.name)
+            if company.icon:
+                company_image_path = path.join(settings.MEDIA_ROOT, company.icon.name)
+                if path.isfile(company_image_path):
+                    image_path = company_image_path
+
+    company_name = escape(company_name)
 
     form = DynamicMailTestForm()
     if request.method == "POST":
@@ -2133,7 +2141,7 @@ def mail_server_test_email(request):
                             <td style="padding: 20px;">
                                 <h3 style="color: #4CAF50;">Email tested successfully</h3>
                                 <b><p style="font-size: 14px;">Hi,<br>
-                                    This email is being sent as part of mail sever testing from {company_name}.</p></b>
+                                    This email is being sent as part of mail server testing from {company_name}.</p></b>
                                 <img src="cid:unique_image_id" alt="Test Image" style="width: 200px; height: auto; margin: 20px 0;">
                             </td>
                         </tr>
@@ -2150,13 +2158,10 @@ def mail_server_test_email(request):
             # Plain text content (fallback for email clients that do not support HTML)
             text_content = strip_tags(html_content)
 
-            email_backend = ConfiguredEmailBackend()
-            emailconfig = DynamicEmailConfiguration.objects.filter(
-                id=instance_id
-            ).first()
-            email_backend.configuration = emailconfig
-
             try:
+                email_backend = ConfiguredEmailBackend(
+                    configuration=emailconfig, fail_silently=False
+                )
                 msg = EmailMultiAlternatives(
                     subject,
                     text_content,
@@ -2171,12 +2176,30 @@ def mail_server_test_email(request):
                     msg_img.add_header("Content-ID", "<unique_image_id>")
                     msg.attach(msg_img)
 
-                msg.send()
+                sent_count = msg.send()
+            except smtplib.SMTPAuthenticationError:
+                logger.warning("Mail test authentication failed for configuration %s", emailconfig.pk)
+                messages.error(request, _(
+                    "The mail server rejected the sign-in. Check the username and password or app password."
+                ))
+                return HorillaRedirect(request)
             except Exception as e:
-                messages.error(request, " ".join([_("Something went wrong :"), str(e)]))
+                # SMTP replies can contain account data; never echo them into the UI.
+                logger.warning("Mail test failed for configuration %s (%s)", emailconfig.pk, type(e).__name__)
+                messages.error(request, _(
+                    "The test email could not be sent. Check the mail server settings and try again."
+                ))
                 return HorillaRedirect(request)
 
-            messages.success(request, _("Mail sent successfully"))
+            if sent_count != 1:
+                messages.error(request, _(
+                    "The mail server did not accept the test email. Check the settings and try again."
+                ))
+                return HorillaRedirect(request)
+
+            messages.success(request, _(
+                "Test email accepted by the mail server. Check the recipient's inbox or spam folder."
+            ))
             return HorillaRedirect(request)
     return render(
         request,

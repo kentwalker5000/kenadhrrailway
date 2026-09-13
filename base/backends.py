@@ -32,9 +32,14 @@ class DefaultHorillaMailBackend(EmailBackend):
         timeout=None,
         ssl_keyfile=None,
         ssl_certfile=None,
+        configuration=None,
         **kwargs,
     ):
-        self.configuration = self.get_dynamic_email_config()
+        # Resolve the selected server before SMTP copies its connection values.
+        # Assigning configuration after construction leaves host/auth/TLS stale.
+        self.configuration = (
+            configuration if configuration is not None else self.get_dynamic_email_config()
+        )
         ssl_keyfile = (
             getattr(self.configuration, "ssl_keyfile", None)
             if self.configuration
@@ -52,9 +57,11 @@ class DefaultHorillaMailBackend(EmailBackend):
             username=self.dynamic_username,
             password=self.dynamic_password,
             use_tls=self.dynamic_use_tls,
-            fail_silently=self.dynamic_fail_silently,
+            fail_silently=(
+                self.dynamic_fail_silently if fail_silently is None else fail_silently
+            ),
             use_ssl=self.dynamic_use_ssl,
-            timeout=self.dynamic_timeout,
+            timeout=(self.dynamic_timeout or 30) if timeout is None else timeout,
             ssl_keyfile=ssl_keyfile,
             ssl_certfile=ssl_certfile,
             **kwargs,
