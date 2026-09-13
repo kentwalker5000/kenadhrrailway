@@ -11,10 +11,11 @@ from django.utils.translation import gettext as _
 
 from horilla.decorators import apply_decorators
 from horilla.http.response import HorillaRedirect
-from horilla_auth.models import HorillaUser
 
 
 class Bot:
+    is_system_actor = True
+
     def __init__(self) -> None:
         self.__str__()
 
@@ -126,7 +127,8 @@ def get_diff(instance):
     """
     This method is used to find the differences in the history
     """
-    remove_duplicate_history(instance)
+    # Reading a timeline must not delete snapshots. Unchanged pairs are
+    # skipped below, while the underlying audit trail stays intact.
     history = instance.history_set.all()
     if hasattr(instance.history_set.model, "history_tags"):
         history = history.prefetch_related("history_tags")
@@ -179,11 +181,8 @@ def get_diff(instance):
         if not diffs:
             # Nothing user-facing changed — skip (no placeholder entry).
             continue
-        updated_by = (
-            HorillaUser.objects.get(id=newer.history_user.id).employee_get
-            if newer.history_user
-            else Bot()
-        )
+        actor = newer.history_user
+        updated_by = (getattr(actor, "employee_get", None) or actor) if actor else Bot()
         delta_changes.append(
             {
                 "type": "Changes",

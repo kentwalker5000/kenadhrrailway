@@ -4,6 +4,7 @@ Normalize simple-history / auditlog diffs into one activity-feed context.
 
 from datetime import timedelta
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.utils import timezone
 from django.utils.translation import gettext as _
 
@@ -52,24 +53,28 @@ def history_date_label(history_date, today=None):
     return day.strftime("%b %d, %Y")
 
 
+def _is_system_actor(updated_by):
+    return updated_by is None or getattr(updated_by, "is_system_actor", False)
+
+
 def _actor_name(updated_by):
-    if updated_by is None:
-        return _("Horilla Bot")
+    if _is_system_actor(updated_by):
+        return _("System update")
     if hasattr(updated_by, "get_full_name"):
         return updated_by.get_full_name() or str(updated_by)
-    return str(updated_by) or _("Horilla Bot")
+    return str(updated_by) or _("System update")
 
 
 def _actor_avatar(updated_by):
-    if updated_by is None:
-        return "https://ui-avatars.com/api/?name=Horilla+Bot&background=random"
+    if _is_system_actor(updated_by):
+        return None
     getter = getattr(updated_by, "get_avatar", None)
     if callable(getter):
         return getter()
-    return "https://ui-avatars.com/api/?name=Horilla+Bot&background=random"
+    return None
 
 
-def _normalize_tracking_change(change):
+def _normalize_tracking_change(change, pair=None):
     """Ensure change dict has labels/display values used by the feed template."""
     normalized = dict(change)
     label = (
@@ -79,12 +84,27 @@ def _normalize_tracking_change(change):
         or ""
     )
     normalized["field_label"] = label
-    if "old_value" not in normalized:
-        old = normalized.get("old")
-        normalized["old_value"] = "—" if old in (None, "") else str(old)
-    if "new_value" not in normalized:
-        new = normalized.get("new")
-        normalized["new_value"] = "—" if new in (None, "") else str(new)
+    for side, index in (("old", 1), ("new", 0)):
+        display_key = f"{side}_value"
+        raw = normalized.get(side, normalized.get(display_key))
+        empty = raw in (None, "")
+        normalized[f"{side}_is_empty"] = empty
+        if empty:
+            if normalized.get("is_fk"):
+                normalized[display_key] = (
+                    _("Previously unassigned") if side == "old" else _("Unassigned")
+                )
+            else:
+                normalized[display_key] = _("Not set")
+        elif display_key not in normalized:
+            value = raw
+            if normalized.get("is_fk") and pair and len(pair) > index:
+                try:
+                    related = getattr(pair[index], normalized["field_name"])
+                    value = related if related is not None else f"{raw} (deleted)"
+                except (AttributeError, ObjectDoesNotExist):
+                    value = f"{raw} (deleted)"
+            normalized[display_key] = str(value)
     return normalized
 
 
@@ -92,10 +112,10 @@ def normalize_tracking_entries(tracking):
     """Convert get_diff()-style tracking list into feed entries."""
     entries = []
     for history in tracking or []:
-        changes = [
-            _normalize_tracking_change(c) for c in (history.get("changes") or [])
-        ]
         pair = history.get("pair")
+        changes = [
+            _normalize_tracking_change(c, pair) for c in (history.get("changes") or [])
+        ]
         newer = pair[0] if pair else None
         history_date = getattr(newer, "history_date", None) if newer else None
         updated_by = history.get("updated_by")
@@ -142,6 +162,7 @@ def normalize_tracking_entries(tracking):
                 "action_phrase": action_phrase,
                 "actor_name": _actor_name(updated_by),
                 "actor_avatar": _actor_avatar(updated_by),
+                "is_system_actor": _is_system_actor(updated_by),
                 "reason": reason,
                 "change_count": len(changes),
                 "source": "tracking",
@@ -160,7 +181,8 @@ class _AuditActor:
 
     def __init__(self, employee=None, name=None):
         self.employee = employee
-        self.name = name or _("Horilla Bot")
+        self.is_system_actor = employee is None and not name
+        self.name = name or _("System update")
 
     def get_full_name(self):
         if self.employee and hasattr(self.employee, "get_full_name"):
@@ -184,7 +206,10 @@ def normalize_log_entries(log_entries):
         actor = getattr(entry, "actor", None)
         if actor is not None:
             employee = getattr(actor, "employee_get", None)
-        updated_by = _AuditActor(employee=employee)
+        updated_by = _AuditActor(
+            employee=employee,
+            name=_actor_name(actor) if actor is not None else None,
+        )
 
         changes = []
         display = getattr(entry, "changes_display_dict", None) or {}
@@ -194,14 +219,16 @@ def normalize_log_entries(log_entries):
             old_val = values[0] if len(values) > 0 else "—"
             new_val = values[1] if len(values) > 1 else "—"
             changes.append(
-                {
-                    "field": field,
-                    "field_label": field,
-                    "field_name": field,
-                    "is_fk": False,
-                    "old_value": old_val,
-                    "new_value": new_val,
-                }
+                _normalize_tracking_change(
+                    {
+                        "field": field,
+                        "field_label": field,
+                        "field_name": field,
+                        "is_fk": False,
+                        "old_value": old_val,
+                        "new_value": new_val,
+                    }
+                )
             )
 
         action = getattr(entry, "action", None)
@@ -225,6 +252,7 @@ def normalize_log_entries(log_entries):
                 "action_phrase": history_action_phrase(changes, fallback=fallback),
                 "actor_name": _actor_name(updated_by),
                 "actor_avatar": _actor_avatar(updated_by),
+                "is_system_actor": _is_system_actor(updated_by),
                 "reason": None,
                 "change_count": len(changes),
                 "source": "auditlog",

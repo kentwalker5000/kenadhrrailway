@@ -9,21 +9,7 @@ from django.db import models
 from django.shortcuts import render
 
 from horilla.decorators import apply_decorators
-from horilla_auth.models import HorillaUser
-
-
-class Bot:
-    def __init__(self) -> None:
-        self.__str__()
-
-    def __str__(self) -> str:
-        return "Horilla Bot"
-
-    def get_avatar(self):
-        """
-        Get avatar
-        """
-        return "https://ui-avatars.com/api/?name=Horilla+Bot&background=random"
+from horilla_audit.methods import Bot
 
 
 def _check_and_delete(entry1, entry2, dry_run=False):
@@ -91,17 +77,14 @@ class _SyntheticHistorySnapshot:
 def _actor_from_user(user):
     if not user:
         return Bot()
-    try:
-        return user.employee_get
-    except Exception:
-        return Bot()
+    return getattr(user, "employee_get", None) or user
 
 
 def get_diff(instance, history_related_name):
     """
     This method is used to find the differences in the history
     """
-    remove_duplicate_history(instance, history_related_name)
+    # Skip empty diffs below without deleting stored snapshots on a read.
     history = getattr(instance, history_related_name).all()
     history_list = list(history)
     pairs = [
@@ -140,11 +123,7 @@ def get_diff(instance, history_related_name):
             )
         if not diffs:
             continue
-        updated_by = (
-            HorillaUser.objects.get(id=pair[0].history_user.id).employee_get
-            if pair[0].history_user
-            else Bot()
-        )
+        updated_by = _actor_from_user(pair[0].history_user)
         delta_changes.append(
             {
                 "type": "Changes",
@@ -154,10 +133,7 @@ def get_diff(instance, history_related_name):
             }
         )
     if create_history:
-        try:
-            updated_by = create_history.history_user.employee_get
-        except Exception:
-            updated_by = Bot()
+        updated_by = _actor_from_user(create_history.history_user)
         delta_changes.append(
             {
                 "type": f"{create_history.instance.__class__._meta.verbose_name.capitalize()} created",
@@ -167,10 +143,7 @@ def get_diff(instance, history_related_name):
         )
     if not delta_changes and history_list:
         only = history_list[0]
-        try:
-            updated_by = only.history_user.employee_get if only.history_user else Bot()
-        except Exception:
-            updated_by = Bot()
+        updated_by = _actor_from_user(only.history_user)
         if only.history_type == "+":
             event_type = f"{instance._meta.verbose_name.capitalize()} created"
         elif only.history_type == "-":

@@ -1,0 +1,101 @@
+<style>
+    #{{ feed_id }} {
+        --eah-surface: #ffffff;
+        --eah-text: #1f2937;
+        --eah-muted: #475569;
+        --eah-border: #cbd5e1;
+        --eah-old-bg: #f1f5f9;
+        --eah-old-text: #475569;
+        --eah-new-bg: #f0fdf4;
+        --eah-new-text: #166534;
+        max-width: {% if compact %}100%{% else %}980px{% endif %};
+        margin: 0 auto;
+        color: var(--eah-text);
+    }
+    body.dark #{{ feed_id }} {
+        --eah-surface: #242424;
+        --eah-text: #f1f5f9;
+        --eah-muted: #cbd5e1;
+        --eah-border: #64748b;
+        --eah-old-bg: #334155;
+        --eah-old-text: #e2e8f0;
+        --eah-new-bg: #143424;
+        --eah-new-text: #bbf7d0;
+    }
+    #{{ feed_id }} .eah-title,
+    #{{ feed_id }} .eah-actor,
+    #{{ feed_id }} .eah-field {
+        color: var(--eah-text) !important;
+    }
+    /* Scoped overrides keep company palettes and global dark-mode rules from
+       turning small history text into near-white text on a white card. */
+    #{{ feed_id }} .eah-muted {
+        color: var(--eah-muted) !important;
+    }
+    #{{ feed_id }} .eah-card {
+        background-color: var(--eah-surface);
+        border-color: var(--eah-border);
+    }
+    #{{ feed_id }} .eah-old {
+        color: var(--eah-old-text);
+        background-color: var(--eah-old-bg);
+        border-color: var(--eah-border);
+    }
+    #{{ feed_id }} .eah-strike {
+        text-decoration: line-through;
+        text-decoration-color: currentColor;
+    }
+    #{{ feed_id }} .eah-new {
+        color: var(--eah-new-text);
+        background-color: var(--eah-new-bg);
+        border-color: var(--eah-new-text);
+    }
+    #{{ feed_id }} .eah-change-row + .eah-change-row {
+        border-top: 1px solid var(--eah-border);
+        margin-top: 8px;
+        padding-top: 8px;
+    }
+    #{{ feed_id }} .eah-dot {
+        box-shadow: 0 0 0 3px var(--eah-surface);
+    }
+    #{{ feed_id }} .eah-line {
+        background-color: var(--eah-border);
+    }
+    #{{ feed_id }} .eah-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--eah-text);
+        background-color: var(--eah-surface);
+    }
+    #{{ feed_id }} .eah-search {
+        min-width: 0;
+        width: {% if compact %}100%{% else %}260px{% endif %};
+        max-width: 100%;
+    }
+    #{{ feed_id }} .eah-search-input {
+        color: var(--eah-text) !important;
+        background-color: var(--eah-surface) !important;
+        border-color: var(--eah-border) !important;
+    }
+    #{{ feed_id }} .eah-search-input::placeholder {
+        color: var(--eah-muted) !important;
+        opacity: 1;
+    }
+    #{{ feed_id }} .eah-search-input:focus-visible {
+        outline: 2px solid var(--eah-muted);
+        outline-offset: 2px;
+    }
+    #{{ feed_id }}.eah-compact {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        padding-bottom: 1rem;
+    }
+    #{{ feed_id }}.eah-compact .eah-card {
+        padding: 0.75rem;
+    }
+    #{{ feed_id }}.eah-compact .eah-avatar {
+        width: 1.75rem;
+        height: 1.75rem;
+    }
+</style>
