@@ -5,15 +5,19 @@ This module is used to write context processor methods
 """
 
 import json
+import logging
 from datetime import date
 
 from django import template
 from django.apps import apps
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage
 from django.core.paginator import Paginator
+from django.core.validators import validate_email
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.utils.html import strip_tags
 from django.utils.translation import gettext_lazy as _
 
 from base.backends import ConfiguredEmailBackend
@@ -31,6 +35,9 @@ from employee.models import Employee
 from horilla import settings
 from horilla.decorators import hx_request_required, login_required, manager_can_enter
 from horilla.http.response import HorillaRedirect
+
+
+logger = logging.getLogger(__name__)
 
 
 def paginator_qry(qryset, page_number):
@@ -259,44 +266,101 @@ def get_mail_preview(request):
 @manager_can_enter(perm="employee.change_employee")
 def send_mail_to_employee(request):
     """
-    This method is used to send acknowledgement mail to the employee
+    Send an acknowledgement mail to the selected employee records.
+
+    Input is validated on the server as well as in the modal. The browser-side
+    Summernote field can be unavailable during a partial page update, so it
+    must never be the only thing stopping an empty or malformed message from
+    reaching the sender.
     """
     employee_id = request.POST.get("id")
-    subject = request.POST.get("subject")
-    bdy = request.POST.get("body")
+    subject = (request.POST.get("subject") or "").strip()
+    bdy = request.POST.get("body") or ""
+
+    if not subject:
+        messages.error(request, _("The message subject is required."))
+        return HorillaRedirect(request)
+    if not strip_tags(bdy).strip():
+        messages.error(request, _("The message body is required."))
+        return HorillaRedirect(request)
 
     employee_ids = request.POST.getlist("employees")
-    employees = Employee.objects.filter(id__in=employee_ids)
+    employees = Employee.objects.filter(id__in=employee_ids).select_related(
+        "employee_work_info"
+    )
 
     other_attachments = request.FILES.getlist("other_attachments")
 
     if employee_id:
-        employee_obj = Employee.objects.filter(id=employee_id)
+        employee_obj = Employee.objects.filter(id=employee_id).select_related(
+            "employee_work_info"
+        )
     else:
         employee_obj = Employee.objects.none()
     employees = (employees | employee_obj).distinct()
 
-    template_attachment_ids = request.POST.getlist("template_attachments")
+    if not employees.exists():
+        messages.error(request, _("Select at least one employee."))
+        return HorillaRedirect(request)
+
+    recipients = []
+    invalid_employees = []
     for employee in employees:
-        bodys = list(
-            HorillaMailTemplate.objects.filter(
-                id__in=template_attachment_ids
-            ).values_list("body", flat=True)
+        work_info = getattr(employee, "employee_work_info", None)
+        recipient_email = getattr(work_info, "email", "") or employee.email
+        try:
+            validate_email(recipient_email)
+        except ValidationError:
+            invalid_employees.append(employee.get_full_name())
+        else:
+            recipients.append((employee, recipient_email))
+
+    if invalid_employees:
+        messages.error(
+            request,
+            _("Set a valid email address for: %(employees)s.")
+            % {"employees": ", ".join(invalid_employees)},
         )
-        attachments = [
-            (file.name, file.read(), file.content_type) for file in other_attachments
-        ]
-        for html in bodys:
-            # due to not having solid template we first need to pass the context
-            template_bdy = template.Template(sanitize_mail_template_body(html))
+        return HorillaRedirect(request)
+
+    template_attachment_ids = request.POST.getlist("template_attachments")
+    template_bodies = list(
+        HorillaMailTemplate.objects.filter(id__in=template_attachment_ids).values_list(
+            "body", flat=True
+        )
+    )
+    uploaded_attachments = [
+        (file.name, file.read(), file.content_type) for file in other_attachments
+    ]
+    outbound_messages = []
+    for employee, recipient_email in recipients:
+        attachments = list(uploaded_attachments)
+        for attachment_body in template_bodies:
+            template_bdy = template.Template(
+                sanitize_mail_template_body(attachment_body)
+            )
             context = template.Context(
                 {"instance": employee, "self": request.user.employee_get}
             )
             render_bdy = template_bdy.render(context)
+            pdf_response = generate_pdf(render_bdy, {}, path=False, title="Document")
+            if pdf_response.status_code != 200:
+                logger.warning(
+                    "Employee mail template attachment failed (status=%s)",
+                    pdf_response.status_code,
+                )
+                messages.error(
+                    request,
+                    _(
+                        "The requested PDF attachment could not be generated. "
+                        "The email was not sent."
+                    ),
+                )
+                return HorillaRedirect(request)
             attachments.append(
                 (
                     "Document",
-                    generate_pdf(render_bdy, {}, path=False, title="Document").content,
+                    pdf_response.content,
                     "application/pdf",
                 )
             )
@@ -306,34 +370,37 @@ def send_mail_to_employee(request):
             {"instance": employee, "self": request.user.employee_get}
         )
         render_bdy = template_bdy.render(context)
-        send_to_mail = (
-            employee.employee_work_info.email
-            if employee.employee_work_info and employee.employee_work_info.email
-            else employee.email
-        )
-
         email = EmailMessage(
             subject=subject,
             body=render_bdy,
-            to=[send_to_mail],
+            to=[recipient_email],
         )
         email.content_subtype = "html"
-
         email.attachments = attachments
+
+        outbound_messages.append((employee, email))
+
+    sent_employees = []
+    failed_employees = []
+    for employee, email in outbound_messages:
         try:
-            email.send()
-            if employee.employee_work_info.email or employee.email:
-                messages.success(
-                    request,
-                    _("Mail sent to %(employee)s")
-                    % {"employee": employee.get_full_name()},
-                )
+            if email.send():
+                sent_employees.append(employee.get_full_name())
             else:
-                messages.info(
-                    request,
-                    _("Email not set for %(employee)s")
-                    % {"employee": employee.get_full_name()},
-                )
-        except Exception as e:
-            messages.error(request, _("Something went wrong"))
+                failed_employees.append(employee.get_full_name())
+        except Exception as error:
+            logger.warning("Employee mail delivery failed (%s)", type(error).__name__)
+            failed_employees.append(employee.get_full_name())
+
+    if sent_employees:
+        messages.success(
+            request,
+            _("Mail sent to %(employees)s.") % {"employees": ", ".join(sent_employees)},
+        )
+    if failed_employees:
+        messages.error(
+            request,
+            _("Mail could not be sent to %(employees)s.")
+            % {"employees": ", ".join(failed_employees)},
+        )
     return HorillaRedirect(request)

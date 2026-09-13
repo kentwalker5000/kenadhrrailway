@@ -7,6 +7,7 @@ import os
 import random
 import re
 from datetime import date, datetime, time, timedelta
+from io import BytesIO
 from types import SimpleNamespace
 
 import pandas as pd
@@ -1630,7 +1631,22 @@ def template_pdf(template, context={}, html=False, filename="payslip.pdf"):
             "footer-center": "[page]/[topage]",
         }
 
-        pdf = pdfkit.from_string(html_content, False, options=pdf_options)
+        try:
+            pdf = pdfkit.from_string(html_content, False, options=pdf_options)
+        except OSError:
+            # The development container and lightweight deployments do not
+            # always include the wkhtmltopdf binary pdfkit shells out to. The
+            # project already ships xhtml2pdf, so retain usable PDF exports
+            # rather than returning an HTML error page as a .pdf attachment.
+            from xhtml2pdf import pisa
+
+            destination = BytesIO()
+            # xhtml2pdf does not understand Bootstrap's modern remote CSS;
+            # it is an enhancement for wkhtmltopdf only, so omit it here.
+            result = pisa.CreatePDF(template, dest=destination)
+            if result.err:
+                raise RuntimeError("The fallback PDF renderer reported an error.")
+            pdf = destination.getvalue()
 
         response = HttpResponse(pdf, content_type="application/pdf")
         response["Content-Disposition"] = f"inline; filename={filename}"
