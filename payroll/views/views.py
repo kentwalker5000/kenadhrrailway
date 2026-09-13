@@ -5,6 +5,7 @@ This module is used to define the method for the path in the urls
 """
 
 import json
+import shutil
 from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import groupby
@@ -1475,9 +1476,6 @@ def generate_payslip_pdf(template_path, context, html=False):
         # Render the HTML content from the template and context
         html_content = render_to_string(template_path, context)
         request = getattr(_thread_locals, "request", None)
-        cookies = None
-        if request:
-            cookies = request.META.get("HTTP_COOKIE", "")
 
         # Return raw HTML if requested
         if html:
@@ -1491,28 +1489,26 @@ def generate_payslip_pdf(template_path, context, html=False):
             "margin-left": "10mm",
             "margin-right": "10mm",
             "encoding": "UTF-8",
+            "disable-javascript": None,
             "enable-local-file-access": None,  # Required to load local CSS/images
             "dpi": 300,
             "zoom": 1.3,
             "footer-center": "[page]/[topage]",  # Required to load local CSS/images
         }
 
-        if cookies:
-            pdf_options.update(
-                {
-                    "custom-header": [
-                        ("Cookie", cookies),
-                    ],
-                    "custom-header-propagation": None,
-                }
-            )
-
         unsafe_response = reject_unsafe_pdf_html(html_content, "Payslip")
         if unsafe_response is not None:
             return unsafe_response
 
         # Generate the PDF as binary content
-        pdf = pdfkit.from_string(html_content, False, options=pdf_options)
+        try:
+            pdf = pdfkit.from_string(html_content, False, options=pdf_options)
+        except OSError:
+            if shutil.which("wkhtmltopdf"):
+                raise
+            from payroll.pdf import render_payslip_html
+
+            pdf = render_payslip_html(html_content, request=request)
 
         # Return an HttpResponse containing the PDF content
         response = HttpResponse(pdf, content_type="application/pdf")

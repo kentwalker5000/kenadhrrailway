@@ -2,19 +2,13 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter" media="all">
-        <link
-            href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
-            rel="stylesheet"
-        >
+        {% comment %}PDF-only template: use local fonts and no active head tags.{% endcomment %}
         <style>
             html {
                 -webkit-box-sizing: border-box;
                 box-sizing: border-box;
                 overflow-x: hidden;
-                font-family: 'Inter', serif;
+                font-family: Helvetica, Arial, sans-serif;
             }
 
             body {
@@ -193,11 +187,12 @@
                             </div>
                             <div class="cs-payslip_right cs-text_right">
                                 <div class="oh-logo cs-mb5">
-                                    {% comment %} This works for: Local media, Cloud storage (GCS / S3), Signed URLs, PDF printing {% endcomment %}
+                                    {% if employee.employee_work_info.company_id.icon %}
                                     <img
                                         src="{{employee.employee_work_info.company_id.icon.url|absolute_url:request}}"
                                         alt="{% trans 'Logo' %}"
                                     >
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -213,8 +208,9 @@
                             </div>
                             <div class="cs-payslip_right cs-text_right">
                                 <div class="oh-logo cs-mb5">
-                                    {% comment %} This works for: Local media, Cloud storage (GCS / S3), Signed URLs, PDF printing {% endcomment %}
+                                    {% if company.icon %}
                                     <img src="{{company.icon.url|absolute_url:request}}" alt="{% trans 'Logo' %}">
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
