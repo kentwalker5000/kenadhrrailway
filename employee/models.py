@@ -929,6 +929,24 @@ class EmployeeWorkInformation(models.Model):
     def __str__(self) -> str:
         return f"{self.employee_id} - {self.job_position_id}"
 
+    def clean(self):
+        super().clean()
+        from base.auth_backends import get_home_company_id, single_company_login_active
+
+        request = getattr(horilla_middlewares._thread_locals, "request", None)
+        if single_company_login_active() and request and request.user.is_authenticated:
+            company_id = get_home_company_id(request.user)
+            if not company_id:
+                raise ValidationError(
+                    {"company_id": _("Your account is not assigned to a company.")}
+                )
+            if self._state.adding and self.company_id_id is None:
+                self.company_id_id = company_id
+            if self.company_id_id != company_id:
+                raise ValidationError(
+                    {"company_id": _("Employees must belong to your assigned company.")}
+                )
+
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)

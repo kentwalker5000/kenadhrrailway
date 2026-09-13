@@ -36,6 +36,8 @@ class CompanyScopedBackend(ModelBackend):
             return super()._get_group_permissions(user_obj)
 
         company_id = self._resolve_company_id(user_obj)
+        if single_company_login_active() and company_id is None:
+            return Permission.objects.none()
         assignments = user_obj.company_group_assignments.all()
         if company_id is not None:
             assignments = assignments.filter(company_id=company_id)
@@ -49,6 +51,8 @@ class CompanyScopedBackend(ModelBackend):
         Return the company id to scope permissions to, or None for
         "union of the user's assigned companies".
         """
+        if single_company_login_active():
+            return get_home_company_id(user_obj)
         company = get_selected_company()
         if company and company != "all":
             return company
@@ -76,10 +80,19 @@ def single_company_login_active():
 
 def get_home_company_id(user):
     """Return the company assigned to an employee's work information."""
-    try:
-        return user.employee_get.employee_work_info.company_id_id
-    except Exception:
+    if not user or not user.is_authenticated or not user.pk:
         return None
+    from employee.models import EmployeeWorkInformation
+
+    # Resolve identity independently of any prior request scope or cached
+    # reverse relation. Removing an assignment must take effect immediately.
+    return (
+        EmployeeWorkInformation._base_manager.filter(
+            employee_id__employee_user_id=user.pk
+        )
+        .values_list("company_id_id", flat=True)
+        .first()
+    )
 
 
 def get_assigned_company_ids(user):
@@ -88,6 +101,10 @@ def get_assigned_company_ids(user):
     Used for All-my-companies data scope and permission unions.
     """
     from base.models import CompanyGroupAssignment
+
+    if single_company_login_active():
+        home_company_id = get_home_company_id(user)
+        return {home_company_id} if home_company_id else set()
 
     return set(
         CompanyGroupAssignment.objects.filter(user=user).values_list(
@@ -103,12 +120,8 @@ def get_allowed_company_ids(user):
     even when they only hold a role elsewhere).
     """
     home_company_id = get_home_company_id(user)
-    # A privileged HR user is still employed by one company.  Superuser is a
-    # permission level, not a reason to cross company boundaries.  The only
-    # exception is an unassigned bootstrap account, which has no home company
-    # to lock to while the first company is being configured.
-    if single_company_login_active() and home_company_id:
-        return {home_company_id}
+    if single_company_login_active():
+        return {home_company_id} if home_company_id else set()
 
     ids = get_assigned_company_ids(user)
     if home_company_id:
@@ -124,6 +137,8 @@ def get_write_company_id(user):
     otherwise the first assigned company. Falls back to allowed (work) only
     if they have no assignments.
     """
+    if single_company_login_active():
+        return get_home_company_id(user)
     assigned = get_assigned_company_ids(user)
     pool = assigned or get_allowed_company_ids(user)
     if not pool:
@@ -146,6 +161,8 @@ def resolve_company_id_for_new_record(request=None):
     - Non-superuser on "all" -> write company (work-info or first allowed)
     """
     request = request or getattr(_thread_locals, "request", None)
+    if single_company_login_active() and request and getattr(request, "user", None):
+        return get_home_company_id(request.user)
     company = get_selected_company()
     if company and company != "all":
         try:
@@ -217,7 +234,13 @@ def get_user_groups_for_company(user, company_id=None):
     if not company_scoped_active():
         return user.groups.all()
 
-    company_id = _normalize_company_id(company_id)
+    company_id = (
+        get_home_company_id(user)
+        if single_company_login_active()
+        else _normalize_company_id(company_id)
+    )
+    if single_company_login_active() and company_id is None:
+        return Group.objects.none()
     assignments = user.company_group_assignments.all()
     if company_id is not None:
         assignments = assignments.filter(company_id=company_id)
@@ -249,7 +272,13 @@ def get_effective_permission_codenames(user, company_id=None, include_direct=Tru
         )
         return sorted(codenames)
 
-    company_id = _normalize_company_id(company_id)
+    company_id = (
+        get_home_company_id(user)
+        if single_company_login_active()
+        else _normalize_company_id(company_id)
+    )
+    if single_company_login_active() and company_id is None:
+        return []
     assignments = user.company_group_assignments.all()
     if company_id is not None:
         assignments = assignments.filter(company_id=company_id)

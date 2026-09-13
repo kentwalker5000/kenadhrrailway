@@ -102,7 +102,7 @@ class ApiTenantScopingTests(TestCase):
         )
         self.assertEqual(resolve_company_id(root), self.company_a.id)
 
-    def test_resolver_leaves_unassigned_bootstrap_superuser_unscoped(self):
+    def test_resolver_returns_no_company_for_unassigned_superuser(self):
         from horilla_api.authentication import resolve_company_id
 
         root = make_user("bootstrap_root", password="secret123", is_superuser=True)
@@ -220,3 +220,16 @@ class UnplaceableApiUserTests(TestCase):
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         response = client.get(EMPLOYEE_LIST_URL)
         self.assertEqual(response.status_code, 403)
+
+    def test_unassigned_superuser_cannot_use_an_existing_token_or_get_a_new_one(self):
+        from rest_framework_simplejwt.tokens import RefreshToken
+
+        root = make_user("unassigned_root", password="secret123", is_superuser=True)
+        token = str(RefreshToken.for_user(root).access_token)
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        self.assertEqual(client.get(EMPLOYEE_LIST_URL).status_code, 403)
+        client.credentials()
+        response = client.post(LOGIN_URL, {"username": root.username, "password": "secret123"})
+        self.assertEqual(response.status_code, 403)
+        self.assertNotIn("access", response.data)

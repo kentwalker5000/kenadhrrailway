@@ -13,6 +13,7 @@ from django.contrib.auth.models import Group
 from django.db import transaction
 
 from base.models import Company, CompanyGroupAssignment
+from base.auth_backends import get_home_company_id, single_company_login_active
 from horilla_auth.models import HorillaUser
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,8 @@ def assign_demo_user_groups():
             user = HorillaUser.objects.filter(username=email).first()
         group = Group.objects.filter(name=group_name).first()
         company = Company.objects.filter(company=company_name).first()
+        if user and single_company_login_active():
+            company = Company.objects.filter(pk=get_home_company_id(user)).first()
         if not user or not group or not company:
             logger.debug(
                 "Skipping demo role assignment %s / %s / %s (missing user=%s group=%s company=%s)",

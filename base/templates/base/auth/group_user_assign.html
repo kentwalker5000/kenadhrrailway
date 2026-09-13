@@ -4,13 +4,14 @@
     <div class="oh-alert oh-alert--info mb-3">
         <p class="mb-0">
             {% if assign_mode == "edit" %}
-                {% blocktrans with name=group.name %}Editing members of "{{ name }}". Unchecking an employee removes them from this role, and unchecking a company removes that assignment.{% endblocktrans %}
+                {% blocktrans with name=group.name %}Editing members of "{{ name }}". Unchecking an employee removes them from this role. Roles apply only within each account's assigned company.{% endblocktrans %}
             {% else %}
                 {% blocktrans with name=group.name %}Choose employees for "{{ name }}". Saving adds the selected employees without removing existing members.{% endblocktrans %}
             {% endif %}
         </p>
     </div>
     <label class="settings-label mb-1">{% trans "Employees" %}</label>
+    {{form.non_field_errors}}
     {{form.group.errors}}
     {{form.employee.errors}}
     {{form.employee}}

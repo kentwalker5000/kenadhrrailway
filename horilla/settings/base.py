@@ -483,10 +483,9 @@ DB_INIT_PASSWORD = env(
 # When False, legacy behavior: user.groups grant permissions globally.
 # Instant rollback switch: set the COMPANY_SCOPED_PERMISSIONS env var to False.
 COMPANY_SCOPED_PERMISSIONS = env.bool("COMPANY_SCOPED_PERMISSIONS", default=True)
-# HR accounts operate inside the one company assigned in Employee Work
-# Information. Set this to False only for a deliberate legacy migration where
-# a person must temporarily switch between company tenants.
-SINGLE_COMPANY_LOGIN = env.bool("SINGLE_COMPANY_LOGIN", default=True)
+# Every account, including administrators, belongs to its Employee Work
+# Information company. This product does not offer cross-company logins.
+SINGLE_COMPANY_LOGIN = True
 
 NO_PERMISSION_MODALS = [
     "companygroupassignment",

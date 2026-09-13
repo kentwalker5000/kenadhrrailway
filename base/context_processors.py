@@ -68,16 +68,20 @@ def get_companies(request):
     home_company_id = (
         get_home_company_id(request.user) if request.user.is_authenticated else None
     )
-    # In single-company mode, an employee-bound administrator has exactly the
-    # same tenant visibility as any other employee. An unassigned superuser is
-    # kept as the first-install bootstrap account.
-    single_company_user = single_company_login_active() and bool(home_company_id)
+    if single_company_login_active():
+        companies = [
+            [company.pk, company.company, company.icon.url, True]
+            for company in Company.objects.filter(pk=home_company_id)
+        ]
+        return {
+            "all_companies": companies,
+            "company_selected": bool(companies),
+            "show_company_switcher": False,
+        }
     scoped = (
         request.user.is_authenticated
-        and (
-            single_company_user
-            or (company_scoped_active() and not request.user.is_superuser)
-        )
+        and company_scoped_active()
+        and not request.user.is_superuser
     )
     allowed_ids = get_allowed_company_ids(request.user) if scoped else None
     assigned_ids = get_assigned_company_ids(request.user) if scoped else None
@@ -119,8 +123,6 @@ def get_companies(request):
 
     if not request.user.is_authenticated:
         show_switcher = False
-    elif single_company_user:
-        show_switcher = False
     elif scoped:
         show_switcher = len(companies) > 1
     else:
@@ -150,8 +152,8 @@ def update_selected_company(request):
     next_url = request.META.get("HTTP_REFERER") or "/"
 
     home_company_id = get_home_company_id(request.user)
-    if single_company_login_active() and home_company_id:
-        if str(company_id) != str(home_company_id):
+    if single_company_login_active():
+        if not home_company_id or str(company_id) != str(home_company_id):
             messages.error(request, _("Your account is limited to its assigned company."))
             return HorillaRedirect(request, redirect_to=next_url)
     elif company_scoped_active() and not request.user.is_superuser:

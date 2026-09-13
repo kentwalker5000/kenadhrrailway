@@ -217,10 +217,9 @@ class CompanyMiddleware:
 
     def _get_user_default_company(self, request):
         """Fallback if session has no company selected"""
-        try:
-            return request.user.employee_get.employee_work_info.company_id
-        except Exception:
-            return None
+        from base.auth_backends import get_home_company_id
+
+        return Company.objects.filter(pk=get_home_company_id(request.user)).first()
 
     def _get_company_obj(self, request, com_id=None):
         """
@@ -366,10 +365,7 @@ class CompanyMiddleware:
         # tampered session cannot change the data scope. This applies to HR
         # administrators too: superuser controls permissions, not tenancy.
         home_company = self._get_user_default_company(request)
-        if single_company_login_active() and home_company is not None:
-            company_id = home_company.id
-            request.session["selected_company"] = str(company_id)
-        elif single_company_login_active() and not request.user.is_superuser:
+        if single_company_login_active():
             if home_company is None:
                 logout(request)
                 messages.error(
@@ -378,6 +374,8 @@ class CompanyMiddleware:
                 )
                 set_selected_company(None)
                 return redirect("login")
+            company_id = home_company.id
+            request.session["selected_company"] = str(company_id)
         else:
             selected_company = request.session.get("selected_company")
 
@@ -412,8 +410,10 @@ class CompanyMiddleware:
         )
 
         if (
-            company_scoped_active()
-            and not request.user.is_superuser
+            (
+                single_company_login_active()
+                or (company_scoped_active() and not request.user.is_superuser)
+            )
             and request.user.is_authenticated
         ):
             allowed = get_allowed_company_ids(request.user)

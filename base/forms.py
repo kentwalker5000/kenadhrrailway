@@ -23,6 +23,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMultiAlternatives
 from django.core.validators import validate_ipv46_address
+from django.db import transaction
 from django.db.models import Q
 from django.forms import DateInput, HiddenInput, TextInput
 from django.template import loader
@@ -428,6 +429,11 @@ class UserGroupForm(ModelForm):
         return group
 
 
+class EmployeeRoleSelectWidget(HorillaMultiSelectWidget):
+    def value_from_datadict(self, data, files, name):
+        return data.getlist(name) if hasattr(data, "getlist") else data.get(name, [])
+
+
 class AssignUserGroup(Form):
     """
     Form to assign employees to a group (searchable multi-select).
@@ -437,7 +443,7 @@ class AssignUserGroup(Form):
         queryset=Employee.objects.filter(
             is_active=True, employee_user_id__isnull=False
         ),
-        widget=HorillaMultiSelectWidget(
+        widget=EmployeeRoleSelectWidget(
             filter_route_name="employee-widget-filter",
             filter_class=EmployeeFilter,
             filter_instance_context_name="f",
@@ -473,10 +479,33 @@ class AssignUserGroup(Form):
         self.fields["employee"].widget.attrs.update(
             {"data-placeholder": _("Search employees...")}
         )
-        from base.auth_backends import company_scoped_active, get_assigned_company_ids
+        from base.auth_backends import (
+            company_scoped_active,
+            get_assigned_company_ids,
+            get_home_company_id,
+            single_company_login_active,
+        )
         from horilla.horilla_middlewares import _thread_locals
 
         self._grantable_company_ids = None
+        self._single_company = single_company_login_active()
+        request = getattr(_thread_locals, "request", None)
+        user = getattr(request, "user", None) if request else None
+        self._account_company_id = get_home_company_id(user)
+        if self._single_company:
+            self.fields.pop("companies", None)
+            employees = self.fields["employee"].queryset.filter(
+                employee_work_info__company_id__isnull=False
+            )
+            if user and user.is_authenticated:
+                employees = (
+                    employees.filter(
+                        employee_work_info__company_id=self._account_company_id
+                    )
+                    if self._account_company_id else employees.none()
+                )
+            self.fields["employee"].queryset = employees
+            return
         if not company_scoped_active():
             self.fields.pop("companies", None)
             return
@@ -501,6 +530,8 @@ class AssignUserGroup(Form):
             self._grantable_company_ids = None
 
     def clean(self):
+        if self._single_company:
+            return super().clean()
         emps = self.data.getlist("employee") if hasattr(self.data, "getlist") else []
         if emps is not None:
             self.errors.pop("employee", None)
@@ -526,6 +557,43 @@ class AssignUserGroup(Form):
             return companies
         return list(Company.objects.all())
 
+    @transaction.atomic
+    def _save_single_company(self, mode, target_employee_id):
+        from base.auth_backends import get_home_company_id
+        from base.models import CompanyGroupAssignment
+
+        group = self.cleaned_data["group"]
+        employees = list(self.cleaned_data.get("employee") or [])
+        users = [employee.employee_user_id for employee in employees]
+        if mode == "edit":
+            previous = (
+                group.user_set.filter(
+                    employee_get__employee_work_info__company_id=self._account_company_id
+                )
+                if self._account_company_id else group.user_set.none()
+            )
+            if target_employee_id:
+                previous = previous.filter(employee_get__pk=target_employee_id)
+                users = [
+                    u for u in users
+                    if str(u.employee_get.pk) == str(target_employee_id)
+                ]
+            removed = list(previous.exclude(pk__in=[u.pk for u in users]))
+            CompanyGroupAssignment.objects.filter(
+                group=group, user__in=removed
+            ).delete()
+            group.user_set.remove(*removed)
+        for user in users:
+            company_id = get_home_company_id(user)
+            CompanyGroupAssignment.objects.filter(user=user, group=group).exclude(
+                company_id=company_id
+            ).delete()
+            CompanyGroupAssignment.objects.get_or_create(
+                user=user, group=group, company_id=company_id
+            )
+            CompanyGroupAssignment.sync_user_group_membership(user, group)
+        return group
+
     def save(self, mode="add", target_employee_id=None):
         """
         Assign group membership for selected users in selected companies.
@@ -544,6 +612,9 @@ class AssignUserGroup(Form):
         cross-applied to every employee selected in the form.
         """
         from base.models import CompanyGroupAssignment
+
+        if self._single_company:
+            return self._save_single_company(mode, target_employee_id)
 
         group = self.cleaned_data["group"]
         employee_ids = (
@@ -625,7 +696,20 @@ class AddToUserGroupForm(Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         reload_queryset(self.fields)
+        from base.auth_backends import get_home_company_id, single_company_login_active
 
+        if single_company_login_active():
+            self.fields["employee"].queryset = self.fields["employee"].queryset.filter(
+                employee_work_info__company_id__isnull=False,
+                employee_user_id__isnull=False,
+            )
+            request = getattr(_thread_locals, "request", None)
+            if request and request.user.is_authenticated:
+                self.fields["employee"].queryset = self.fields["employee"].queryset.filter(
+                    employee_work_info__company_id=get_home_company_id(request.user)
+                )
+
+    @transaction.atomic
     def save(self):
         """
         Save method to assign the selected groups to the employee
@@ -637,7 +721,12 @@ class AddToUserGroupForm(Form):
         user = employee.employee_user_id
         user.groups.clear()
         CompanyGroupAssignment.objects.filter(user=user).delete()
-        companies = list(Company.objects.all())
+        from base.auth_backends import get_home_company_id, single_company_login_active
+
+        companies = list(
+            Company.objects.filter(pk=get_home_company_id(user))
+            if single_company_login_active() else Company.objects.all()
+        )
         assignments = []
         for group in groups:
             user.groups.add(group)

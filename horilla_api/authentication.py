@@ -53,9 +53,8 @@ def resolve_company_id(user):
     here -- a token is scoped to the user's own company, which is the
     conservative reading.
 
-    An administrator with an employee work-information company is scoped just
-    like every other employee. An unassigned superuser remains available only
-    for initial system setup, before any company can be assigned.
+    Administrators follow the same rule. A missing assignment must be refused
+    by the caller, including for superusers.
     """
     if user is None or not user.is_authenticated:
         return None
@@ -65,15 +64,9 @@ def resolve_company_id(user):
     # null) company. A direct query cannot go stale, and it is one indexed
     # lookup either way.
     try:
-        from employee.models import EmployeeWorkInformation
+        from base.auth_backends import get_home_company_id
 
-        return (
-            EmployeeWorkInformation.objects.filter(
-                employee_id__employee_user_id=user.pk
-            )
-            .values_list("company_id", flat=True)
-            .first()
-        )
+        return get_home_company_id(user)
     except Exception:
         # No employee record, no work info, or the app is unavailable.
         # Callers must read None as "cannot place this user", never as
@@ -106,7 +99,8 @@ class TenantScopedJWTAuthentication(JWTAuthentication):
         company_id = resolve_company_id(user)
         if company_id is not None:
             set_selected_company(company_id)
-        elif not user.is_superuser:
+        else:
+            set_selected_company(None)
             # None means "cannot place this user", never "no restriction".
             # Proceeding would run HorillaCompanyManager with no predicate.
             logger.warning(

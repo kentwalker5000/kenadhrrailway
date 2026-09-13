@@ -152,9 +152,31 @@ class Company(HorillaModel):
         return self.pk
 
 
+class CompanyGroupAssignmentQuerySet(models.QuerySet):
+    def bulk_create(self, objs, *args, **kwargs):
+        objs = list(objs)
+        for obj in objs:
+            obj.clean()
+        return super().bulk_create(objs, *args, **kwargs)
+
+    def update(self, **kwargs):
+        from base.auth_backends import single_company_login_active
+
+        if single_company_login_active() and {
+            "user", "user_id", "company", "company_id"
+        }.intersection(kwargs):
+            raise ValidationError(
+                _("An account's company cannot be changed through role assignments.")
+            )
+        return super().update(**kwargs)
+
+
 class CompanyGroupAssignment(HorillaModel):
     """
     Company-scoped membership of a user in an auth Group.
+
+    An assignment must match the user's Employee Work Information company.
+    Multiple roles in that one company are supported.
 
     When settings.COMPANY_SCOPED_PERMISSIONS is enabled, a user's group
     permissions only apply in companies where such an assignment exists
@@ -181,6 +203,22 @@ class CompanyGroupAssignment(HorillaModel):
         related_name="company_assignments",
         verbose_name=_("Group"),
     )
+    objects = CompanyGroupAssignmentQuerySet.as_manager()
+
+    def clean(self):
+        super().clean()
+        from base.auth_backends import get_home_company_id, single_company_login_active
+
+        if single_company_login_active() and self.user_id:
+            home_company_id = get_home_company_id(self.user)
+            if not home_company_id or self.company_id != home_company_id:
+                raise ValidationError(
+                    {"company": _("Roles must belong to the account's assigned company.")}
+                )
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        return super().save(*args, **kwargs)
 
     class Meta:
         """

@@ -72,6 +72,13 @@ class LoginAPIView(APIView):
             # and axes raises rather than silently allowing it.
             user = authenticate(request, username=username, password=password)
             if user:
+                from horilla_api.authentication import resolve_company_id
+
+                if resolve_company_id(user) is None:
+                    return Response(
+                        {"error": _("This account is not assigned to a company.")},
+                        status=403,
+                    )
                 refresh = RefreshToken.for_user(user)
                 employee = user.employee_get
                 face_detection = False

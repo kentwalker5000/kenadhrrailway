@@ -32,6 +32,7 @@ from django.core.files.base import ContentFile
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.core.management import call_command
 from django.core.validators import validate_ipv46_address
+from django.db import transaction
 from django.db.models import Count, ProtectedError, Q
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -190,6 +191,7 @@ from horilla.decorators import (
     superuser_required,
 )
 from horilla.group_by import group_by_queryset
+from horilla.horilla_middlewares import _thread_locals
 from horilla.http.response import HorillaRedirect
 from horilla.menu import get_settings_menu
 from horilla.methods import get_horilla_model_class, remove_dynamic_url
@@ -530,6 +532,7 @@ def initialize_database(request):
 
 @database_init_required
 @hx_request_required
+@transaction.atomic
 def initialize_database_user(request):
     """
     Handles the user creation step during database initialization.
@@ -566,9 +569,12 @@ def initialize_database_user(request):
         employee.email = email
         employee.phone = phone
         employee.save()
-        request.session.pop("db_init_verified", None)
         user = authenticate(request, username=username, password=password)
-        login(request, user)
+        # Setup authorization is limited to the next wizard step. Do not
+        # create a signed-in session until this account has a company.
+        request.session.cycle_key()
+        request.session["db_init_user_id"] = user.pk
+        request.session["db_init_backend"] = user.backend
         return render(
             request,
             "initialize_database/horilla_company.html",
@@ -577,8 +583,8 @@ def initialize_database_user(request):
     return render(request, "initialize_database/horilla_user_signup.html")
 
 
-@superuser_required
 @hx_request_required
+@transaction.atomic
 def initialize_database_company(request):
     """
     Handles the company creation step during database initialization.
@@ -589,19 +595,33 @@ def initialize_database_company(request):
     Returns:
         HttpResponse: The rendered HTML template for department creation or company creation.
     """
+    pending_user_id = request.session.get("db_init_user_id")
+    if not request.session.get("db_init_verified") or not pending_user_id:
+        return redirect("login")
+    user = HorillaUser.objects.select_for_update().filter(
+        pk=pending_user_id, is_superuser=True, is_active=True
+    ).first()
+    from base.auth_backends import get_home_company_id
+
+    if not user or get_home_company_id(user) is not None:
+        return redirect("login")
+    employee = getattr(user, "employee_get", None)
+    if employee is None:
+        return redirect("login")
+
     form = CompanyForm()
     if request.method == "POST":
         form = CompanyForm(request.POST, request.FILES)
         if form.is_valid():
             company = form.save()
-            try:
-                employee = request.user.employee_get
-                employee.employee_work_info.company_id = company
-                employee.employee_work_info.save()
-            except Exception:
-                logger.exception(
-                    "initialize database: could not attach creator to company"
-                )
+            EmployeeWorkInformation.objects.update_or_create(
+                employee_id=employee, defaults={"company_id": company}
+            )
+            backend = request.session.pop("db_init_backend")
+            request.session.pop("db_init_user_id", None)
+            request.session.pop("db_init_verified", None)
+            login(request, user, backend=backend)
+            request.session["selected_company"] = str(company.pk)
             return render(
                 request,
                 "initialize_database/horilla_department.html",
@@ -835,6 +855,15 @@ def login_user(request):
                 _(
                     "This user is archived. Please contact the manager for more information."
                 ),
+            )
+            return redirect("login")
+
+        from base.auth_backends import get_home_company_id, single_company_login_active
+
+        if single_company_login_active() and get_home_company_id(user) is None:
+            messages.error(
+                request,
+                _("Your account is not assigned to a company. Contact an administrator."),
             )
             return redirect("login")
 
@@ -1491,16 +1520,32 @@ def _group_detail_context(group):
     Shared by the lazy-load view and any action that needs to refresh it
     in place (e.g. removing a member).
     """
-    from base.auth_backends import company_scoped_active
+    from base.auth_backends import (
+        company_scoped_active, get_home_company_id, single_company_login_active,
+    )
+
+    users = group.user_set.all()
+    assignments = CompanyGroupAssignment.objects.filter(group=group)
+    request = getattr(_thread_locals, "request", None)
+    if single_company_login_active() and request:
+        company_id = get_home_company_id(request.user)
+        users = (
+            users.filter(employee_get__employee_work_info__company_id=company_id)
+            if company_id else users.none()
+        )
+        assignments = (
+            assignments.filter(company_id=company_id)
+            if company_id else assignments.none()
+        )
 
     company_scoped = company_scoped_active()
     member_companies = {}
     distinct_member_companies = []
     if company_scoped:
         company_names = set()
-        for user_id, company_id, company_name in CompanyGroupAssignment.objects.filter(
-            group=group
-        ).values_list("user_id", "company_id", "company__company"):
+        for user_id, company_id, company_name in assignments.values_list(
+            "user_id", "company_id", "company__company"
+        ):
             member_companies.setdefault(user_id, []).append(
                 {"id": company_id, "name": company_name}
             )
@@ -1508,12 +1553,12 @@ def _group_detail_context(group):
         distinct_member_companies = sorted(company_names)
     members = [
         {"user": user, "companies": member_companies.get(user.id, [])}
-        for user in group.user_set.all()
+        for user in users
     ]
     permissions, no_permission_models = _build_permission_matrix()
     return {
         "group": group,
-        "member_count": group.user_set.count(),
+        "member_count": users.count(),
         "members": members,
         "member_companies": distinct_member_companies,
         "permissions": permissions,
@@ -1735,6 +1780,11 @@ def group_remove_user(request, uid, gid):
     """
     group = Group.objects.filter(id=gid).first()
     user = HorillaUser.objects.filter(id=uid).first()
+    from base.auth_backends import get_home_company_id, single_company_login_active
+
+    if single_company_login_active() and user:
+        if get_home_company_id(user) != get_home_company_id(request.user):
+            return HttpResponse(status=403)
     company_id = request.POST.get("company_id") or request.GET.get("company_id")
     fully_removed = True
     if group and user:

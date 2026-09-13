@@ -55,7 +55,7 @@
                         data-empty="#groupMembersEmpty{{ group.id }}"
                     >
                 </div>
-                {% if member_companies %}
+                {% if member_companies|length > 1 %}
                     <select
                         class="ug-member-company-filter text-xs border border-[#ececec] rounded-md py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-brand-600"
                         data-target="#groupMembers{{ group.id }}"

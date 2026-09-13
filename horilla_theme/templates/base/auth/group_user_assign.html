@@ -14,11 +14,11 @@
         </p>
         <p class="text-xs text-dark-300 leading-relaxed">
             {% if target_employee %}
-                {% blocktrans with name=target_employee.get_full_name %}Update which companies {{ name }} gets this role's permissions in. Other members of this role are not affected.{% endblocktrans %}
+                {% blocktrans with name=target_employee.get_full_name %}Update the role for {{ name }} in their assigned company.{% endblocktrans %}
             {% elif assign_mode == "edit" %}
-                {% trans "Update employees or companies for this role. Unchecking an employee removes them from the role; the selected companies apply to everyone selected." %}
+                {% trans "Update employees in this role. Unchecking an employee removes them from the role. Each account belongs to one company." %}
             {% else %}
-                {% trans "Search and pick employees below. Saving adds the selected employees to this role for the selected companies." %}
+                {% trans "Search and pick employees below. Saving adds the role within each employee's assigned company." %}
             {% endif %}
             {% if member_count %}
                 <span class="font-medium text-primary-700">
@@ -29,6 +29,7 @@
     </div>
 
     {{ form.group.errors }}
+    {{ form.non_field_errors }}
     {% if target_employee %}
         <div>
             <label class="block text-sm font-medium text-dark-400 mb-1">

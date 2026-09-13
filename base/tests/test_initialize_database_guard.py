@@ -15,7 +15,8 @@ independent implementations and the response shape is an implementation detail:
 * ``@database_init_required`` on the user step: requires the DB_INIT_PASSWORD to
   have been verified this session (``db_init_verified``), and redirects to login
   otherwise.
-* ``@superuser_required`` on the seven later steps.
+* A verified setup session tied to the newly created user on the company step.
+* ``@superuser_required`` on the later steps, after company assignment/sign-in.
 
 Note there is deliberately NO ``DEBUG`` gate: it was removed in c99eaea4b4
 ("Fixed the initialize database 404 error in production server") because it
@@ -134,6 +135,42 @@ class UninitializedDatabaseAllowsSetupFlow(TestCase):
 
         # Knowing the URL is not enough; DB_INIT_PASSWORD gates entry.
         self.assertEqual(response.status_code, 302)
+
+    def test_setup_only_signs_in_after_company_assignment_and_cannot_be_replayed(self):
+        from django.conf import settings
+        from base.auth_backends import get_home_company_id
+
+        self.client.post(reverse("initialize-database"), {"password": settings.DB_INIT_PASSWORD})
+        response = self.client.post(
+            reverse("initialize-database-user"),
+            {
+                "username": "new-root", "password": "setup-password",
+                "confirm_password": "setup-password", "firstname": "New",
+                "lastname": "Admin", "badge_id": "HR1", "email": "new-root@test.horilla",
+                "phone": "9999999999",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("_auth_user_id", self.client.session)
+        self.assertEqual(self.client.get("/").status_code, 302)
+        data = {
+            "company": "First company", "hq": True, "address": "1 Test St",
+            "country": "US", "state": "CA", "city": "LA", "zip": "90001",
+        }
+        response = self.client.post(reverse("initialize-database-company"), data, HTTP_HX_REQUEST="true")
+        self.assertEqual(response.status_code, 200)
+        user = HorillaUser.objects.get(username="new-root")
+        company = Company.objects.get(company="First company")
+        self.assertEqual(get_home_company_id(user), company.pk)
+        self.assertEqual(self.client.session["_auth_user_id"], str(user.pk))
+        self.assertNotIn("db_init_user_id", self.client.session)
+        self.assertNotIn("db_init_verified", self.client.session)
+
+        data["company"] = "Second company"
+        self.client.post(reverse("initialize-database-company"), data, HTTP_HX_REQUEST="true")
+        self.assertFalse(Company.objects.filter(company="Second company").exists())
+        self.assertEqual(get_home_company_id(user), company.pk)
 
     def test_user_step_is_reachable_after_verifying_the_init_password(self):
         from django.conf import settings
