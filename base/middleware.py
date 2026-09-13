@@ -361,11 +361,15 @@ class CompanyMiddleware:
 
         from base.auth_backends import single_company_login_active
 
-        # HR users are tenants, not cross-company operators. Derive their
-        # company from the authenticated employee record on every request so a
-        # stale or tampered session cannot change the data scope.
+        # An employee account belongs to one tenant. Derive its company from
+        # the authenticated employee record on every request so a stale or
+        # tampered session cannot change the data scope. This applies to HR
+        # administrators too: superuser controls permissions, not tenancy.
         home_company = self._get_user_default_company(request)
-        if single_company_login_active() and not request.user.is_superuser:
+        if single_company_login_active() and home_company is not None:
+            company_id = home_company.id
+            request.session["selected_company"] = str(company_id)
+        elif single_company_login_active() and not request.user.is_superuser:
             if home_company is None:
                 logout(request)
                 messages.error(
@@ -374,8 +378,6 @@ class CompanyMiddleware:
                 )
                 set_selected_company(None)
                 return redirect("login")
-            company_id = home_company.id
-            request.session["selected_company"] = str(company_id)
         else:
             selected_company = request.session.get("selected_company")
 

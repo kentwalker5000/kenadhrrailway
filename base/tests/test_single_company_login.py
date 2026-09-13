@@ -49,3 +49,29 @@ class SingleCompanyLoginTests(TestCase):
 
         self.assertEqual(get_allowed_company_ids(self.user), {self.company_a.id})
         self.assertFalse(get_companies(request)["show_company_switcher"])
+
+    def test_company_bound_superuser_cannot_use_all_companies(self):
+        superuser = make_user("tenant-admin", is_superuser=True)
+        make_employee(
+            company=self.company_a,
+            email="tenant-admin@test.horilla",
+            user=superuser,
+        )
+        superuser.refresh_from_db()
+        self.client.force_login(superuser)
+        session = self.client.session
+        session["selected_company"] = "all"
+        session.save()
+
+        self.client.get("/")
+
+        self.assertEqual(self.client.session["selected_company"], str(self.company_a.id))
+        request = RequestFactory().get("/")
+        request.user = superuser
+        request.session = {"selected_company": str(self.company_a.id)}
+        companies = get_companies(request)
+        self.assertEqual(
+            [company[0] for company in companies["all_companies"]],
+            [self.company_a.id],
+        )
+        self.assertFalse(companies["show_company_switcher"])

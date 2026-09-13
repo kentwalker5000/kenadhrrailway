@@ -103,8 +103,12 @@ def get_allowed_company_ids(user):
     even when they only hold a role elsewhere).
     """
     home_company_id = get_home_company_id(user)
-    if single_company_login_active() and not getattr(user, "is_superuser", False):
-        return {home_company_id} if home_company_id else set()
+    # A privileged HR user is still employed by one company.  Superuser is a
+    # permission level, not a reason to cross company boundaries.  The only
+    # exception is an unassigned bootstrap account, which has no home company
+    # to lock to while the first company is being configured.
+    if single_company_login_active() and home_company_id:
+        return {home_company_id}
 
     ids = get_assigned_company_ids(user)
     if home_company_id:

@@ -53,12 +53,11 @@ def resolve_company_id(user):
     here -- a token is scoped to the user's own company, which is the
     conservative reading.
 
-    Superusers are left unscoped, matching the web path, where
-    ``HorillaCompanyManager`` treats "all" as tenant-wide for them.
+    An administrator with an employee work-information company is scoped just
+    like every other employee. An unassigned superuser remains available only
+    for initial system setup, before any company can be assigned.
     """
     if user is None or not user.is_authenticated:
-        return None
-    if user.is_superuser:
         return None
     # Query the work-info row rather than traversing user.employee_get:
     # the reverse OneToOne is cached on the user instance, so a user object

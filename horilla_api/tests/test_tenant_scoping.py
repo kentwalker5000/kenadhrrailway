@@ -91,11 +91,21 @@ class ApiTenantScopingTests(TestCase):
         self.assertIsNone(resolve_company_id(AnonymousUser()))
         self.assertIsNone(resolve_company_id(None))
 
-    def test_resolver_returns_none_for_superuser(self):
-        """Superusers stay tenant-wide, matching the web path."""
+    def test_resolver_scopes_a_superuser_with_an_employee_company(self):
         from horilla_api.authentication import resolve_company_id
 
         root = make_user("tenant_root", password="secret123", is_superuser=True)
+        make_employee(
+            company=self.company_a,
+            email="tenant-root@test.horilla",
+            user=root,
+        )
+        self.assertEqual(resolve_company_id(root), self.company_a.id)
+
+    def test_resolver_leaves_unassigned_bootstrap_superuser_unscoped(self):
+        from horilla_api.authentication import resolve_company_id
+
+        root = make_user("bootstrap_root", password="secret123", is_superuser=True)
         self.assertIsNone(resolve_company_id(root))
 
     # -- the authentication class ----------------------------------------
