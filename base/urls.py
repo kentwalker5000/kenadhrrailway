@@ -345,6 +345,11 @@ urlpatterns = [
         name="individual-mail-log-detail",
     ),
     path(
+        "individual-email-log-delete/",
+        mail_log_tab.MailLogDeleteView.as_view(),
+        name="individual-email-log-delete",
+    ),
+    path(
         "mail-template-create-form/",
         mail_template.MailTemplateFormView.as_view(),
         name="mail-template-create-form",

@@ -6,9 +6,11 @@ from typing import Any
 
 from django.contrib import messages
 from django.db.models import Q
+from django.http import HttpResponse, HttpResponseForbidden
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
+from django.views import View
 
 from accessibility.cbv_decorators import enter_if_accessible
 from base.filters import MailLogFilter
@@ -22,12 +24,44 @@ from horilla_views.generic.cbv.views import HorillaDetailedView, HorillaListView
 
 def _can_view_mail_log(request, employee):
     """Own log, a subordinate's log, or the employee.view_employee permission."""
+    if employee is None:
+        return False
     viewer = request.user.employee_get
     return (
         request.user.has_perm("employee.view_employee")
         or employee == viewer
         or check_manager(viewer, employee)
     )
+
+
+def _can_delete_mail_log(request, employee):
+    """Only HR staff who manage the employee may remove their mail history."""
+    return request.user.has_perm("employee.change_employee") and _can_view_mail_log(
+        request, employee
+    )
+
+
+def _mail_log_belongs_to_employee(log, employee):
+    """Match exact stored recipient addresses and keep the operation tenant-safe."""
+    if not log or not employee:
+        return False
+
+    employee_company = employee.get_company()
+    if not employee_company or log.company_id_id != employee_company.pk:
+        return False
+
+    work_info = getattr(employee, "employee_work_info", None)
+    employee_addresses = {
+        address.strip().lower()
+        for address in (employee.email, getattr(work_info, "email", ""))
+        if address and address.strip()
+    }
+    logged_addresses = {
+        address.strip("[],'\" ").lower()
+        for address in str(log.to).split(",")
+        if address.strip("[],'\" ")
+    }
+    return bool(employee_addresses & logged_addresses)
 
 
 def _employee_for_log(log):
@@ -54,6 +88,22 @@ class MailLogTabList(HorillaListView):
 
         pk = self.request.resolver_match.kwargs.get("pk")
         self.search_url = reverse("individual-email-log-list", kwargs={"pk": pk})
+        employee = Employee.objects.filter(pk=pk).first()
+        self.actions = []
+        if _can_delete_mail_log(self.request, employee):
+            self.actions.append(
+                {
+                    "action": _("Delete"),
+                    "icon": "trash-outline",
+                    "attrs": f"""
+                        class="oh-btn oh-btn--danger oh-btn--sq-sm"
+                        hx-post="{reverse('individual-email-log-delete')}?employee_id={employee.pk}&log_id={{pk}}"
+                        hx-swap="none"
+                        hx-confirm="{_('Are you sure you want to delete this mail log?')}"
+                        hx-on::after-request="event.detail.successful && this.closest('tr').remove()"
+                    """,
+                }
+            )
 
     # def get_context_data(self, **kwargs: Any):
     #     context = super().get_context_data(**kwargs)
@@ -128,3 +178,23 @@ class MailLogDetailView(HorillaDetailedView):
         return context
 
     header = {"title": "", "subtitle": "", "avatar": ""}
+
+
+@method_decorator(login_required, name="dispatch")
+class MailLogDeleteView(View):
+    """Delete one employee mail log after verifying its employee and company."""
+
+    def post(self, request, *args, **kwargs):
+        employee_id = request.POST.get("employee_id") or request.GET.get("employee_id")
+        log_id = request.POST.get("log_id") or request.GET.get("log_id")
+        employee = Employee.objects.filter(pk=employee_id).first()
+        log = EmailLog.objects.filter(pk=log_id).first()
+
+        if not _mail_log_belongs_to_employee(log, employee):
+            return HttpResponse(status=404)
+        if not _can_delete_mail_log(request, employee):
+            return HttpResponseForbidden()
+
+        log.delete()
+        messages.success(request, _("Mail log deleted."))
+        return HttpResponse(status=204)
