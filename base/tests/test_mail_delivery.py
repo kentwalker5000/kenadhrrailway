@@ -74,6 +74,18 @@ class MailConnectionConfigurationTests(SimpleTestCase):
         lookup.assert_called_once_with()
         self.assertIs(backend.configuration, config)
 
+    def test_explicit_message_connection_does_not_initialize_a_different_server(self):
+        from django.core.mail import EmailMultiAlternatives
+
+        connection = DefaultHorillaMailBackend(configuration=self.configuration())
+        with patch("base.backends.DefaultHorillaMailBackend") as unrelated_backend:
+            message = EmailMultiAlternatives(
+                "Reset your password - KenadHr", "Synthetic", "sender@example.com",
+                ["recipient@example.com"], connection=connection,
+            )
+        unrelated_backend.assert_not_called()
+        self.assertIs(message.connection, connection)
+
 
 @override_settings(WHITE_LABELLING=False, STATIC_ROOT=Path(settings.BASE_DIR) / "static")
 class MailServerTestViewTests(CompanyFilterTestMixin, TestCase):

@@ -254,7 +254,10 @@ def new_init(
     custom __init_method to override
     """
     request = getattr(_thread_locals, "request", None)
-    DefaultHorillaMailBackend()
+    # Explicit connections already selected a server. Looking up another one
+    # here breaks anonymous password resets with per-company SMTP settings.
+    if connection is None:
+        DefaultHorillaMailBackend()
     user_id = ""
     if request and request.user and request.user.is_authenticated:
         user_id = request.user.pk

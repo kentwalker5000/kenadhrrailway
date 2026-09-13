@@ -15,23 +15,17 @@ import bleach
 from django import forms
 from django.apps import apps
 from django.contrib import messages
-from django.contrib.auth import get_user_model
-from django.contrib.auth.forms import SetPasswordForm, _unicode_ci_compare
+from django.contrib.auth.forms import SetPasswordForm
+from django.contrib.auth.password_validation import password_validators_help_text_html
 from django.contrib.auth.models import Group, Permission
-from django.contrib.auth.tokens import default_token_generator
-from django.contrib.sites.shortcuts import get_current_site
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMultiAlternatives
 from django.core.validators import validate_ipv46_address
 from django.db import transaction
 from django.db.models import Q
 from django.forms import DateInput, HiddenInput, TextInput
-from django.template import loader
 from django.template.loader import render_to_string
 from django.urls import reverse_lazy
-from django.utils.encoding import force_bytes
 from django.utils.html import strip_tags
-from django.utils.http import urlsafe_base64_encode
 from django.utils.translation import gettext_lazy as _
 
 from base.methods import reload_queryset
@@ -2609,7 +2603,7 @@ class ResetPasswordForm(SetPasswordForm):
                 "class": "oh-input oh-input--password w-100 mb-2",
             }
         ),
-        help_text=_("Enter your new password."),
+        help_text=password_validators_help_text_html(),
     )
     new_password2 = forms.CharField(
         label=_("New password confirmation"),
@@ -3192,112 +3186,10 @@ class DriverForm(forms.ModelForm):
         fields = "__all__"
 
 
-UserModel = get_user_model()
-
-
 class PassWordResetForm(forms.Form):
-    email = forms.CharField()
-
-    def send_mail(
-        self,
-        subject_template_name,
-        email_template_name,
-        context,
-        from_email,
-        to_email,
-        html_email_template_name=None,
-    ):
-        """
-        Send a django.core.mail.EmailMultiAlternatives to `to_email`.
-        """
-        subject = loader.render_to_string(subject_template_name, context)
-        # Email subject *must not* contain newlines
-        subject = "".join(subject.splitlines())
-        body = loader.render_to_string(email_template_name, context)
-
-        email_message = EmailMultiAlternatives(subject, body, from_email, [to_email])
-        if html_email_template_name is not None:
-            html_email = loader.render_to_string(html_email_template_name, context)
-            email_message.attach_alternative(html_email, "text/html")
-
-        email_message.send()
-
-    def get_users(self, email):
-        """
-        Given an email, return matching user(s) who should receive a reset.
-
-        This allows subclasses to more easily customize the default policies
-        that prevent inactive users and users with unusable passwords from
-        resetting their password.
-        """
-        email_field_name = UserModel.get_email_field_name()
-        active_users = UserModel._default_manager.filter(
-            **{
-                "%s__iexact" % email_field_name: email,
-                "is_active": True,
-            }
-        )
-        return (
-            u
-            for u in active_users
-            if u.has_usable_password()
-            and _unicode_ci_compare(email, getattr(u, email_field_name))
-        )
-
-    def save(
-        self,
-        domain_override=None,
-        subject_template_name="registration/password_reset_subject.txt",
-        email_template_name="registration/password_reset_email.html",
-        use_https=False,
-        token_generator=default_token_generator,
-        from_email=None,
-        request=None,
-        html_email_template_name=None,
-        extra_email_context=None,
-    ):
-        """
-        Generate a one-use only link for resetting password and send it to the
-        user.
-        """
-        username = self.cleaned_data["email"]
-        user = HorillaUser.objects.get(username=username)
-        employee = user.employee_get
-        email = employee.email
-        work_mail = None
-        try:
-            work_mail = employee.employee_work_info.email
-        except Exception as e:
-            pass
-        if work_mail:
-            email = work_mail
-
-        if not domain_override:
-            current_site = get_current_site(request)
-            site_name = current_site.name
-            domain = current_site.domain
-        else:
-            site_name = domain = domain_override
-        if email:
-            token = token_generator.make_token(user)
-            context = {
-                "email": email,
-                "domain": domain,
-                "site_name": site_name,
-                "uid": urlsafe_base64_encode(force_bytes(user.pk)),
-                "user": user,
-                "token": token,
-                "protocol": "https" if use_https else "http",
-                **(extra_email_context or {}),
-            }
-            self.send_mail(
-                subject_template_name,
-                email_template_name,
-                context,
-                from_email,
-                email,
-                html_email_template_name=html_email_template_name,
-            )
+    # Keep the legacy field name for existing login forms; it is a username,
+    # not a user-supplied delivery address. Mail logic lives in password_reset.
+    email = forms.CharField(label=_("Username"), max_length=150, strip=True)
 
 
 def validate_ip_or_cidr(value):

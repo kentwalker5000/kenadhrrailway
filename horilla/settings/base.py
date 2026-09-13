@@ -41,6 +41,12 @@ REDIS_URL = env("REDIS_URL", default=None)
 # Default site ID for django.contrib.sites framework.
 SITE_ID = 1
 
+# Credential links use a trusted origin, never the request's Host header or Site.
+PASSWORD_RESET_BASE_URL = env(
+    "PASSWORD_RESET_BASE_URL", default="http://localhost:8000" if DEBUG else ""
+)
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
+
 THEME_APP = "horilla_theme"
 
 INSTALLED_APPS = [

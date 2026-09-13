@@ -28,17 +28,9 @@ def edit_accessibility(
 def password_reset_accessibility(
     request, instance: object = None, user_perms: PermWrapper = [], *args, **kwargs
 ) -> bool:
-    """
-    To password  reset
-    """
-    # employee = Employee.objects.get(id=instance.pk)
-    if (
-        (request.user.has_perm("employee.add_employee"))
-        or check_manager(request.user.employee_get, instance)
-        or request.user == instance.employee_user_id
-    ):
-        return True
-    return False
+    from base.password_reset import can_reset_employee, reset_eligible
+
+    return can_reset_employee(request.user, instance) and reset_eligible(instance)
 
 
 def block_account_accessibility(

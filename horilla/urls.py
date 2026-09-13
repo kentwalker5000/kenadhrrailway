@@ -130,7 +130,7 @@ urlpatterns = [
         RedirectView.as_view(url=settings.LOGIN_URL, permanent=False),
         name="accounts-login-redirect",
     ),
-    path("accounts/", include("django.contrib.auth.urls")),
+    path("accounts/", include("base.auth_urls")),
     path("", include("base.urls")),
     path("", include("horilla_automations.urls")),
     path("", include("horilla_views.urls")),

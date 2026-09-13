@@ -1,0 +1,8 @@
+{% extends 'registration/kenadhr_auth_base.html' %}
+{% load i18n %}
+{% block title %}{% trans 'Password updated' %} - KenadHr{% endblock %}
+{% block content %}
+  <h1 id="page-title">{% trans 'Your password has been updated' %}</h1>
+  <p>{% trans 'You can now sign in to your company account using your new password.' %}</p>
+  <a class="primary" href="{% url 'login' %}">{% trans 'Sign in' %}</a>
+{% endblock %}

@@ -27,7 +27,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.models import Group, Permission
-from django.contrib.auth.views import PasswordResetConfirmView, PasswordResetView
+from django.contrib.auth.views import PasswordResetConfirmView, PasswordResetCompleteView
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.core.mail import EmailMessage, EmailMultiAlternatives
@@ -47,7 +47,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext as _
 from django.views import View
 from django.views.decorators.http import require_http_methods
-from django.views.generic import RedirectView, TemplateView
+from django.views.generic import FormView, RedirectView, TemplateView
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import UntypedToken
@@ -55,6 +55,13 @@ from rest_framework_simplejwt.tokens import UntypedToken
 from accessibility.accessibility import ACCESSBILITY_FEATURE
 from accessibility.models import DefaultAccessibility
 from base.backends import ConfiguredEmailBackend
+from base.password_reset import (
+    PasswordResetMailThread,
+    can_reset_employee,
+    employee_reset_token,
+    reset_request_allowed,
+    send_employee_reset_link,
+)
 from base.decorators import (
     shift_request_change_permission,
     work_type_request_change_permission,
@@ -907,97 +914,74 @@ def reset_send_success(request):
     return render(request, "reset_send.html")
 
 
-class HorillaPasswordResetView(PasswordResetView):
-    """
-    Horilla View for Reset Password
-    """
-
+class HorillaPasswordResetView(FormView):
+    """Public recovery always gives the same response, including unknown users."""
     template_name = "forgot_password.html"
     form_class = PassWordResetForm
     success_url = reverse_lazy("reset-send-success")
 
     def form_valid(self, form):
-        email_backend = ConfiguredEmailBackend()
-        default = "base.backends.ConfiguredEmailBackend"
-        is_default_backend = True
-        EMAIL_BACKEND = getattr(settings, "EMAIL_BACKEND", "")
-        if EMAIL_BACKEND and default != EMAIL_BACKEND:
-            is_default_backend = False
-        if is_default_backend and not email_backend.configuration:
-            messages.error(self.request, _("Primary mail server is not configured"))
-            return redirect("forgot-password")
-
         username = form.cleaned_data["email"]
-        user = HorillaUser.objects.filter(username=username).first()
-        if user:
-            opts = {
-                "use_https": self.request.is_secure(),
-                "token_generator": self.token_generator,
-                "from_email": email_backend.dynamic_from_email_with_display_name,
-                "email_template_name": self.email_template_name,
-                "subject_template_name": self.subject_template_name,
-                "request": self.request,
-                "html_email_template_name": self.html_email_template_name,
-                "extra_email_context": self.extra_email_context,
-            }
-            form.save(**opts)
-            if self.request.user.is_authenticated:
-                messages.success(
-                    self.request, _("Password reset link sent successfully")
-                )
-                return HorillaRedirect(self.request)
-
-        return redirect(reverse_lazy("reset-send-success"))
+        if reset_request_allowed(self.request, username):
+            # Lookup and mail run off the request thread, including unknown users.
+            worker = PasswordResetMailThread(username)
+            transaction.on_commit(worker.start)
+        return super().form_valid(form)
 
 
-class EmployeePasswordResetView(PasswordResetView):
-    """
-    Horilla View for Employee Reset Password
-    """
+class EmployeePasswordResetView(LoginRequiredMixin, View):
+    """Authenticated profile action; UI visibility alone is not authorization."""
+    http_method_names = ["post"]
 
-    template_name = "forgot_password.html"
-    form_class = PassWordResetForm
+    def post(self, request):
+        from base.auth_backends import get_home_company_id
 
-    def form_valid(self, form):
+        employee_id = request.POST.get("employee_id", "")
+        if not employee_id.isdecimal() or len(employee_id) > 18:
+            return HttpResponse(_("Select a valid employee."), status=400)
+        company_id = get_home_company_id(request.user)
+        if not company_id:
+            raise Http404
+        employee = get_object_or_404(
+            Employee._base_manager.select_related("employee_user_id", "employee_work_info__company_id"),
+            pk=employee_id, employee_work_info__company_id=company_id,
+        )
+        if not can_reset_employee(request.user, employee):
+            return HttpResponse(_("Permission denied."), status=403)
+        if not employee.employee_user_id:
+            messages.error(request, _("This employee does not have a login account."))
+            return HorillaRedirect(request)
+        if not reset_request_allowed(request, employee.employee_user_id.username):
+            messages.warning(request, _("Too many reset requests. Please try again later."))
+            return HorillaRedirect(request)
         try:
-            email_backend = ConfiguredEmailBackend()
-            default = "base.backends.ConfiguredEmailBackend"
-            is_default_backend = True
-            EMAIL_BACKEND = getattr(settings, "EMAIL_BACKEND", "")
-            if EMAIL_BACKEND and default != EMAIL_BACKEND:
-                is_default_backend = False
-            if is_default_backend and not email_backend.configuration:
-                messages.error(self.request, _("Primary mail server is not configured"))
-                return HorillaRedirect(self.request)
-
-            username = form.cleaned_data["email"]
-            user = HorillaUser.objects.filter(username=username).first()
-            if user:
-                opts = {
-                    "use_https": self.request.is_secure(),
-                    "token_generator": self.token_generator,
-                    "from_email": email_backend.dynamic_from_email_with_display_name,
-                    "email_template_name": self.email_template_name,
-                    "subject_template_name": self.subject_template_name,
-                    "request": self.request,
-                    "html_email_template_name": self.html_email_template_name,
-                    "extra_email_context": self.extra_email_context,
-                }
-                form.save(**opts)
-            messages.success(
-                self.request,
-                _("If your account exists, a password reset link has been sent"),
-            )
-            return HorillaRedirect(self.request)
-
-        except Exception as e:
-            messages.error(self.request, _("Something went wrong....."))
-            return HorillaRedirect(self.request)
+            accepted = send_employee_reset_link(employee)
+        except Exception as error:
+            logger.warning("Employee reset mail failed (%s)", type(error).__name__)
+            accepted = False
+        if accepted:
+            messages.success(request, _("Password reset email accepted by the mail server."))
+        else:
+            messages.error(request, _(
+                "Reset email could not be sent. Check the employee's active account, registered email, and company mail settings."
+            ))
+        return HorillaRedirect(request)
 
 
-setattr(PasswordResetConfirmView, "template_name", "reset_password.html")
-setattr(PasswordResetConfirmView, "form_class", ResetPasswordForm)
-setattr(PasswordResetConfirmView, "success_url", "/")
+class KenadHrPasswordResetConfirmView(PasswordResetConfirmView):
+    template_name = "reset_password.html"
+    form_class = ResetPasswordForm
+    token_generator = employee_reset_token
+    success_url = reverse_lazy("password_reset_complete")
+
+    def dispatch(self, request, *args, **kwargs):
+        response = super().dispatch(request, *args, **kwargs)
+        response["Referrer-Policy"] = "no-referrer"
+        return response
+
+
+class KenadHrPasswordResetCompleteView(PasswordResetCompleteView):
+    template_name = "reset_complete.html"
 
 
 @login_required

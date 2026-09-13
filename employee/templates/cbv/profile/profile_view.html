@@ -6,7 +6,7 @@
 <form  hidden action="{% url 'employee-reset-password' %}" method="post" role="button"
 style="display: flex;">
 {% csrf_token %}
-<input name="email" hidden value="{{instance.employee_user_id.username}}" />
+<input name="employee_id" type="hidden" value="{{instance.pk}}" />
 <button  id="reset-button" type="submit" style="border: none; background: transparent;"></button>
 </form>
 
