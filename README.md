@@ -1,211 +1,115 @@
-# Horilla HRMS
+# KenadHr
 
-[![License: LGPL v2.1](https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg)](https://www.gnu.org/licenses/lgpl-2.1)
-[![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Django](https://img.shields.io/badge/django-5.0+-green.svg)](https://www.djangoproject.com/)
-[![Stars](https://img.shields.io/github/stars/horilla/horilla-hr)](https://github.com/horilla/horilla-hr/stargazers)
-[![Forks](https://img.shields.io/github/forks/horilla/horilla-hr)](https://github.com/horilla/horilla-hr/network/members)
+[![License: LGPL v2.1](https://img.shields.io/badge/License-LGPL%20v2.1-blue.svg)](LICENSE)
 
-> [!IMPORTANT]
-> **`2.0` is now this repository’s default branch.** Use it to run or deploy Horilla (a plain `git clone` checks it out). To contribute code, branch from and open PRs against `dev/v2.0` — GitHub still pre-selects `2.0` as the PR base, so switch it manually. v1 (`1.0`/`master`) is deprioritized, with fixes considered case-by-case rather than on a guaranteed schedule. Full details → [Discussion #1127](https://github.com/horilla/horilla-hr/discussions/1127).
+KenadHr is a human resource management application built on the open-source
+[Horilla HRMS](https://github.com/horilla/horilla-hr) project.
 
-> **A comprehensive, free, and open-source Human Resource Management System (HRMS) designed to streamline HR operations and enhance organizational efficiency.**
+Use the `main` branch of **this repository** for KenadHr. The upstream repository
+and its prebuilt Docker images do not include this project's changes.
 
-## 🚀 Features
+## What is included
 
-### Core HR Modules
-- 👥 **Employee Management** - Centralized workforce data with LDAP integration
-- 🎯 **Recruitment** - End-to-end hiring process from job posting to onboarding
-- 📋 **Onboarding & Offboarding** - Structured workflows for employee lifecycle
-- ⏰ **Attendance & Time Tracking** - Biometric integration and automated check-in/out
-- 🏖️ **Leave Management** - Policy enforcement, approvals, and balance tracking
-- 💰 **Payroll** - Automated salary processing, tax calculations, and compliance
-- 📊 **Performance Management** - Goal setting, reviews, and continuous feedback
-- 🏢 **Asset Management** - Track and manage company resources
-- 🎫 **Helpdesk** - Centralized HR support and ticketing system
+- Employee records, recruitment, onboarding, and offboarding.
+- Attendance, leave, payroll, and performance management.
+- Assets, helpdesk, projects, and reporting.
+- One company per user account: signing in determines the account's company.
+- A company profile for permitted HR administrators to maintain their own
+  company's details, without an account-level company switcher.
+- KenadHr product branding, with company names and uploaded company logos kept
+  separate from the product identity.
 
+These are application capabilities, not a certification of production readiness.
+Test your organization's workflows, permissions, integrations, and deployment
+configuration before using real employee data.
 
-## 📋 Table of Contents
+## Run locally with Docker
 
-- [Which Branch Do I Want?](#-which-branch-do-i-want)
-- [Quick Start](#-quick-start)
-- [Installation](#-installation)
-- [Deployment](#-deployment)
-- [Contributing](#-contributing)
-- [Security](#-security)
-- [Support](#-support)
-- [License](#-license)
+Install Git, Docker, and Docker Compose. On Windows, run these commands in the
+VS Code PowerShell terminal with Docker Desktop running:
 
-## 🌳 Which Branch Do I Want?
-
-- **`2.0`** (default) — the latest stable v2 snapshot. This is what a plain `git clone` gives you. Use it to run or deploy Horilla.
-- **`dev/v2.0`** — the active integration branch. If you want to contribute code, branch from and open PRs against this, not `2.0`.
-- **`1.0`/`master`** — v1, now deprioritized (fixes considered case-by-case, no guaranteed schedule). Not deleted, but no longer where active development happens.
-
-See [Discussion #1127](https://github.com/horilla/horilla-hr/discussions/1127) for full background on this transition.
-
-## ⚡ Quick Start
-
-### Using the official Docker image (Recommended)
-
-Published for `linux/amd64` and `linux/arm64` as
-[`horilla/horilla-hr`](https://hub.docker.com/r/horilla/horilla-hr):
-
-```bash
-docker pull horilla/horilla-hr:2.0.0
+```powershell
+git clone --branch main https://github.com/aduseimedia-eng/kenadhr.git
+cd kenadhr
+docker compose up --build -d
+docker compose ps
+docker compose logs --tail 100 web scheduler
 ```
 
-Pin an exact version in production rather than `latest`, so a deploy cannot
-pick up a new major release unattended. The
-[repository overview](https://hub.docker.com/r/horilla/horilla-hr) documents
-every environment variable, the volumes to back up, and a working Compose file.
+Open <http://localhost:8000> when the web service is healthy. First startup applies
+database migrations and collects static assets, so it can take a few minutes.
+Complete database initialization to set up the initial administrator and company.
 
-First boot applies the full migration set before the web server binds, which
-takes a few minutes on an empty database.
+If you already have this project open in VS Code, run the Docker commands from
+that existing checkout; there is no need to clone it again or rename its folder.
 
-### Building from source with Docker
+The development Compose file contains local-only credentials and enables debug
+mode. Do not expose this configuration to the internet.
 
-```bash
-# Clone the repository (defaults to the stable 2.0 branch)
-git clone https://github.com/horilla/horilla-hr.git
-cd horilla-hr
+To stop the local stack while preserving its data:
 
-# Start with Docker Compose
-docker compose up -d
-
-# Access the application
-open http://localhost:8000
+```powershell
+docker compose stop
 ```
 
-Full Docker guide, including production deployment: [docker/README.md](docker/README.md)
+Keep the database and media volumes. Do not use `docker compose down -v` unless
+you intentionally want to remove local data and have the backups you need.
 
-### Manual Installation
+## Development and checks
 
-```bash
-# Clone and setup (defaults to the stable 2.0 branch)
-git clone https://github.com/horilla/horilla-hr.git
-cd horilla-hr
+Create a feature branch from KenadHr's `main`, keep commits focused, and open pull
+requests against `main` in this repository. Upstream branch names such as `2.0`
+and `dev/v2.0` are not the target for KenadHr changes.
 
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+With the local stack running:
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup environment
-cp .env.dist .env
-# Edit .env with your configuration
-
-# Initialize database
-python manage.py migrate
-python manage.py compilemessages
-python manage.py collectstatic
-
-# Run development server
-python manage.py runserver
+```powershell
+docker compose exec -T web python manage.py check
+docker compose exec -T web python manage.py makemigrations --check --dry-run
+docker compose exec -T web python manage.py test base.tests.test_product_branding base.tests.test_single_company_login base.tests.test_company_settings --keepdb
 ```
 
+These are focused checks, not the full application's test suite. Run the relevant
+module and workflow tests for each change. Include tests and documentation with
+user-facing changes.
 
-## 🛠 Installation
+## Branding maintenance
 
-For detailed installation instructions, configuration guides, and platform-specific setup instructions, please visit our comprehensive documentation:
+The product name is exactly **KenadHr**, without a space. The editable logo sources
+are in `static/images/ui/kenadhr-mark.svg` and
+`static/images/ui/kenadhr-wordmark.svg`. To regenerate email-compatible PNGs and
+favicon sizes after editing those SVGs:
 
-### 📖 [Complete Installation Guide → docs.horilla.com/technical/v2.0/ ](https://docs.horilla.com/technical/v2.0/)
-
-Our documentation includes:
-- **Step-by-step installation** for all supported platforms
-- **Database configuration** guides
-- **Environment setup** instructions
-- **Production deployment** best practices
-- **Troubleshooting** common issues
-- **Advanced configuration** options
-
-<!-- Need help? Check out the [Installation FAQ](https://docs.horilla.com) or reach out to our [community support](#-support). -->
-
-## 🚀 Deployment
-
-For production deployment guides including Nginx, Apache, and cloud platforms:
-### 📖 [Deployment Guide → docs.horilla.com/technical/v2.0/doc/deployment/nginx-gunicorn](https://docs.horilla.com/technical/v2.0/doc/deployment/nginx-gunicorn)
-
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
-
-```bash
-# Fork and clone your fork
-git clone -b dev/v2.0 https://github.com/YOUR_USERNAME/horilla-hr.git
-cd horilla-hr
-
-# Add upstream remote
-git remote add upstream https://github.com/horilla/horilla-hr.git
-
-# Create feature branch
-git checkout -b feature/your-feature-name
-
-# Install development dependencies
-pip install -r requirements.txt
-
-# Submit pull request
+```powershell
+docker compose exec -T web python scripts/render_brand_assets.py
+docker compose exec -T web python manage.py collectstatic --noinput
 ```
 
-> **Note:** `2.0` is the repo default, so GitHub pre-selects it as your PR base. Before submitting, change the base branch to `dev/v2.0` — that's where active development and reviews happen, not `2.0`.
+The PNG renderer uses PyMuPDF from the application's existing dependencies.
+Refresh the browser with **Ctrl + Shift + R** if old assets are cached.
 
-### Code Standards
+Do not globally replace internal `horilla` module names, database identifiers,
+integration headers, or the scheduler's `Horilla Bot` username. They remain for
+compatibility; the service account's display name is `KenadHr System`. Preserve
+customer-authored content, historical records, and upstream license notices.
 
-- Follow [PEP 8](https://pep8.org/) for Python code
-- Use [Black](https://black.readthedocs.io/) for code formatting
-- Write tests for new features
-- Update documentation for user-facing changes
+## Deployment and support
 
-## 🔒 Security
+[The Docker guide](docker/README.md) documents the Compose services, configuration,
+backups, and deployment operations. It includes inherited upstream references;
+use this repository's `main` source and the clone instructions above for KenadHr.
+Do not assume an upstream image or release includes KenadHr's account scoping or
+branding changes.
 
-### Security Features
+For non-sensitive KenadHr bugs and feature requests, use
+[this repository's issue tracker](https://github.com/aduseimedia-eng/kenadhr/issues).
+Do not put vulnerabilities, credentials, or employee records in public issues.
+Arrange a private reporting channel with the KenadHr repository owner for
+KenadHr-specific security findings. [SECURITY.md](SECURITY.md) retains the upstream
+Horilla reporting policy; it is not a KenadHr support agreement.
 
-- 🔐 **Authentication & Authorization** - Role-based access control
-- 🛡️ **Data Protection** - Encrypted sensitive data storage
-- 🔍 **Audit Trails** - Comprehensive activity logging
-- 🚫 **Input Validation** - XSS and injection protection
-- 🔒 **Session Security** - Secure session management
+## License and upstream credits
 
-### Reporting Security Issues
-
-Please report security vulnerabilities via [GitHub Private Vulnerability Reporting](https://github.com/horilla/horilla-hr/security/advisories/new), not email. Do not create public GitHub issues for security vulnerabilities. See [SECURITY.md](SECURITY.md) for full details.
-
-### Security Best Practices
-
-- Always use HTTPS in production
-- Regularly update dependencies
-- Use strong passwords and enable 2FA
-- Monitor logs for suspicious activities
-
-## 📞 Support
-
-### Community Support
-
-- 📖 **Documentation**: [docs.horilla.com](https://docs.horilla.com)
-- 💬 **GitHub Discussions**: [GitHub Discussions](https://github.com/horilla/horilla-hr/discussions)
-- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/horilla/horilla-hr/issues)
-- ✨ **Feature Requests**: [GitHub Issues](https://github.com/horilla/horilla-hr/issues)
-
-### Professional Support
-
-For enterprise support, custom development, and consulting services:
-- 📧 **Email**: support@horilla.com
-- 🌐 **Website**: [www.horilla.com](https://www.horilla.com)
-
-
-## 📄 License
-
-This project is licensed under the [LGPL-2.1 License](LICENSE) - see the LICENSE file for details.
-
-<div align="center">
-
-**Made with ❤️ by the Horilla Team**
-
-[⭐ Star us on GitHub](https://github.com/horilla/horilla-hr) | [🐛 Report Bug](https://github.com/horilla/horilla-hr/issues) | [💡 Request Feature](https://github.com/horilla/horilla-hr/issues)
-
-</div>
+This project is licensed under [LGPL-2.1](LICENSE). KenadHr builds on the work of
+the Horilla team and contributors. Existing copyright notices and the
+[open-source notices](templates/legal/open_source_notices.html) are retained.
