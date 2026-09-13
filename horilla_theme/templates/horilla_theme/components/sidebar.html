@@ -1075,6 +1075,7 @@
           if (!liItems.length) return;
 
           clearTimeout(flyoutCloseTimer);
+          hideFlyout();
 
           var label = btn.querySelector(".oh-sidebar-label");
           flyoutListEl.innerHTML = "";
@@ -1107,11 +1108,16 @@
           if (currentFlyoutBtn && currentFlyoutBtn !== btn) currentFlyoutBtn.classList.remove("sidebox-active");
           currentFlyoutBtn = btn;
           btn.classList.add("sidebox-active");
+          btn.setAttribute("aria-expanded", "true");
         }
 
         function hideFlyout() {
           if (flyoutEl) flyoutEl.classList.remove("is-visible");
-          if (currentFlyoutBtn) { currentFlyoutBtn.classList.remove("sidebox-active"); currentFlyoutBtn = null; }
+          if (currentFlyoutBtn) {
+            currentFlyoutBtn.classList.remove("sidebox-active");
+            currentFlyoutBtn.setAttribute("aria-expanded", "false");
+            currentFlyoutBtn = null;
+          }
         }
 
         function closeSidebarMenus(exceptItem) {
@@ -1130,6 +1136,7 @@
 
           if (sidebarEl.classList.contains("sidebar-pinned")) {
             var isOpen = item.classList.contains("sidebar-open");
+            closeSidebarMenus(item);
             item.classList.toggle("sidebar-open", !isOpen);
             btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
             if (!isOpen) setActiveSidebarMenu(btn);
@@ -1364,7 +1371,10 @@
               if (href && href !== "/" && href !== "#" && path.startsWith(href)) matchedBtn = link;
             });
           }
-          if (matchedBtn) setActiveSidebarMenu(matchedBtn);
+          // Background HTMX updates must not reactivate the page's old module
+          // while the user is browsing a different, still-open menu.
+          var openBtn = currentFlyoutBtn || document.querySelector("#sidebar .sidebar-item.sidebar-open .sideboxmain");
+          if (openBtn || matchedBtn) setActiveSidebarMenu(openBtn || matchedBtn);
         }
         document.addEventListener("htmx:pushUrl", syncSidebarToUrl);
         document.addEventListener("htmx:afterSettle", syncSidebarToUrl);
