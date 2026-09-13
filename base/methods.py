@@ -1230,6 +1230,21 @@ def link_callback(uri, rel):
 #     return response
 
 
+def reject_unsafe_pdf_html(html, title="Document"):
+    """Return a safe error response when HTML must not reach wkhtmltopdf."""
+    if not has_xss(html):
+        return None
+
+    logger.error(
+        "PDF generation: rendered body failed the XSS check; refusing to "
+        "hand it to wkhtmltopdf (title=%s).",
+        title,
+    )
+    return HttpResponse(
+        _("This document could not be generated safely."), status=400
+    )
+
+
 def generate_pdf(template_path, context, path=True, title=None, html=True):
     """
     Render HTML to a PDF response.
@@ -1255,15 +1270,9 @@ def generate_pdf(template_path, context, path=True, title=None, html=True):
     else:
         html = render_to_string(template_path, context)
 
-    if has_xss(html):
-        logger.error(
-            "generate_pdf: rendered body failed the XSS check; refusing to "
-            "hand it to wkhtmltopdf (title=%s).",
-            title,
-        )
-        return HttpResponse(
-            _("This document could not be generated safely."), status=400
-        )
+    unsafe_response = reject_unsafe_pdf_html(html, title)
+    if unsafe_response is not None:
+        return unsafe_response
 
     response = template_pdf(template=html, html=True, filename=title)
 

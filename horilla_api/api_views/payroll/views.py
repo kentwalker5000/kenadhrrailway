@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from base.backends import ConfiguredEmailBackend
-from base.methods import eval_validate
+from base.methods import eval_validate, reject_unsafe_pdf_html
 from payroll.filters import (
     AllowanceFilter,
     ContractFilter,
@@ -586,6 +586,10 @@ class PayslipPDFAPIView(APIView):
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
             try:
+                unsafe_response = reject_unsafe_pdf_html(html, "Payslip")
+                if unsafe_response is not None:
+                    return unsafe_response
+
                 # optional: configure pdfkit with path if needed
                 pdf_options = {
                     "enable-local-file-access": None,  # if your template references local CSS

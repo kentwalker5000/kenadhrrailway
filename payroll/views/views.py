@@ -32,6 +32,7 @@ from base.methods import (
     generate_pdf,
     get_key_instances,
     get_session_company,
+    reject_unsafe_pdf_html,
     sortby,
 )
 from base.models import Company
@@ -1473,7 +1474,7 @@ def generate_payslip_pdf(template_path, context, html=False):
     try:
         # Render the HTML content from the template and context
         html_content = render_to_string(template_path, context)
-        request = getattr(_thread_locals, "request")
+        request = getattr(_thread_locals, "request", None)
         cookies = None
         if request:
             cookies = request.META.get("HTTP_COOKIE", "")
@@ -1505,6 +1506,10 @@ def generate_payslip_pdf(template_path, context, html=False):
                     "custom-header-propagation": None,
                 }
             )
+
+        unsafe_response = reject_unsafe_pdf_html(html_content, "Payslip")
+        if unsafe_response is not None:
+            return unsafe_response
 
         # Generate the PDF as binary content
         pdf = pdfkit.from_string(html_content, False, options=pdf_options)

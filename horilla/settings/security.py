@@ -80,6 +80,9 @@ def apply_secure_defaults(env, debug: bool) -> dict:
         "SECURE_CONTENT_TYPE_NOSNIFF": True,
         "SECURE_REFERRER_POLICY": "strict-origin-when-cross-origin",
         "SECURE_PROXY_SSL_HEADER": ("HTTP_X_FORWARDED_PROTO", "https"),
+        # The app has no production feature that needs to be framed. Keep this
+        # configurable for an explicitly approved integration, but fail closed.
+        "X_FRAME_OPTIONS": env("X_FRAME_OPTIONS", default="DENY"),
         "SECURE_SSL_REDIRECT": env.bool("SECURE_SSL_REDIRECT", default=False),
     }
     if settings["SECURE_SSL_REDIRECT"]:
