@@ -93,6 +93,28 @@ integration headers, or the scheduler's `Horilla Bot` username. They remain for
 compatibility; the service account's display name is `KenadHr System`. Preserve
 customer-authored content, historical records, and upstream license notices.
 
+## Mail configuration and testing
+
+Open the **Mail Servers** page in Settings with an account permitted to manage mail
+settings. Set the SMTP host, port, username, password, and sender address supplied
+by your email provider. Keep credentials out of Git and screenshots.
+
+- Match the encryption mode to the server: **Use SSL** starts an encrypted
+  connection immediately; **Use TLS** upgrades an SMTP connection with STARTTLS.
+  Do not enable both options together.
+- Use a practical timeout, such as 30 seconds, and disable **Fail Silently** while
+  diagnosing connection or authentication problems.
+- Run the server's test-email action with a recipient you control. It uses the
+  selected server and does not allow testing another company's configuration.
+- Success means the mail server accepted the message, not that it reached the
+  inbox. Check the recipient's inbox and spam folder to confirm delivery.
+
+The connection and test-email regression tests do not send real mail:
+
+```powershell
+docker compose exec -T web python manage.py test base.tests.test_mail_delivery base.tests.test_email_log_privacy --keepdb
+```
+
 ## Deployment and support
 
 [The Docker guide](docker/README.md) documents the Compose services, configuration,
