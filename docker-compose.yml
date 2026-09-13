@@ -23,6 +23,10 @@ services:
       - DATABASE_URL=postgres://horilla_user:horilla_pass@db:5432/horilla_db
       - DB_INIT_PASSWORD=dev-init-password-change-in-production
       - REDIS_URL=redis://:horilla_pass@redis:6379/0
+      # Read from the ignored local .env file when a developer console account
+      # has been configured. Keep empty by default so source checkouts do not
+      # accidentally enable a cross-company operator.
+      - KENADHR_PLATFORM_DEVELOPER_USERNAMES=${KENADHR_PLATFORM_DEVELOPER_USERNAMES:-}
     depends_on:
       db:
         condition: service_healthy
