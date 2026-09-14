@@ -23,7 +23,17 @@ These are application capabilities, not a certification of production readiness.
 Test your organization's workflows, permissions, integrations, and deployment
 configuration before using real employee data.
 
-## Run locally with Docker
+## Run locally on Windows without Docker
+
+On a computer with the native setup configured, double-click `Start-KenadHr.cmd`
+to start PostgreSQL, KenadHr, and its background scheduler. Open
+<http://localhost:8000>. Use `Stop-KenadHr.cmd` to stop them without removing data.
+
+See [Windows native setup](docs/windows-native.md) for VS Code commands,
+pgAdmin connection details, backups, and the one-time migration from Docker.
+This is a local development setup; hosting still needs production configuration.
+
+## Alternative: run locally with Docker
 
 Install Git, Docker, and Docker Compose. On Windows, run these commands in the
 VS Code PowerShell terminal with Docker Desktop running:
