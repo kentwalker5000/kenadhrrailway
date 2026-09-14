@@ -9,13 +9,14 @@ services:
   web:
     build: .
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - .:/app
       - staticfiles:/app/staticfiles
       - media:/app/media
     environment:
       - DEBUG=1
+      - SECRET_KEY_FILE=/app/media/.generated_secret_key
       - DB_HOST=db
       - SECRET_KEY=dev-secret-key-change-in-production
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
@@ -56,6 +57,7 @@ services:
       - media:/app/media
     environment:
       - DEBUG=1
+      - SECRET_KEY_FILE=/app/media/.generated_secret_key
       - DB_HOST=db
       - SECRET_KEY=dev-secret-key-change-in-production
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0

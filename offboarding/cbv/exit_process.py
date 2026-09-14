@@ -21,6 +21,7 @@ from django.views import View
 
 from base.context_processors import intial_notice_period
 from base.methods import eval_validate
+from employee.models import Employee
 from horilla.methods import get_horilla_model_class
 from horilla_views.cbv_methods import (
     hx_request_required,

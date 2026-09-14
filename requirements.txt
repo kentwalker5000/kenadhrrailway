@@ -43,10 +43,7 @@ pandas==3.0.5
 XlsxWriter==3.2.9
 
 # PDF handling
-# PYSEC-2026-2860 (from_string allows script execution and local-file
-# exfiltration) has no upstream fix. Mitigated in base.methods.generate_pdf,
-# which XSS-checks the rendered body before wkhtmltopdf sees it.
-pdfkit==1.0.0
+# PDFs use the offline xhtml2pdf renderer; pdfkit/wkhtmltopdf has been removed.
 PyMuPDF==1.28.2
 reportlab==4.0.9
 xhtml2pdf==0.2.17

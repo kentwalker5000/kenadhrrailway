@@ -48,14 +48,24 @@ def validate_production_secrets(secret_key, allowed_hosts, db_init_password):
             "change-me*). Set a unique SECRET_KEY before running with DEBUG=False."
         )
 
+    if secret_key and (len(secret_key) < 50 or len(set(secret_key)) < 5):
+        errors.append(
+            "SECRET_KEY must be a long, randomly generated value (at least 50 characters)."
+        )
+
     hosts = list(allowed_hosts or [])
-    if not hosts or hosts == ["*"] or set(hosts) == {"*"}:
+    if not hosts or "*" in hosts:
         errors.append(
             "ALLOWED_HOSTS must be set to your real hostnames in production "
             '(not "*" or empty).'
         )
 
-    if not db_init_password or db_init_password in INSECURE_DB_INIT_PASSWORDS:
+    if (
+        not db_init_password
+        or db_init_password in INSECURE_DB_INIT_PASSWORDS
+        or db_init_password.startswith("change-me")
+        or len(db_init_password) < 20
+    ):
         errors.append(
             "DB_INIT_PASSWORD must be changed from the documented default "
             "before running in production."
@@ -71,8 +81,7 @@ def apply_secure_defaults(env, debug: bool) -> dict:
     """
     Return Django security-related settings for non-DEBUG deployments.
 
-    SECURE_SSL_REDIRECT / HSTS stay off unless SECURE_SSL_REDIRECT=true so
-    plain-HTTP Docker + nginx :80 installs keep working.
+    Production expects TLS at the trusted reverse proxy.
     """
     settings = {
         "SESSION_COOKIE_SECURE": True,
@@ -83,7 +92,8 @@ def apply_secure_defaults(env, debug: bool) -> dict:
         # The app has no production feature that needs to be framed. Keep this
         # configurable for an explicitly approved integration, but fail closed.
         "X_FRAME_OPTIONS": env("X_FRAME_OPTIONS", default="DENY"),
-        "SECURE_SSL_REDIRECT": env.bool("SECURE_SSL_REDIRECT", default=False),
+        "SECURE_SSL_REDIRECT": env.bool("SECURE_SSL_REDIRECT", default=True),
+        "SECURE_REDIRECT_EXEMPT": [r"^health/$", r"^ready/$"],
     }
     if settings["SECURE_SSL_REDIRECT"]:
         settings["SECURE_HSTS_SECONDS"] = env.int(

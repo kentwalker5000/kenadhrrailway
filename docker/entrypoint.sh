@@ -28,6 +28,10 @@ echo "PostgreSQL is ready!"
 SECRET_KEY_FILE="/app/media/.generated_secret_key"
 case "${SECRET_KEY:-}" in
   ""|"django-insecure-default-key"|"dev-secret-key-change-in-production"|"django-insecure-j8op9)1q8\$1&0^s&p*_0%d#pr@w9qj@1o=3#@d=a(^@9@zd@%j"|change-me*|django-insecure-*)
+    if [ "${HORILLA_ENV:-}" = "production" ] || [ "${DEBUG:-1}" = "0" ] || [ "${DEBUG:-True}" = "False" ]; then
+      echo "ERROR: Set a unique SECRET_KEY before starting production."
+      exit 1
+    fi
     if [ -f "$SECRET_KEY_FILE" ]; then
       SECRET_KEY="$(cat "$SECRET_KEY_FILE")"
       echo "Using previously generated SECRET_KEY from $SECRET_KEY_FILE"

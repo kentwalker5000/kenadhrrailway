@@ -22,14 +22,13 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       DB_INIT_PASSWORD: ${DB_INIT_PASSWORD:?Set DB_INIT_PASSWORD in .env}
       REDIS_URL: ${REDIS_URL:?Set REDIS_URL in .env}
-      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-0}
+      SECURE_SSL_REDIRECT: "1"
       GUNICORN_WORKERS: ${GUNICORN_WORKERS:-}
       GUNICORN_LOG_LEVEL: ${GUNICORN_LOG_LEVEL:-info}
     volumes: !override
       - staticfiles:/app/staticfiles
       - media:/app/media
-    ports: !override
-      - "8000:8000"
+    ports: !reset []
 
   # Single replica: see the comment on this service in docker-compose.yml.
   # Mirrors web's environment so both read the same .env, minus the HTTP-only
@@ -71,6 +70,13 @@ services:
         ]
 
   nginx:
+    ports: !override
+      - "80:80"
+      - "443:443"
+    volumes: !override
+      - staticfiles:/static:ro
+      - ./docker/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ${TLS_CERT_DIR:?Set TLS_CERT_DIR to the directory containing fullchain.pem and privkey.pem}:/etc/nginx/tls:ro
     # Clear the "production" profile so nginx starts with `make prod`
     # without requiring --profile production.
     profiles: !reset

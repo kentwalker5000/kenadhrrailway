@@ -6,9 +6,9 @@ name: Quality
 
 on:
   push:
-    branches: [dev/v2.0, "2.0"]
+    branches: [main, dev/v2.0, "2.0"]
   pull_request:
-    branches: [dev/v2.0, "2.0"]
+    branches: [main, dev/v2.0, "2.0"]
 
 jobs:
   lint-and-check:
@@ -87,15 +87,10 @@ jobs:
         run: python -m pip install --upgrade pip pip-audit
 
       - name: Audit pinned dependencies
-        # Blocking. The 21 pre-existing CVEs are cleared (008386444c); the only
-        # remaining finding is pdfkit PYSEC-2026-2860, which has no upstream fix
-        # and is mitigated in base.methods.generate_pdf instead. It is ignored
-        # by ID rather than by disabling the gate, so a NEW vulnerable pin still
-        # fails the build -- and if pdfkit ever ships a fix, dropping this line
-        # is the reminder to take it.
+        # Blocking, without advisory exclusions. PDF generation uses the
+        # offline renderer; the vulnerable pdfkit dependency has been removed.
         run: >-
           pip-audit --requirement requirements.txt --desc
-          --ignore-vuln PYSEC-2026-2860
 
   secret-scan:
     # AWS and WhatsApp credentials have reached this repo's git history before,
