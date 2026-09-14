@@ -182,6 +182,9 @@
                         <img src='{% static "horilla_theme/assets/icons/sign.svg" %}' alt=""> {% trans "Sign In" %}
                     </button>
                 </form>
+                <p class="text-center text-sm mt-4">
+                    <a href="{% url 'product-home' %}" class="underline">{% trans "KenadHr homepage" %}</a>
+                </p>
                 {% if initialize_database %}
                     <div>
                         <div class="d-flex gap-2">

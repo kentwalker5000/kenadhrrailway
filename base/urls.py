@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from base import announcement
 from base import developer_dashboard
 from base import dashboard as dashboard_module
-from base import ess_dashboard, request_and_approve, views
+from base import ess_dashboard, public_site, request_and_approve, views
 from base.cbv import (
     announcement_cbv,
     company,
@@ -66,7 +66,8 @@ from horilla_audit.cbv import audit
 from horilla_audit.models import AuditTag
 
 urlpatterns = [
-    path("", views.home, name="home-page"),
+    path("", public_site.home, name="home-page"),
+    path("welcome/", public_site.welcome, name="product-home"),
     path(
         "developer/",
         developer_dashboard.developer_dashboard,

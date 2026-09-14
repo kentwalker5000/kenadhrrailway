@@ -153,7 +153,11 @@ class UninitializedDatabaseAllowsSetupFlow(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("_auth_user_id", self.client.session)
-        self.assertEqual(self.client.get("/").status_code, 302)
+        # The public product page is visible, but setup has not granted access
+        # to the company workspace before the company assignment is complete.
+        self.assertContains(self.client.get("/"), "People first.")
+        self.assertEqual(self.client.get(reverse("dashboard")).status_code, 302)
+        self.assertNotIn("_auth_user_id", self.client.session)
         data = {
             "company": "First company", "hq": True, "address": "1 Test St",
             "country": "US", "state": "CA", "city": "LA", "zip": "90001",

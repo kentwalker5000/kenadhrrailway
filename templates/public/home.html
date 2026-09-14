@@ -1,0 +1,463 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1d4ed8" />
+    <meta
+      name="description"
+      content="Bring your people, attendance, leave, payroll and performance together with KenadHr. One connected workspace for your company."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:title"
+      content="KenadHr — People first. Paperwork second."
+    />
+    <meta
+      property="og:description"
+      content="Your people, your processes, one connected HR workspace."
+    />
+    <meta name="twitter:card" content="summary" />
+    <title>KenadHr — People first. Paperwork second.</title>
+    <link
+      rel="icon"
+      type="image/png"
+      href="{% static 'favicons/kenadhr-32.png' %}"
+    />
+    <link rel="stylesheet" href="{% static 'css/kenadhr-home.css' %}" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a
+          class="brand"
+          href="{% url 'product-home' %}"
+          aria-label="KenadHr homepage"
+        >
+          <img
+            src="{% static 'images/ui/kenadhr-mark.svg' %}"
+            alt=""
+            width="36"
+            height="36"
+          />
+          <span>Kenad<span class="brand-accent">Hr</span></span>
+        </a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a href="#platform">The platform</a>
+          <a href="#how-it-works">How it works</a>
+          <a href="#faq">FAQs</a>
+        </nav>
+        <a class="button button-small" href="{% url 'login' %}"
+          >Sign in <span aria-hidden="true">↗</span></a
+        >
+      </div>
+    </header>
+    <main id="main">
+      <section class="hero container" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">
+            <span class="status-dot" aria-hidden="true"></span> A better day at
+            work starts here
+          </p>
+          <h1 id="hero-title">
+            People first.<br /><span
+              >Paperwork<br class="desktop-break" />
+              second.</span
+            >
+          </h1>
+          <p class="hero-description">
+            Give your people the attention they deserve. Bring HR, attendance,
+            leave and payroll into one connected workspace with KenadHr.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="{% url 'login' %}"
+              >Sign in to your company <span aria-hidden="true">↗</span></a
+            >
+            <a class="text-link" href="#platform"
+              >Explore the platform <span aria-hidden="true">↓</span></a
+            >
+          </div>
+          <p class="hero-note">
+            <span aria-hidden="true">✓</span> One account. One company.
+            Everything connected.
+          </p>
+        </div>
+        <div
+          class="product-scene"
+          aria-label="Illustrative KenadHr dashboard with sample data, not a live company workspace"
+        >
+          <div class="scene-caption">
+            <span class="status-dot" aria-hidden="true"></span> YOUR WORKDAY, AT
+            A GLANCE
+          </div>
+          <div class="preview-window">
+            <div class="preview-topbar">
+              <span class="window-dots" aria-hidden="true">● ● ●</span
+              ><span>KenadHr / Overview</span
+              ><span class="sample-label">Sample data</span>
+            </div>
+            <div class="preview-layout">
+              <div class="preview-sidebar" aria-hidden="true">
+                <img
+                  src="{% static 'images/ui/kenadhr-mark.svg' %}"
+                  width="30"
+                  height="30"
+                  alt=""
+                />
+                <span class="preview-nav active">▦</span
+                ><span class="preview-nav">♧</span
+                ><span class="preview-nav">◷</span
+                ><span class="preview-nav">▤</span
+                ><span class="preview-nav">▥</span>
+              </div>
+              <div class="preview-content">
+                <div class="preview-heading">
+                  <div>
+                    <p>YOUR COMPANY WORKSPACE</p>
+                    <h2>A little clarity.<br />A lot of possibility.</h2>
+                  </div>
+                  <span class="preview-avatar" aria-hidden="true">A</span>
+                </div>
+                <div class="preview-stats">
+                  <div>
+                    <span>Total employees</span><strong>48</strong
+                    ><small>Your growing team</small>
+                  </div>
+                  <div>
+                    <span>Present today</span
+                    ><strong
+                      >44<span
+                        class="status-dot"
+                        aria-hidden="true"
+                      ></span></strong
+                    ><small>Keeping things moving</small>
+                  </div>
+                  <div>
+                    <span>On leave</span><strong>4</strong
+                    ><small>A well-earned break</small>
+                  </div>
+                </div>
+                <div class="preview-chart">
+                  <div class="chart-heading">
+                    <strong>Attendance overview</strong><span>This week</span>
+                  </div>
+                  <div class="bar-chart" aria-hidden="true">
+                    <div class="bar bar-mon"><span>Mon</span></div>
+                    <div class="bar bar-tue"><span>Tue</span></div>
+                    <div class="bar bar-wed"><span>Wed</span></div>
+                    <div class="bar bar-thu"><span>Thu</span></div>
+                    <div class="bar bar-fri"><span>Fri</span></div>
+                  </div>
+                  <p class="sr-only">Sample weekly attendance chart.</p>
+                </div>
+                <div class="preview-request">
+                  <span class="request-icon" aria-hidden="true">✓</span>
+                  <div>
+                    <strong>Leave request approved</strong
+                    ><span>One less thing on your to-do list.</span>
+                  </div>
+                  <span class="request-time">Just now</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="scene-footer">
+            <span aria-hidden="true">✦</span> Less admin. More human.
+          </div>
+        </div>
+      </section>
+      <div class="module-strip">
+        <div class="container">
+          <span
+            >From the first hello<br /><strong
+              >to every milestone.</strong
+            ></span
+          >
+          <p>
+            People <i aria-hidden="true">/</i> Time
+            <i aria-hidden="true">/</i> Payroll
+            <i aria-hidden="true">/</i> Growth
+          </p>
+        </div>
+      </div>
+      <section
+        class="section container"
+        id="platform"
+        aria-labelledby="platform-title"
+      >
+        <p class="eyebrow">ONE CONNECTED PLATFORM</p>
+        <h2 id="platform-title">
+          All the moving parts.<br />One place to bring them together.
+        </h2>
+        <p class="section-description">
+          A home for your people and the processes that help them do their best
+          work.
+        </p>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <img
+              src="{% static 'images/ionicons/ui_icons/svg/people-outline.svg' %}"
+              width="44"
+              height="44"
+              alt=""
+            /><span class="feature-number">01</span>
+            <h3>Know your people.</h3>
+            <p>
+              Keep employee profiles, documents, departments and reporting lines
+              together. Find the right information without the folder hunt.
+            </p>
+            <span class="feature-tag">EMPLOYEE MANAGEMENT</span>
+          </article>
+          <article class="feature-card">
+            <img
+              src="{% static 'images/ionicons/ui_icons/svg/time-outline.svg' %}"
+              width="44"
+              height="44"
+              alt=""
+            /><span class="feature-number">02</span>
+            <h3>Make time make sense.</h3>
+            <p>
+              Connect attendance, shifts and work records so HR and managers can
+              see the working day more clearly.
+            </p>
+            <span class="feature-tag">TIME &amp; ATTENDANCE</span>
+          </article>
+          <article class="feature-card">
+            <img
+              src="{% static 'images/ionicons/ui_icons/svg/calendar-outline.svg' %}"
+              width="44"
+              height="44"
+              alt=""
+            /><span class="feature-number">03</span>
+            <h3>Give time off its place.</h3>
+            <p>
+              Let employees request leave, managers review it, and everyone keep
+              track of balances and company holidays.
+            </p>
+            <span class="feature-tag">LEAVE &amp; APPROVALS</span>
+          </article>
+          <article class="feature-card">
+            <img
+              src="{% static 'images/ionicons/ui_icons/svg/wallet-outline.svg' %}"
+              width="44"
+              height="44"
+              alt=""
+            /><span class="feature-number">04</span>
+            <h3>Bring payroll together.</h3>
+            <p>
+              Manage contracts, allowances, deductions and payslips in the same
+              workspace as your employee records.
+            </p>
+            <span class="feature-tag">PAYROLL &amp; PAYSLIPS</span>
+          </article>
+          <article class="feature-card">
+            <img
+              src="{% static 'images/ionicons/ui_icons/svg/briefcase-outline.svg' %}"
+              width="44"
+              height="44"
+              alt=""
+            /><span class="feature-number">05</span>
+            <h3>Start on the right foot.</h3>
+            <p>
+              Follow candidates through recruitment and interviews, then help
+              new colleagues settle in with onboarding tasks.
+            </p>
+            <span class="feature-tag">HIRING &amp; ONBOARDING</span>
+          </article>
+          <article class="feature-card">
+            <img
+              src="{% static 'images/ionicons/ui_icons/svg/trending-up-outline.svg' %}"
+              width="44"
+              height="44"
+              alt=""
+            /><span class="feature-number">06</span>
+            <h3>Make room for growth.</h3>
+            <p>
+              Bring objectives, key results and feedback into the conversation.
+              Keep development connected to everyday work.
+            </p>
+            <span class="feature-tag">PERFORMANCE &amp; GROWTH</span>
+          </article>
+        </div>
+        <p class="platform-footnote">
+          And more room to work: <span>Projects</span><span>Assets</span
+          ><span>Helpdesk</span><span>Reports</span>
+        </p>
+      </section>
+      <section class="company-section" aria-labelledby="company-title">
+        <div class="container company-grid">
+          <div>
+            <p class="eyebrow">YOUR PEOPLE. YOUR COMPANY.</p>
+            <h2 id="company-title">
+              A shared workspace.<br />A personal experience.
+            </h2>
+            <p>
+              HR gets the bigger picture. Managers keep work moving. Employees
+              get a place to manage their own working life.
+            </p>
+            <a class="text-link" href="{% url 'login' %}"
+              >Enter your company workspace
+              <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="company-benefits">
+            <div>
+              <span class="benefit-mark" aria-hidden="true">01</span>
+              <div>
+                <h3>One account, one company</h3>
+                <p>
+                  Your account belongs to your assigned company. No company
+                  switching for staff.
+                </p>
+              </div>
+            </div>
+            <div>
+              <span class="benefit-mark" aria-hidden="true">02</span>
+              <div>
+                <h3>The right access for each role</h3>
+                <p>
+                  Company permissions determine what employees, managers and
+                  administrators can see and do.
+                </p>
+              </div>
+            </div>
+            <div>
+              <span class="benefit-mark" aria-hidden="true">03</span>
+              <div>
+                <h3>Ghana and beyond</h3>
+                <p>
+                  Choose Ghanaian Cedis (GHS) or other supported African
+                  currencies for your company’s payroll display.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section
+        class="section container"
+        id="how-it-works"
+        aria-labelledby="steps-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">FROM SETUP TO EVERYDAY WORK</p>
+            <h2 id="steps-title">
+              A place for everyone.<br />A simpler way to work.
+            </h2>
+          </div>
+          <p class="section-description">
+            Keep your company organised, then give your team the tools to take
+            it from there.
+          </p>
+        </div>
+        <ol class="steps">
+          <li>
+            <span class="step-number" aria-hidden="true">01</span>
+            <h3>Start with your company</h3>
+            <p>
+              Your administrator sets up your company workspace, departments,
+              policies and staff accounts.
+            </p>
+          </li>
+          <li>
+            <span class="step-number" aria-hidden="true">02</span>
+            <h3>Bring your people in</h3>
+            <p>
+              Employees sign in with their own account, connected to their
+              assigned company and role.
+            </p>
+          </li>
+          <li>
+            <span class="step-number" aria-hidden="true">03</span>
+            <h3>Make the day flow</h3>
+            <p>
+              Manage attendance, review requests, prepare payroll and follow
+              your team’s progress in one place.
+            </p>
+          </li>
+        </ol>
+      </section>
+      <section class="faq-section" id="faq" aria-labelledby="faq-title">
+        <div class="container faq-grid">
+          <div>
+            <p class="eyebrow">A LITTLE MORE CLARITY</p>
+            <h2 id="faq-title">Good questions.<br />Straight answers.</h2>
+            <p class="section-description">
+              Getting started with KenadHr? Here are a few things worth knowing.
+            </p>
+          </div>
+          <div class="faq-list">
+            <details name="homepage-faq" open>
+              <summary>Who is KenadHr for?</summary>
+              <p>
+                KenadHr brings HR teams, company administrators, managers and
+                employees into a connected workspace. Your role and permissions
+                determine the tools available to you.
+              </p>
+            </details>
+            <details name="homepage-faq">
+              <summary>How do I get an account?</summary>
+              <p>
+                Ask your company’s HR team or administrator to set up your staff
+                account. Then use <a href="{% url 'login' %}">Sign in</a> to
+                access your workspace. This homepage does not create new company
+                accounts.
+              </p>
+            </details>
+            <details name="homepage-faq">
+              <summary>Can one account access multiple companies?</summary>
+              <p>
+                No. Each staff account belongs to one company. Your company is
+                determined by your account, so you do not need to choose or
+                switch companies when you sign in.
+              </p>
+            </details>
+            <details name="homepage-faq">
+              <summary>Does payroll support Ghanaian Cedis?</summary>
+              <p>
+                Yes. Your administrator can select Ghanaian Cedis (GHS) and
+                other supported African currencies in the company’s payroll
+                settings. Currency selection controls display; it is not
+                automatic currency conversion or tax compliance.
+              </p>
+            </details>
+            <details name="homepage-faq">
+              <summary>What if I forget my password?</summary>
+              <p>
+                Choose
+                <a href="{% url 'forgot-password' %}">Forgot password</a> on the
+                sign-in page and use your registered email address. If the reset
+                email does not arrive, contact your HR administrator to check
+                your account and company email settings.
+              </p>
+            </details>
+          </div>
+        </div>
+      </section>
+      <section class="section container">
+        <div class="closing-card">
+          <div>
+            <p class="eyebrow">LESS ADMIN. MORE HUMAN.</p>
+            <h2>Your next good workday<br />starts here.</h2>
+            <p>Your people. Your processes. Your KenadHr workspace.</p>
+          </div>
+          <div class="closing-action">
+            <a class="button" href="{% url 'login' %}"
+              >Sign in to your company <span aria-hidden="true">↗</span></a
+            ><span>Need access? Speak to your HR team.</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer container">
+      <a class="brand" href="{% url 'product-home' %}"
+        >Kenad<span class="brand-accent">Hr</span></a
+      >
+      <p>© {{ current_year }} KenadHr. People at the heart of work.</p>
+      <a href="{% url 'open-source-notices' %}">Open-source notices</a>
+    </footer>
+  </body>
+</html>

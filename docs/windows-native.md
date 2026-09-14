@@ -11,6 +11,13 @@ Double-click `Start-KenadHr.cmd` in the project folder. It starts PostgreSQL,
 the app, and the scheduler, then opens <http://localhost:8000>.
 Docker Desktop and the pgAdmin window do not need to be running.
 
+Signed-out visitors see the public KenadHr homepage at `/`. Signed-in staff
+continue to their role-based workspace. To preview the homepage while signed
+in, open <http://localhost:8000/welcome/>. Its dashboard illustration contains
+sample data only; it does not display employee or company records. The Sign in
+buttons use the existing company account login; no public registration flow is
+introduced.
+
 Alternatively, use the VS Code PowerShell terminal:
 
 ```powershell
