@@ -55,12 +55,11 @@ def platform_developer_required(view_func):
 
 
 def employee_or_platform_required(view_func):
-    """Allow the platform developer at the one shared entry point only.
+    """Allow the platform developer at shared entry/password-change routes.
 
     The established Horilla decorator also requires an Employee record, which
     remains correct for every company page. The platform account has no such
-    record, so only the home route uses this narrow bridge before it redirects
-    immediately to the developer console.
+    record, so the shared home and password-change routes use this bridge.
     """
 
     @wraps(view_func)

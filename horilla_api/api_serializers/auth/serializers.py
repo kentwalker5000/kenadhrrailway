@@ -21,7 +21,11 @@ class LoginRequestSerializer(serializers.Serializer):
     """Simple request body for the login endpoint."""
 
     username = serializers.CharField()
-    password = serializers.CharField()
+    password = serializers.CharField(write_only=True)
+    challenge_id = serializers.CharField(required=False, max_length=43)
+    otp = serializers.CharField(
+        required=False, min_length=6, max_length=6, write_only=True
+    )
 
 
 class PasswordResetSerializer(serializers.Serializer):

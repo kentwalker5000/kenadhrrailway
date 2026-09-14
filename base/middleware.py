@@ -384,7 +384,7 @@ class CompanyMiddleware:
         home_company = self._get_user_default_company(request)
         platform_developer = is_platform_developer(request.user)
         if single_company_login_active():
-            if home_company is None:
+            if home_company is None or not home_company.is_active:
                 if not platform_developer:
                     logout(request)
                     messages.error(
@@ -470,24 +470,13 @@ class ForcePasswordChangeMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        excluded_paths = ["/change-password", "/login", "/logout"]
+        excluded_paths = ["/change-password", "/login", "/logout", "/two-factor", "/send-otp"]
         if request.path.rstrip("/") in excluded_paths:
             return self.get_response(request)
 
         if hasattr(request, "user") and request.user.is_authenticated:
             if getattr(request.user, "is_new_employee", True):
-                # HTMX sub-requests that originate from the change-password page
-                # (e.g. the notification button's hx-trigger="load") must be allowed
-                # through. Without this, the middleware redirects those sub-requests
-                # back to /change-password/, HTMX swaps the full page HTML into the
-                # notification container (which contains yet another notification
-                # button), and the loop repeats indefinitely.
-                hx_current_url = request.headers.get("HX-Current-URL", "")
-                if request.headers.get("HX-Request") and hx_current_url:
-                    current_path = urlparse(hx_current_url).path.rstrip("/")
-                    if current_path in excluded_paths:
-                        return self.get_response(request)
-
+                # Client-supplied HTMX headers cannot bypass this account gate.
                 # For HTMX navigation requests coming from other pages, respond with
                 # HX-Redirect so the browser performs a proper full-page navigation
                 # to /change-password/ instead of swapping partial content, which
@@ -516,7 +505,6 @@ class TwoFactorAuthMiddleware:
 
     def __call__(self, request):
         excluded_paths = [
-            "/change-password",
             "/login",
             "/logout",
             "/two-factor",
@@ -527,14 +515,7 @@ class TwoFactorAuthMiddleware:
             return self.get_response(request)
 
         if settings.TWO_FACTORS_AUTHENTICATION:
-            try:
-                if ConfiguredEmailBackend().configuration is not None:
-                    if hasattr(request, "user") and request.user.is_authenticated:
-                        if not request.session.get("otp_code_verified", False):
-                            return redirect("/two-factor")
-                else:
-                    return self.get_response(request)
-            except Exception as e:
-                return self.get_response(request)
+            if request.user.is_authenticated and not request.session.get("otp_code_verified", False):
+                return redirect("/two-factor")
 
         return self.get_response(request)

@@ -165,7 +165,6 @@ class EmployeesList(HorillaListView):
         "employee_work_info__basic_salary",
         "employee_work_info__salary_hour",
         "employee_work_info__contract_end_date",
-        "employee_work_info__company_id",
         "employee_bank_details__bank_name",
         "employee_bank_details__branch",
         "employee_bank_details__any_other_code1",

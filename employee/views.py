@@ -2732,10 +2732,13 @@ def employee_import(request):
                             employee_last_name,
                         ) = employee_full_name.split(" ", 1)
 
+                    from base.account_security import initial_password
+
                     user = HorillaUser.objects.create_user(
                         username=email,
                         email=email,
-                        password=str(phone).strip(),
+                        password=initial_password(),
+                        is_new_employee=True,
                         is_superuser=False,
                     )
                     employee = Employee()

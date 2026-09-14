@@ -36,6 +36,14 @@ DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 HORILLA_ENV = env("HORILLA_ENV", default="")
+if DEBUG and HORILLA_ENV.strip().lower() != "production":
+    # docker exec does not inherit the entrypoint's exported environment.
+    # Management commands must use the same persisted key as the web workers.
+    from horilla.settings.security import INSECURE_SECRET_KEYS
+
+    secret_key_file = env("SECRET_KEY_FILE", default="")
+    if secret_key_file and SECRET_KEY in INSECURE_SECRET_KEYS:
+        SECRET_KEY = Path(secret_key_file).read_text().strip()
 REDIS_URL = env("REDIS_URL", default=None)
 
 # Dedicated technical accounts allowed to use the cross-company developer
@@ -60,7 +68,7 @@ THEME_APP = "horilla_theme"
 
 INSTALLED_APPS = [
     # Default Django apps
-    "django.contrib.admin",
+    "base.admin_site.PlatformAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",

@@ -5,14 +5,13 @@ This module is used to define the method for the path in the urls
 """
 
 import json
-import shutil
 from collections import defaultdict
 from datetime import datetime, timedelta
 from itertools import groupby
 from urllib.parse import parse_qs
 
 import pandas as pd
-import pdfkit
+from payroll.pdf import render_payslip_html
 from django.conf import settings as pay_settings
 from django.contrib import messages
 from django.db.models import ProtectedError, Q
@@ -1489,34 +1488,12 @@ def generate_payslip_pdf(template_path, context, html=False):
         if html:
             return HttpResponse(html_content, content_type="text/html")
 
-        # PDF options for pdfkit
-        pdf_options = {
-            "page-size": "A4",
-            "margin-top": "10mm",
-            "margin-bottom": "10mm",
-            "margin-left": "10mm",
-            "margin-right": "10mm",
-            "encoding": "UTF-8",
-            "disable-javascript": None,
-            "enable-local-file-access": None,  # Required to load local CSS/images
-            "dpi": 300,
-            "zoom": 1.3,
-            "footer-center": "[page]/[topage]",  # Required to load local CSS/images
-        }
-
         unsafe_response = reject_unsafe_pdf_html(html_content, "Payslip")
         if unsafe_response is not None:
             return unsafe_response
 
         # Generate the PDF as binary content
-        try:
-            pdf = pdfkit.from_string(html_content, False, options=pdf_options)
-        except OSError:
-            if shutil.which("wkhtmltopdf"):
-                raise
-            from payroll.pdf import render_payslip_html
-
-            pdf = render_payslip_html(html_content, request=request)
+        pdf = render_payslip_html(html_content, request=request)
 
         # Return an HttpResponse containing the PDF content
         response = HttpResponse(pdf, content_type="application/pdf")

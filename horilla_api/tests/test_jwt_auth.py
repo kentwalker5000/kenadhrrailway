@@ -2,6 +2,7 @@
 
 import base64
 
+from django.core.cache import cache
 from django.test import Client, TestCase
 from rest_framework.test import APIClient
 
@@ -10,6 +11,7 @@ from horilla.testkit import make_company, make_employee, make_user
 
 class LoginAPITests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.company = make_company("API Co")
         self.password = "secret123"
@@ -42,6 +44,7 @@ class LoginAPITests(TestCase):
 
 class JWTProtectedEndpointTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         company = make_company("API Gate")
         self.password = "secret123"

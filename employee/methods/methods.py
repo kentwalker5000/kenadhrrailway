@@ -514,7 +514,10 @@ def set_initial_password(employees):
     logger.info("started to set initial password")
     for employee in employees:
         try:
-            employee.employee_user_id.set_password(str(employee.phone))
+            from base.account_security import initial_password
+
+            employee.employee_user_id.set_password(initial_password())
+            employee.employee_user_id.is_new_employee = True
             employee.employee_user_id.save()
         except Exception as e:
             logger.error(f"falied to set initial password for {employee}")

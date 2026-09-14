@@ -1,14 +1,6 @@
 """
-generate_pdf must not hand an injected body to wkhtmltopdf.
-
-pdfkit 1.0.0 carries PYSEC-2026-2860 -- `from_string` allows script execution
-and local-file exfiltration -- and there is no upstream fix. Every call site
-passes `enable-local-file-access` (needed for local CSS and images), which is
-the exact configuration the advisory describes.
-
-horilla_automations/signals.py already checked its own rendered body before
-calling generate_pdf. Four other callers did not, so the guard lives in
-generate_pdf where all five route through.
+generate_pdf must reject active HTML before the shared offline renderer runs.
+The checks remain in place after removal of the vulnerable pdfkit dependency.
 """
 
 from django.test import SimpleTestCase

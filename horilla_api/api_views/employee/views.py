@@ -448,31 +448,70 @@ class EmployeeBulkUpdateView(APIView):
 
     @method_decorator(permission_required("employee.change_employee"), name="dispatch")
     def put(self, request):
-        employee_ids = request.data.get("ids", [])
-        employees = Employee.objects.filter(id__in=employee_ids)
-        employee_work_info = EmployeeWorkInformation.objects.filter(
-            employee_id__in=employees
+        from django.core.exceptions import ValidationError
+        from django.db import transaction
+        from rest_framework import serializers
+
+        from base.auth_backends import get_home_company_id
+        from horilla_api.api_serializers.employee.bulk_update import (
+            BulkEmployeeSerializer,
+            BulkWorkInformationSerializer,
         )
+
+        if not isinstance(request.data, dict):
+            return Response(
+                {"error": _("Expected an object of fields to update.")}, status=400
+            )
+        employee_ids = serializers.ListField(
+            child=serializers.IntegerField(min_value=1),
+            allow_empty=False,
+            max_length=500,
+        ).run_validation(request.data.get("ids"))
+        company_id = get_home_company_id(request.user)
+        if not company_id:
+            return Response({"error": _("No company assignment.")}, status=403)
         employee_data = request.data.get("employee_data", {})
         work_info_data = request.data.get("employee_work_info", {})
-        fields_to_remove = [
-            "badge_id",
-            "employee_first_name",
-            "employee_last_name",
-            "is_active",
-            "email",
-            "phone",
-            "employee_bank_details__account_number",
-        ]
-        for field in fields_to_remove:
-            employee_data.pop(field, None)
-            work_info_data.pop(field, None)
-
+        if work_info_data and not request.user.has_perm(
+            "employee.change_employeeworkinformation"
+        ):
+            return Response(
+                {"error": _("No permission to edit work information.")}, status=403
+            )
         try:
-            employees.update(**employee_data)
-            employee_work_info.update(**work_info_data)
-        except Exception as e:
-            return Response({"error": str(e)}, status=400)
+            with transaction.atomic():
+                # Explicitly scoped base query avoids the default manager's
+                # DISTINCT, which PostgreSQL cannot combine with row locks.
+                employees = list(
+                    Employee._base_manager.select_for_update().filter(
+                        pk__in=employee_ids, employee_work_info__company_id=company_id
+                    )
+                )
+                if len(employees) != len(set(employee_ids)):
+                    return Response({"error": _("Employee not found.")}, status=404)
+                updates = []
+                for employee in employees:
+                    for serializer_class, instance, data in (
+                        (BulkEmployeeSerializer, employee, employee_data),
+                        (
+                            BulkWorkInformationSerializer,
+                            employee.employee_work_info,
+                            work_info_data,
+                        ),
+                    ):
+                        serializer = serializer_class(
+                            instance,
+                            data=data,
+                            partial=True,
+                            context={"request": request},
+                        )
+                        serializer.is_valid(raise_exception=True)
+                        if data:
+                            updates.append(serializer)
+                for serializer in updates:
+                    serializer.save()
+        except ValidationError as error:
+            return Response({"error": error.messages}, status=400)
         return Response({"status": "success"}, status=200)
 
 

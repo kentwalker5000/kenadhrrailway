@@ -101,7 +101,9 @@ class CompanySettingsTests(TestCase):
 
     def test_company_api_reads_and_updates_only_the_assigned_company(self):
         client = APIClient()
-        token = str(RefreshToken.for_user(self.user).access_token)
+        refresh = RefreshToken.for_user(self.user)
+        refresh["company_id"] = self.company.pk
+        token = str(refresh.access_token)
         client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
         listing_url = reverse("api-companies_detail")
         own_url = reverse("api-companies_detail_with_pk", kwargs={"pk": self.company.pk})

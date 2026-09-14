@@ -752,7 +752,9 @@ class Employee(models.Model):
         if employee.employee_user_id is None:
             # Create user if no corresponding user exists
             username = self.email
-            password = str(self.phone)
+            from base.account_security import initial_password
+
+            password = initial_password()
 
             user = HorillaUser.objects.create_user(
                 username=username,

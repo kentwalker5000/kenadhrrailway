@@ -479,12 +479,7 @@ from payroll.models.tax_models import PayrollSettings
 from payroll.views.component_views import filter_payslip
 from payroll.views.views import equalize_lists_length
 
-try:
-    import pdfkit
-
-    HAVE_PDFKIT = True
-except Exception:
-    HAVE_PDFKIT = False
+from payroll.pdf import render_payslip_html
 
 
 class PayslipPDFAPIView(APIView):
@@ -598,28 +593,15 @@ class PayslipPDFAPIView(APIView):
             "payroll/payslip/payslip_pdf.html", context=data, request=request
         )
 
-        # If client asked for PDF and pdfkit is available -> return PDF
+        # Use the same offline renderer as web downloads and payslip mail.
         requested_format = request.GET.get("format", "").lower()
         if requested_format == "pdf":
-            if not HAVE_PDFKIT:
-                return Response(
-                    {
-                        "detail": _(
-                            "PDF generation not available on server. Install pdfkit/wkhtmltopdf."
-                        )
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
             try:
                 unsafe_response = reject_unsafe_pdf_html(html, "Payslip")
                 if unsafe_response is not None:
                     return unsafe_response
 
-                # optional: configure pdfkit with path if needed
-                pdf_options = {
-                    "enable-local-file-access": None,  # if your template references local CSS
-                }
-                pdf_bytes = pdfkit.from_string(html, False, options=pdf_options)
+                pdf_bytes = render_payslip_html(html, request=request)
                 response = HttpResponse(pdf_bytes, content_type="application/pdf")
                 response["Content-Disposition"] = f'inline; filename="payslip-{id}.pdf"'
                 return response

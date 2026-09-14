@@ -996,7 +996,7 @@ class KenadHrPasswordResetCompleteView(PasswordResetCompleteView):
     template_name = "reset_complete.html"
 
 
-@login_required
+@employee_or_platform_required
 def change_password(request):
     """
     Handles the password change process for a logged-in user.
@@ -1011,23 +1011,29 @@ def change_password(request):
                       successfully, the page reloads with a success message.
     """
     user = request.user
+    from django.contrib.auth import update_session_auth_hash
+
+    template = "base/auth/password_change.html"
     form = ChangePasswordForm(user=user)
     if request.method == "POST":
         form = ChangePasswordForm(user, request.POST)
         if form.is_valid():
             new_password = form.cleaned_data["new_password"]
             user.set_password(new_password)
-            user.save()
-            user = authenticate(request, username=user.username, password=new_password)
-            if hasattr(user, "is_new_employee"):
-                user.is_new_employee = False
-                user.save()
-            login(request, user)
+            user.is_new_employee = False
+            user.save(update_fields=["password", "is_new_employee"])
+            update_session_auth_hash(request, user)
             messages.success(request, _("Password changed successfully"))
-            return HttpResponse("<script>window.location.href='/';</script>")
-        return render(request, "base/auth/password_change_form.html", {"form": form})
+            if request.headers.get("HX-Request"):
+                response = HttpResponse(status=204)
+                response["HX-Redirect"] = "/"
+                return response
+            return redirect("/")
+        if request.headers.get("HX-Request"):
+            template = "base/auth/password_change_form.html"
+        return render(request, template, {"form": form})
 
-    return render(request, "base/auth/password_change.html", {"form": form})
+    return render(request, template, {"form": form})
 
 
 @login_required
@@ -1062,6 +1068,7 @@ def change_username(request):
     return render(request, "base/auth/username_change.html", {"form": form})
 
 
+@employee_or_platform_required
 def two_factor_auth(request):
     """
     function to handle two-factor authentication for users.
@@ -1111,28 +1118,27 @@ def two_factor_auth(request):
     return render(request, "base/auth/two_factor_auth.html")
 
 
+@employee_or_platform_required
 def send_otp(request):
     """
     Function to send OTP to the user's email address.
     It generates a new OTP code, stores it in the session, and sends it via email.
     """
-    employee = getattr(getattr(request, "user", None), "employee_get", None)
-    if not employee:
-        return redirect("/login/")
+    from django.core.cache import cache
+    from horilla_api.mfa import send_code
 
-    email = employee.get_mail()
-    email_backend = ConfiguredEmailBackend()
-    display_email_name = email_backend.dynamic_from_email_with_display_name
-
-    otp_code = set_otp(request)
-    email = EmailMessage(
-        subject="Your OTP Code",
-        body=f"Your OTP code is {otp_code}",
-        from_email=display_email_name,
-        to=[email],
-    )
-    thread = threading.Thread(target=email.send)
-    thread.start()
+    cooldown = f"kenadhr-web-otp-issue:{request.user.pk}"
+    if not cache.add(cooldown, True, timeout=60):
+        messages.warning(request, _("Please wait before requesting another code."))
+        return redirect("two-factor")
+    try:
+        send_code(request.user, set_otp(request))
+    except Exception as error:
+        request.session["otp_code"] = None
+        request.session["otp_code_timestamp"] = None
+        cache.delete(cooldown)
+        logger.warning("Two-factor email unavailable (%s)", type(error).__name__)
+        messages.error(request, _("Email verification is unavailable. Please try again later."))
 
     return redirect("two-factor")
 
@@ -8851,19 +8857,13 @@ def is_jwt_token_valid(auth_header):
 
 
 def protected_media(request, path):
-    # Media-path prefixes that are safe to serve without authentication.
-    # These are assets rendered on genuinely-public pages (login screen,
-    # open recruitments, candidate self-tracking) and contain no sensitive
-    # employee data. Do NOT add prefixes here without security review.
-    public_media_prefixes = (
-        "base/icon/",
-        "base/company/icon/",
-        "recruitment/candidate/profile/",
-    )
+    from base.media_access import can_download, public_file
 
     # Prevent path traversal
     try:
         media_path = safe_join(settings.MEDIA_ROOT, path)
+        if os.path.commonpath([os.path.realpath(settings.MEDIA_ROOT), os.path.realpath(media_path)]) != os.path.realpath(settings.MEDIA_ROOT):
+            raise Http404("File not found")
     except Exception:
         # safe_join raises ValueError if traversal detected
         raise Http404("Invalid file path")
@@ -8878,16 +8878,27 @@ def protected_media(request, path):
     if any(part.startswith(".") for part in path.split("/")):
         raise Http404("File not found")
 
-    is_public_asset = any(path.startswith(prefix) for prefix in public_media_prefixes)
+    is_public_asset = public_file(path)
 
     if not is_public_asset:
-        jwt_user = is_jwt_token_valid(request.META.get("HTTP_AUTHORIZATION", ""))
-        if not request.user.is_authenticated and not jwt_user:
+        user = request.user
+        if not user.is_authenticated and request.META.get("HTTP_AUTHORIZATION"):
+            from horilla_api.authentication import TenantScopedJWTAuthentication
+            from rest_framework.exceptions import APIException
+
+            try:
+                authenticated = TenantScopedJWTAuthentication().authenticate(request)
+                user = authenticated[0] if authenticated else user
+            except APIException:
+                raise Http404("File not found")
+        if not user.is_authenticated:
             messages.error(
                 request,
                 "You must be logged in or provide a valid token to access this file.",
             )
             return redirect("login")
+        if not can_download(user, path):
+            raise Http404("File not found")
 
     # Determine the content type from the extension and decide whether the
     # browser may render it inline. User-uploaded content that browsers treat
@@ -8914,6 +8925,9 @@ def protected_media(request, path):
     # Block MIME sniffing -- a browser must honour the declared type and not
     # re-interpret e.g. an octet-stream as HTML.
     response["X-Content-Type-Options"] = "nosniff"
+    if not is_public_asset:
+        response["Cache-Control"] = "private, no-store"
+        response["Vary"] = "Cookie, Authorization"
     if force_download:
         filename = os.path.basename(media_path)
         response["Content-Disposition"] = f'attachment; filename="{filename}"'

@@ -1,4 +1,4 @@
-"""Offline payslip PDF fallback for deployments without wkhtmltopdf."""
+"""Offline PDF rendering with authorized local assets and no executable scripts."""
 
 import io
 import re
@@ -39,6 +39,11 @@ FALLBACK_CSS = """<style>
 
 
 def render_payslip_html(html_content, request=None):
+    from horilla.models import has_xss
+
+    if has_xss(html_content):
+        raise ValueError("This document could not be generated safely.")
+
     def local_asset(uri, _relative):
         parsed = urlsplit(uri)
         if parsed.scheme not in ("", "http", "https"):
@@ -48,17 +53,27 @@ def render_payslip_html(html_content, request=None):
         asset_path = unquote(parsed.path)
         try:
             if asset_path.startswith(settings.STATIC_URL):
-                relative = asset_path[len(settings.STATIC_URL):]
+                relative = asset_path[len(settings.STATIC_URL) :]
                 # Reject path traversal before consulting static finders.
                 safe_join(settings.STATIC_ROOT or settings.BASE_DIR, relative)
                 found = finders.find(relative)
                 if found and Path(found).is_file():
                     return str(found)
             if asset_path.startswith(settings.MEDIA_URL):
-                candidate = Path(safe_join(
-                    settings.MEDIA_ROOT, asset_path[len(settings.MEDIA_URL):]
-                )).resolve()
-                if candidate.is_relative_to(Path(settings.MEDIA_ROOT).resolve()) and candidate.is_file():
+                from base.media_access import can_download, public_file
+
+                relative = asset_path[len(settings.MEDIA_URL) :]
+                if any(part.startswith(".") for part in relative.split("/")):
+                    return EMPTY_IMAGE
+                if not public_file(relative) and not can_download(
+                    getattr(request, "user", None), relative
+                ):
+                    return EMPTY_IMAGE
+                candidate = Path(safe_join(settings.MEDIA_ROOT, relative)).resolve()
+                if (
+                    candidate.is_relative_to(Path(settings.MEDIA_ROOT).resolve())
+                    and candidate.is_file()
+                ):
                     return str(candidate)
         except (ValueError, OSError, SuspiciousFileOperation):
             pass

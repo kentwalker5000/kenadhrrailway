@@ -11,7 +11,6 @@ from io import BytesIO
 from types import SimpleNamespace
 
 import pandas as pd
-import pdfkit
 from django.apps import apps
 from django.conf import settings
 from django.contrib.auth.models import Group
@@ -1232,13 +1231,13 @@ def link_callback(uri, rel):
 
 
 def reject_unsafe_pdf_html(html, title="Document"):
-    """Return a safe error response when HTML must not reach wkhtmltopdf."""
+    """Reject active markup before document rendering."""
     if not has_xss(html):
         return None
 
     logger.error(
         "PDF generation: rendered body failed the XSS check; refusing to "
-        "hand it to wkhtmltopdf (title=%s).",
+        "render it (title=%s).",
         title,
     )
     return HttpResponse(
@@ -1250,19 +1249,9 @@ def generate_pdf(template_path, context, path=True, title=None, html=True):
     """
     Render HTML to a PDF response.
 
-    The rendered body is XSS-checked before it reaches pdfkit. wkhtmltopdf
-    executes scripts in the document, and every call site here passes
-    `enable-local-file-access` (see template_pdf's pdf_options, where it is
-    needed to load local CSS and images). pdfkit 1.0.0 has a known,
-    currently-unfixed advisory for exactly that combination -- PYSEC-2026-2860:
-    `from_string` allows script execution and local-file exfiltration -- so a
-    template carrying an injected payload could read files off the server and
-    post them out.
-
-    horilla_automations/signals.py already did this check at its own call site.
-    Four other callers (recruitment, attendance API, employee dashboard,
-    onboarding) did not, so the guard belongs here, where all five route
-    through, rather than repeated at each one.
+    The shared offline renderer rejects scripts, network resources and
+    unauthorized media. Keep the HTML guard here to return a safe HTTP error
+    consistently for every caller.
     """
     title = "Document" if not title else title
 
@@ -1615,38 +1604,10 @@ def template_pdf(template, context={}, html=False, filename="payslip.pdf"):
         HttpResponse: A response with the generated PDF file or raw HTML.
     """
     try:
-        bootstrap_css = '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">'
-        html_content = f"{bootstrap_css}\n{template}"
+        from payroll.pdf import render_payslip_html
+        from horilla.horilla_middlewares import _thread_locals
 
-        pdf_options = {
-            "page-size": "A4",
-            "margin-top": "10mm",
-            "margin-bottom": "10mm",
-            "margin-left": "10mm",
-            "margin-right": "10mm",
-            "encoding": "UTF-8",
-            "enable-local-file-access": None,
-            "dpi": 300,
-            "zoom": 1.3,
-            "footer-center": "[page]/[topage]",
-        }
-
-        try:
-            pdf = pdfkit.from_string(html_content, False, options=pdf_options)
-        except OSError:
-            # The development container and lightweight deployments do not
-            # always include the wkhtmltopdf binary pdfkit shells out to. The
-            # project already ships xhtml2pdf, so retain usable PDF exports
-            # rather than returning an HTML error page as a .pdf attachment.
-            from xhtml2pdf import pisa
-
-            destination = BytesIO()
-            # xhtml2pdf does not understand Bootstrap's modern remote CSS;
-            # it is an enhancement for wkhtmltopdf only, so omit it here.
-            result = pisa.CreatePDF(template, dest=destination)
-            if result.err:
-                raise RuntimeError("The fallback PDF renderer reported an error.")
-            pdf = destination.getvalue()
+        pdf = render_payslip_html(template, request=getattr(_thread_locals, "request", None))
 
         response = HttpResponse(pdf, content_type="application/pdf")
         response["Content-Disposition"] = f"inline; filename={filename}"

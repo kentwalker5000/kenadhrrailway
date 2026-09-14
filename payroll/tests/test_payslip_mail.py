@@ -166,9 +166,7 @@ class PayslipMailTests(CompanyFilterTestMixin, TestCase):
                 raise
 
         self.mail_body.side_effect = real_body
-        with patch("payroll.views.views.pdfkit.from_string", side_effect=OSError("Not installed")), patch(
-            "payroll.views.views.shutil.which", return_value=None
-        ), patch("socket.create_connection", side_effect=AssertionError("PDF must not fetch network assets")):
+        with patch("socket.create_connection", side_effect=AssertionError("PDF must not fetch network assets")):
             self.worker([self.slip_a]).run()
         self.assertEqual(responses[0].status_code, 200, responses[0].content[:300])
         self.assertEqual(self.smtp.call_count, 1, body_errors)

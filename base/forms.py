@@ -2524,6 +2524,9 @@ class ChangePasswordForm(forms.Form):
                 _("New password must be different from the old password.")
             )
 
+        from django.contrib.auth.password_validation import validate_password
+
+        validate_password(new_password, self.user)
         return new_password
 
     def clean(self):
@@ -2623,7 +2626,11 @@ class ResetPasswordForm(SetPasswordForm):
             request = getattr(_thread_locals, "request", None)
             if request:
                 messages.success(request, _("Password changed successfully"))
-        return super().save()
+        user = super().save(commit=False)
+        user.is_new_employee = False
+        if commit:
+            user.save()
+        return user
 
     def clean_confirm_password(self):
         """

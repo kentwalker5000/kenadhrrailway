@@ -1,4 +1,5 @@
 from axes.handlers.proxy import AxesProxyHandler
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.exceptions import ObjectDoesNotExist
 from django.utils.translation import gettext_lazy as _
@@ -19,6 +20,7 @@ from ...api_serializers.auth.serializers import (
 
 class LoginAPIView(APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []
     # The only unauthenticated write path in the API. django-axes locks an
     # account after repeated *failed* passwords, but counts nothing when the
     # credentials are valid -- so a leaked password can be replayed to mint
@@ -63,6 +65,8 @@ class LoginAPIView(APIView):
         tags=["auth"],
     )
     def post(self, request):
+        serializer = LoginRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         if "username" in request.data and "password" in request.data:
             username = request.data.get("username")
             password = request.data.get("password")
@@ -74,12 +78,74 @@ class LoginAPIView(APIView):
             if user:
                 from horilla_api.authentication import resolve_company_id
 
-                if resolve_company_id(user) is None:
+                company_id = resolve_company_id(user)
+                if company_id is None:
                     return Response(
                         {"error": _("This account is not assigned to a company.")},
                         status=403,
                     )
+                if user.is_new_employee:
+                    return Response(
+                        {
+                            "error": _(
+                                "Set your password using the password reset link before signing in."
+                            ),
+                            "code": "password_change_required",
+                        },
+                        status=403,
+                    )
+                verified = False
+                if settings.TWO_FACTORS_AUTHENTICATION:
+                    from horilla_api.mfa import issue_challenge, verify_challenge
+
+                    try:
+                        challenge = request.data.get("challenge_id")
+                        if challenge:
+                            verified = verify_challenge(
+                                user, challenge, request.data.get("otp")
+                            )
+                            if not verified:
+                                return Response(
+                                    {
+                                        "error": _(
+                                            "Invalid or expired verification code."
+                                        )
+                                    },
+                                    status=400,
+                                )
+                        else:
+                            challenge = issue_challenge(user)
+                            if challenge is None:
+                                return Response(
+                                    {
+                                        "error": _(
+                                            "Please wait before requesting another code."
+                                        )
+                                    },
+                                    status=429,
+                                )
+                            return Response(
+                                {
+                                    "requires_otp": True,
+                                    "challenge_id": challenge,
+                                    "message": _(
+                                        "Enter the code sent to your registered email address."
+                                    ),
+                                },
+                                status=202,
+                            )
+                    except Exception:
+                        return Response(
+                            {
+                                "error": _(
+                                    "Email verification is unavailable. Please try again later."
+                                )
+                            },
+                            status=503,
+                        )
                 refresh = RefreshToken.for_user(user)
+                refresh["company_id"] = company_id
+                refresh["mfa_verified"] = verified
                 employee = user.employee_get
                 face_detection = False
                 face_detection_image = None

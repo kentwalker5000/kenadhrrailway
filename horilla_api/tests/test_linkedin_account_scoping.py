@@ -23,6 +23,7 @@ Two defects that did survive that check:
     narrows on employee_id and LinkedInAccount has no such field.
 """
 
+from django.core.cache import cache
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -38,6 +39,7 @@ SECRET = "tok-company-b-must-not-leak"
 
 class LinkedInAccountScopingTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         set_selected_company(None)
 

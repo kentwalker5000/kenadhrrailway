@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import logging
 
+from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import PermissionDenied
 from rest_framework_simplejwt.authentication import JWTAuthentication
@@ -64,9 +65,17 @@ def resolve_company_id(user):
     # null) company. A direct query cannot go stale, and it is one indexed
     # lookup either way.
     try:
-        from base.auth_backends import get_home_company_id
+        from employee.models import EmployeeWorkInformation
 
-        return get_home_company_id(user)
+        return (
+            EmployeeWorkInformation._base_manager.filter(
+                employee_id__employee_user_id=user.pk,
+                employee_id__is_active=True,
+                company_id__is_active=True,
+            )
+            .values_list("company_id_id", flat=True)
+            .first()
+        )
     except Exception:
         # No employee record, no work info, or the app is unavailable.
         # Callers must read None as "cannot place this user", never as
@@ -87,6 +96,26 @@ class TenantScopedJWTAuthentication(JWTAuthentication):
     the value set here does not outlive the request even though it is set
     later in the cycle.
     """
+
+    def get_user(self, validated_token):
+        user = super().get_user(validated_token)
+        if user.is_new_employee:
+            raise PermissionDenied(
+                _("Set your password using the password reset link before signing in.")
+            )
+        if (
+            settings.TWO_FACTORS_AUTHENTICATION
+            and validated_token.get("mfa_verified") is not True
+        ):
+            raise PermissionDenied(
+                _("Two-factor verification is required. Sign in again.")
+            )
+        company_id = resolve_company_id(user)
+        if not company_id or validated_token.get("company_id") != company_id:
+            raise PermissionDenied(
+                _("Your company assignment has changed. Sign in again.")
+            )
+        return user
 
     def authenticate(self, request):
         result = super().authenticate(request)
