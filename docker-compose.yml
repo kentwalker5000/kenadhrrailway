@@ -83,6 +83,10 @@ services:
 
   db:
     image: postgres:16-alpine
+    # Desktop pgAdmin access, restricted to this computer. Keep a separate
+    # host port so existing Windows PostgreSQL installations can stay running.
+    ports:
+      - "127.0.0.1:${KENADHR_DB_PORT:-5434}:5432"
     environment:
       POSTGRES_DB: horilla_db
       POSTGRES_USER: horilla_user

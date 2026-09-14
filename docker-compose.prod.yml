@@ -52,6 +52,8 @@ services:
       replicas: 1
 
   db:
+    # Never publish the development pgAdmin port on a production host.
+    ports: !reset []
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-horilla_db}
       POSTGRES_USER: ${POSTGRES_USER:-horilla_user}

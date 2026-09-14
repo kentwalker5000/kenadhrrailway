@@ -50,6 +50,7 @@ A complete, step-by-step guide to running Horilla HR using Docker. Covers develo
 | Web App | 8000 | Development access |
 | Nginx | 80 | Production HTTP |
 | PostgreSQL | 5432 | Internal only (not exposed in production) |
+| Desktop pgAdmin connection | 127.0.0.1:5434 | Local development access to PostgreSQL; disabled in production |
 | Redis | 6379 | Internal only (not exposed in production) |
 
 ---
@@ -361,6 +362,14 @@ docker compose logs --tail=50 web
 ---
 
 ## 7. Database Management
+
+### Connect pgAdmin 4
+
+For the current KenadHr development connection and a password-free server-import
+file, see [View the existing database in pgAdmin 4](../README.md#view-the-existing-database-in-pgadmin-4).
+Use host `127.0.0.1`, port `5434` (or `KENADHR_DB_PORT`), and database `horilla_db`.
+No database migration is needed; pgAdmin connects to the existing Docker database.
+The production overlay does not publish this port.
 
 ### Running Migrations
 

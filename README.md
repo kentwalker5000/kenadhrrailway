@@ -46,6 +46,37 @@ that existing checkout; there is no need to clone it again or rename its folder.
 The development Compose file contains local-only credentials and enables debug
 mode. Do not expose this configuration to the internet.
 
+### View the existing database in pgAdmin 4
+
+KenadHr already uses PostgreSQL. pgAdmin is a separate database management tool,
+not a replacement database. Keep Docker running while using this connection.
+
+After `docker compose up -d`, import [docker/pgadmin-servers.json](docker/pgadmin-servers.json)
+through pgAdmin's **Tools > Import/Export Servers**, keeping existing servers.
+The new connection appears under **KenadHr > KenadHr Local**. Alternatively,
+register a server manually with these development-only settings:
+
+| Setting | Value |
+| --- | --- |
+| Host | `127.0.0.1` |
+| Port | `5434` |
+| Maintenance database | `horilla_db` |
+| Username | `horilla_user` |
+| Password | `horilla_pass` (local development only) |
+
+Server definitions do not include passwords; enter the database password when
+pgAdmin asks. An existing pgAdmin **master password** is a separate credential.
+Expand **Databases > horilla_db > Schemas > public > Tables** to browse the data.
+Avoid editing HR records directly in SQL: that bypasses application validation.
+
+The port is bound to localhost only, and the production overlay removes it.
+If port 5434 is occupied, set `KENADHR_DB_PORT` in your ignored `.env` file and
+use the same port in pgAdmin. The app still connects internally to `db:5432`.
+This setup does not move the database or change any existing employee records.
+See [pgAdmin's import instructions](https://www.pgadmin.org/docs/pgadmin4/latest/import_export_servers.html).
+
+### Stop local services
+
 To stop the local stack while preserving its data:
 
 ```powershell

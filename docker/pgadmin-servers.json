@@ -1,0 +1,18 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "KenadHr Local",
+      "Group": "KenadHr",
+      "Host": "127.0.0.1",
+      "Port": 5434,
+      "MaintenanceDB": "horilla_db",
+      "Username": "horilla_user",
+      "DBRestriction": "horilla_db",
+      "ConnectionParameters": {
+        "sslmode": "prefer",
+        "connect_timeout": 10
+      },
+      "Comment": "Existing KenadHr development database in Docker. Local access only; not a production connection."
+    }
+  }
+}
