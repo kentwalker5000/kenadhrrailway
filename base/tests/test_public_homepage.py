@@ -160,7 +160,7 @@ class HomepageEntryFlowTests(CompanyFilterTestMixin, TestCase):
         session.save()
         response = self.client.get(reverse("home-page"))
         self.assertRedirects(
-            response, reverse("ess-dashboard"), fetch_redirect_response=False
+            response, reverse("staff-platform"), fetch_redirect_response=False
         )
         self.assertEqual(self.client.session["selected_company"], str(self.company.pk))
 

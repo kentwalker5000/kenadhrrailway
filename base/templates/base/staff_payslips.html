@@ -1,0 +1,62 @@
+{% extends "base/staff_base.html" %} {% load i18n %} {% block staff_content %}
+<section class="staff-heading" aria-labelledby="staffPayslipsTitle">
+  <div>
+    <p class="staff-eyebrow">{% trans "My payroll" %}</p>
+    <h1 id="staffPayslipsTitle">{% trans "My payslips" %}</h1>
+  </div>
+  <p class="staff-heading__date">
+    {% trans "Only your confirmed or paid payslips are shown here." %}
+  </p>
+</section>
+<section class="staff-card" aria-label="{% trans 'Payslip history' %}">
+  {% if payslips %}
+  <div class="staff-table-wrap">
+    <table class="staff-table">
+      <thead>
+        <tr>
+          <th>{% trans "Pay period" %}</th>
+          <th>{% trans "Gross pay" %}</th>
+          <th>{% trans "Net pay" %}</th>
+          <th>{% trans "Status" %}</th>
+          <th><span class="sr-only">{% trans "Action" %}</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for payslip in payslips %}
+        <tr>
+          <td>
+            <strong>{{ payslip.start_date|date:"F Y" }}</strong><br /><span
+              class="staff-muted"
+              >{{ payslip.start_date|date:"j M" }} – {{ payslip.end_date|date:"j
+              M Y" }}</span
+            >
+          </td>
+          <td>{{ payslip.gross_pay_display }}</td>
+          <td><strong>{{ payslip.net_pay_display }}</strong></td>
+          <td>
+            <span class="staff-status staff-status--approved"
+              >{{ payslip.get_status_display }}</span
+            >
+          </td>
+          <td>
+            <a
+              class="staff-file-link"
+              href="{{ payslip.pdf_url }}"
+              target="_blank"
+              rel="noopener"
+              >{% trans "Open PDF" %} ↗</a
+            >
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="staff-empty">
+    {% trans "Your confirmed payslips will appear here after payroll is
+    processed." %}
+  </p>
+  {% endif %}
+</section>
+{% endblock staff_content %}

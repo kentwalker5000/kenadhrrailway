@@ -1224,7 +1224,7 @@ def home(request):
 
     if can_see_analytics_home(resolve_home_role(request)):
         return redirect("dashboard")
-    return redirect("ess-dashboard")
+    return redirect("staff-platform")
 
 
 @require_http_methods(["GET"])

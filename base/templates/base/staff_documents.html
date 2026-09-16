@@ -1,0 +1,70 @@
+{% extends "base/staff_base.html" %}
+{% load i18n %}
+
+{% block staff_content %}
+<section class="staff-heading" aria-labelledby="staffDocumentsPageTitle">
+  <div>
+    <p class="staff-eyebrow">{% trans "My records" %}</p>
+    <h1 id="staffDocumentsPageTitle">{% trans "My documents" %}</h1>
+  </div>
+  <p class="staff-heading__date">{% trans "These are the documents assigned to your staff profile." %}</p>
+</section>
+
+<section class="staff-card" aria-label="{% trans 'Document list' %}">
+  {% if documents %}
+    <div class="staff-table-wrap">
+      <table class="staff-table">
+        <thead>
+          <tr>
+            <th>{% trans "Document" %}</th>
+            <th>{% trans "Requested by" %}</th>
+            <th>{% trans "Status" %}</th>
+            <th>{% trans "Expiry" %}</th>
+            <th><span class="sr-only">{% trans "Action" %}</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for document in documents %}
+            <tr>
+              <td>
+                <strong>{{ document.title }}</strong><br>
+                <span class="staff-muted">
+                  {% if document.document %}
+                    {% trans "File uploaded" %}
+                  {% else %}
+                    {% trans "No file uploaded yet" %}
+                  {% endif %}
+                </span>
+              </td>
+              <td>
+                {% if document.document_request_id %}
+                  {{ document.document_request_id.title }}
+                {% else %}
+                  {% trans "Personal document" %}
+                {% endif %}
+              </td>
+              <td><span class="staff-status staff-status--{{ document.status }}">{{ document.get_status_display }}</span></td>
+              <td>
+                {% if document.expiry_date %}
+                  {{ document.expiry_date|date:"j M Y" }}
+                {% else %}
+                  <span class="staff-muted">{% trans "Not set" %}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if document.document %}
+                  <a class="staff-file-link" href="{{ document.view_url }}" hx-get="{{ document.view_url }}" hx-target="#genericModalBody" data-toggle="oh-modal-toggle" data-target="#genericModal">{% trans "View file" %}</a>
+                {% else %}
+                  <span class="staff-muted">{% trans "Awaiting upload" %}</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="staff-empty">{% trans "No documents are assigned to your profile right now." %}</p>
+  {% endif %}
+</section>
+{% endblock staff_content %}

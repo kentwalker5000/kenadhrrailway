@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from base import announcement
 from base import developer_dashboard
 from base import dashboard as dashboard_module
-from base import ess_dashboard, public_site, request_and_approve, views
+from base import ess_dashboard, public_site, request_and_approve, staff_portal, views
 from base.cbv import (
     announcement_cbv,
     company,
@@ -221,6 +221,12 @@ urlpatterns = [
     ),
     # ── ESS Dashboard ──────────────────────────────────────────────────────────
     path("ess/", ess_dashboard.ess_dashboard, name="ess-dashboard"),
+    path("staff/", staff_portal.staff_home, name="staff-platform"),
+    path("staff/attendance/", staff_portal.staff_attendance, name="staff-attendance"),
+    path("staff/leave/", staff_portal.staff_leave, name="staff-leave"),
+    path("staff/payslips/", staff_portal.staff_payslips, name="staff-payslips"),
+    path("staff/documents/", staff_portal.staff_documents, name="staff-documents"),
+    path("staff/profile/", staff_portal.staff_profile, name="staff-profile"),
     path("ess/api/kpi/", ess_dashboard.ess_kpi_data, name="ess-kpi-data"),
     path(
         "ess/api/leave-balance/",

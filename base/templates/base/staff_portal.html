@@ -1,0 +1,216 @@
+{% extends "base/staff_base.html" %}
+{% load i18n %}
+
+{% block staff_content %}
+<section class="staff-heading" aria-labelledby="staffWelcomeTitle">
+  <div>
+    <p class="staff-eyebrow">{% trans "My staff workspace" %}</p>
+    <h1 id="staffWelcomeTitle">{% trans "Welcome back," %} {{ employee.employee_first_name }}.</h1>
+  </div>
+  <p class="staff-heading__date">
+    {{ today|date:"l, j F Y" }}<br>
+    {% if company %}
+      {{ company }}
+    {% else %}
+      {% trans "Your company" %}
+    {% endif %}
+  </p>
+</section>
+
+<section class="staff-day-card" aria-labelledby="staffDayTitle">
+  <div class="staff-day-card__copy">
+    <p class="staff-eyebrow">{% trans "Today" %}</p>
+    {% if today_attendance and today_attendance.attendance_clock_in %}
+      {% if today_attendance.attendance_clock_out %}
+        <h2 id="staffDayTitle">{% trans "Your workday is complete." %}</h2>
+        <p>{% trans "You checked out at" %} {{ today_attendance.attendance_clock_out|time:"g:i A" }}.</p>
+      {% else %}
+        <h2 id="staffDayTitle">{% trans "You are checked in." %}</h2>
+        <p>{% trans "You checked in at" %} {{ today_attendance.attendance_clock_in|time:"g:i A" }}. {% trans "Remember to check out when your day ends." %}</p>
+      {% endif %}
+    {% elif today_attendance %}
+      <h2 id="staffDayTitle">{% trans "Attendance needs your attention." %}</h2>
+      <p>{% trans "There is an attendance record for today without a check-in time. Open attendance to review it with your manager or HR team." %}</p>
+    {% else %}
+      <h2 id="staffDayTitle">{% trans "Ready when you are." %}</h2>
+      <p>{% trans "No attendance has been recorded for you yet today. Open attendance to check in or review your workday." %}</p>
+    {% endif %}
+    <a class="staff-button" href="{% url 'staff-attendance' %}">{% trans "Open attendance" %} <span aria-hidden="true">&rarr;</span></a>
+  </div>
+  <aside class="staff-day-card__schedule" aria-label="{% trans 'My work details' %}">
+    <div>
+      <span>{% trans "Work type" %}</span>
+      <strong>
+        {% if employee.get_work_type %}
+          {{ employee.get_work_type }}
+        {% else %}
+          {% trans "Not assigned" %}
+        {% endif %}
+      </strong>
+    </div>
+    <div>
+      <span>{% trans "Shift" %}</span>
+      <strong>
+        {% if employee.get_shift %}
+          {{ employee.get_shift }}
+        {% else %}
+          {% trans "Not assigned" %}
+        {% endif %}
+      </strong>
+    </div>
+    <div>
+      <span>{% trans "Manager" %}</span>
+      <strong>
+        {% if work_info.reporting_manager_id %}
+          {{ work_info.reporting_manager_id.get_full_name }}
+        {% else %}
+          {% trans "Not assigned" %}
+        {% endif %}
+      </strong>
+    </div>
+  </aside>
+</section>
+
+<section class="staff-actions" aria-labelledby="staffActionsTitle">
+  <div class="staff-section-title">
+    <div>
+      <p class="staff-eyebrow">{% trans "Quick actions" %}</p>
+      <h2 id="staffActionsTitle">{% trans "Everything you need for your working day." %}</h2>
+    </div>
+  </div>
+  <div class="staff-action-grid">
+    <a class="staff-action" href="{% url 'staff-attendance' %}">
+      <span class="staff-action__icon staff-action__icon--blue" aria-hidden="true">&#9673;</span>
+      <span><strong>{% trans "My attendance" %}</strong><small>{% trans "Check in, check out and review your time." %}</small></span>
+      <b aria-hidden="true">&rarr;</b>
+    </a>
+    <a class="staff-action" href="{% url 'staff-leave' %}">
+      <span class="staff-action__icon staff-action__icon--amber" aria-hidden="true">&#9675;</span>
+      <span><strong>{% trans "Request leave" %}</strong><small>{% trans "Apply for leave and follow your requests." %}</small></span>
+      <b aria-hidden="true">&rarr;</b>
+    </a>
+    <a class="staff-action" href="{% url 'staff-payslips' %}">
+      <span class="staff-action__icon staff-action__icon--green" aria-hidden="true">&#8373;</span>
+      <span><strong>{% trans "My payslips" %}</strong><small>{% trans "View confirmed or paid payslips." %}</small></span>
+      <b aria-hidden="true">&rarr;</b>
+    </a>
+    <a class="staff-action" href="{% url 'staff-documents' %}">
+      <span class="staff-action__icon staff-action__icon--purple" aria-hidden="true">&#9636;</span>
+      <span><strong>{% trans "My documents" %}</strong><small>{% trans "See documents HR has requested from you." %}</small></span>
+      <b aria-hidden="true">&rarr;</b>
+    </a>
+    <a class="staff-action" href="{% url 'staff-profile' %}">
+      <span class="staff-action__icon staff-action__icon--slate" aria-hidden="true">&#9678;</span>
+      <span><strong>{% trans "My profile" %}</strong><small>{% trans "Review your personal and work information." %}</small></span>
+      <b aria-hidden="true">&rarr;</b>
+    </a>
+  </div>
+</section>
+
+<div class="staff-grid">
+  <section class="staff-card" aria-labelledby="staffLeaveTitle">
+    <div class="staff-card__heading">
+      <div>
+        <h2 id="staffLeaveTitle">{% trans "My leave" %}</h2>
+        <p>{{ total_leave_days|floatformat:1 }} {% trans "days currently available" %}</p>
+      </div>
+      <a href="{% url 'staff-leave' %}">{% trans "Manage leave" %} &rarr;</a>
+    </div>
+    {% if leave_balances %}
+      <div class="staff-leave-list">
+        {% for balance in leave_balances %}
+          <div class="staff-leave-row">
+            <span>{{ balance.leave_type_id.name }}</span>
+            <strong>{{ balance.available_days|add:balance.carryforward_days|floatformat:1 }} {% trans "days" %}</strong>
+          </div>
+        {% endfor %}
+      </div>
+      <div class="staff-leave-footer">
+        <span>{{ pending_leave_count }} {% trans "requests awaiting review" %}</span>
+        <span>{{ upcoming_leave_count }} {% trans "upcoming leave requests" %}</span>
+      </div>
+    {% else %}
+      <p class="staff-empty">{% trans "Your HR team has not assigned a leave balance yet." %}</p>
+    {% endif %}
+  </section>
+
+  <section class="staff-card" aria-labelledby="staffPayTitle">
+    <div class="staff-card__heading">
+      <div>
+        <h2 id="staffPayTitle">{% trans "Recent payslips" %}</h2>
+        <p>{% trans "Confirmed and paid payroll records" %}</p>
+      </div>
+      <a href="{% url 'staff-payslips' %}">{% trans "See all" %} &rarr;</a>
+    </div>
+    {% if payslips %}
+      <div class="staff-compact-list">
+        {% for payslip in payslips %}
+          <a class="staff-compact-row" href="{{ payslip.pdf_url }}">
+            <span class="staff-compact-row__icon" aria-hidden="true">&#8373;</span>
+            <span><strong>{{ payslip.start_date|date:"F Y" }}</strong><small>{{ payslip.get_status_display }}</small></span>
+            <b>{{ payslip.net_pay_display }}</b>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="staff-empty">{% trans "Your confirmed payslips will appear here." %}</p>
+    {% endif %}
+  </section>
+
+  <section class="staff-card" aria-labelledby="staffDocumentsTitle">
+    <div class="staff-card__heading">
+      <div>
+        <h2 id="staffDocumentsTitle">{% trans "My documents" %}</h2>
+        <p>{% trans "Files and requests connected to you" %}</p>
+      </div>
+      <a href="{% url 'staff-documents' %}">{% trans "Open documents" %} &rarr;</a>
+    </div>
+    <div class="staff-document-summary">
+      <span><strong>{{ document_counts.requested }}</strong>{% trans "Awaiting upload" %}</span>
+      <span><strong>{{ document_counts.approved }}</strong>{% trans "Approved" %}</span>
+      <span><strong>{{ document_counts.rejected }}</strong>{% trans "Need attention" %}</span>
+    </div>
+    {% if documents %}
+      <div class="staff-compact-list staff-compact-list--documents">
+        {% for document in documents %}
+          <a class="staff-compact-row" href="{{ document.view_url }}" hx-get="{{ document.view_url }}" hx-target="#genericModalBody" data-toggle="oh-modal-toggle" data-target="#genericModal">
+            <span class="staff-compact-row__icon" aria-hidden="true">&#9636;</span>
+            <span>
+              <strong>{{ document.title }}</strong>
+              <small>
+                {% if document.document %}
+                  {% trans "File uploaded" %}
+                {% else %}
+                  {% trans "Waiting for your upload" %}
+                {% endif %}
+              </small>
+            </span>
+            <span class="staff-status staff-status--{{ document.status }}">{{ document.get_status_display }}</span>
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="staff-empty">{% trans "No documents are assigned to you right now." %}</p>
+    {% endif %}
+  </section>
+
+  <aside class="staff-profile-card" aria-labelledby="staffProfileTitle">
+    <img src="{{ employee.get_avatar }}" alt="{% trans 'Profile picture' %}">
+    <div>
+      <p class="staff-eyebrow">{% trans "My profile" %}</p>
+      <h2 id="staffProfileTitle">{{ employee.get_full_name }}</h2>
+      <p>
+        {% if employee.get_job_position %}
+          {{ employee.get_job_position }}
+        {% else %}
+          {% trans "Team member" %}
+        {% endif %}
+        {% if employee.get_department %}
+          &middot; {{ employee.get_department }}
+        {% endif %}
+      </p>
+    </div>
+    <a class="staff-button staff-button--subtle" href="{% url 'staff-profile' %}">{% trans "View my profile" %}</a>
+  </aside>
+</div>
+{% endblock staff_content %}
