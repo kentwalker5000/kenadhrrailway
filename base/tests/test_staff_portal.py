@@ -3,6 +3,7 @@
 from datetime import date, time
 from urllib.parse import urlsplit
 
+from bs4 import BeautifulSoup
 from django.test import TestCase
 from django.urls import reverse
 
@@ -86,6 +87,32 @@ class StaffPortalTests(CompanyFilterTestMixin, TestCase):
             response, reverse("staff-platform"), fetch_redirect_response=False
         )
 
+    def test_dashboard_route_returns_employee_to_the_same_workspace(self):
+        response = self.client.get(reverse("dashboard"))
+        self.assertRedirects(
+            response, reverse("staff-platform"), fetch_redirect_response=False
+        )
+
+    def test_personal_dashboard_remains_available_separately(self):
+        response = self.client.get(reverse("ess-dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "base/ess_dashboard.html")
+        self.assertContains(response, "Personal Dashboard")
+
+    def test_reporting_manager_keeps_the_analytics_dashboard(self):
+        work_info = self.other_employee.employee_work_info
+        work_info.company_id = self.company
+        work_info.reporting_manager_id = self.employee
+        work_info.save()
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "dashboard.html")
+
+    def test_employee_can_still_explicitly_open_analytics(self):
+        response = self.client.get(reverse("dashboard"), {"view": "analytics"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "dashboard.html")
+
     def test_workspace_renders_personal_workday_and_real_actions(self):
         response = self.client.get(reverse("staff-platform"))
         self.assertEqual(response.status_code, 200)
@@ -101,6 +128,13 @@ class StaffPortalTests(CompanyFilterTestMixin, TestCase):
             "staff-profile",
         ):
             self.assertContains(response, f'href="{reverse(route)}"')
+        sidebar = BeautifulSoup(response.content, "html.parser")
+        home_link = sidebar.select_one('a[data-menu="Dashboard"]')
+        self.assertIsNotNone(home_link)
+        self.assertEqual(home_link["href"], reverse("home-page"))
+        self.assertIn(
+            reverse("staff-platform"), home_link["data-match-prefixes"].split(",")
+        )
 
     def test_workspace_never_leaks_another_company_employee_or_records(self):
         response = self.client.get(reverse("staff-platform"))

@@ -1214,7 +1214,7 @@ class Workinfo:
 @employee_or_platform_required
 def home(request):
     """
-    Role-aware home: employees → ESS; managers/HR/leadership → analytics dashboard.
+    Role-aware home: employees → staff workspace; managers/HR/leadership → analytics.
     """
     from base.dashboard_roles import can_see_analytics_home, resolve_home_role
     from base.platform_access import is_platform_developer

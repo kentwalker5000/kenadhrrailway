@@ -1266,7 +1266,9 @@
             document.querySelectorAll("a.sideboxmain[href]").forEach(function (link) {
               if (matchedBtn) return;
               var href = (link.getAttribute("href") || "").split("?")[0];
-              if (href && href !== "/" && href !== "#" && path.startsWith(href)) matchedBtn = link;
+              var extraPrefixes = (link.dataset.matchPrefixes || "").split(",").filter(Boolean);
+              if ((href && href !== "/" && href !== "#" && path.startsWith(href)) ||
+                  extraPrefixes.some(function (p) { return path.startsWith(p); })) matchedBtn = link;
             });
           }
           if (matchedBtn) {

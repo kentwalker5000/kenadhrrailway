@@ -5,7 +5,8 @@
   chart requests or duplicate HTMX swaps from competing with one another.
 {% endcomment %}
 <a
-    href="{% url 'dashboard' %}"
+    href="{% url 'home-page' %}"
+    data-match-prefixes="{% url 'dashboard' %},{% url 'staff-platform' %}"
     class="sideboxmain group flex items-center gap-3 px-3 py-2.5 rounded-lg w-full transition duration-300"
     data-menu="Dashboard"
 >

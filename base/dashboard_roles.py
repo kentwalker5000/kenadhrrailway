@@ -5,7 +5,7 @@ Locked decisions (plans/horilla-hr-main-dashboard-redesign.md):
 - Leadership = superuser/staff OR (employee + leave + recruitment view)
 - HR = employee.view_employee ∧ leave.view_leaverequest
 - Manager = reporting manager and not HR/Leadership
-- Employee = everyone else → ESS home
+- Employee = everyone else → staff workspace
 """
 
 from __future__ import annotations

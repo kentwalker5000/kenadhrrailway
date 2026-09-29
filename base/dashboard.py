@@ -359,7 +359,7 @@ def _company_scope_context(request) -> dict:
 def main_dashboard_view(request):
     """Render the modern analytics dashboard (manager/HR/leadership).
 
-    Pure employees are redirected to ESS unless ``?view=analytics`` is set
+    Pure employees are redirected to their workspace unless ``?view=analytics`` is set
     (explicit switch from ESS).
     """
     from django.apps import apps
@@ -373,7 +373,7 @@ def main_dashboard_view(request):
 
     home_role = resolve_home_role(request)
     if not can_see_analytics_home(home_role) and request.GET.get("view") != "analytics":
-        return redirect("ess-dashboard")
+        return redirect("staff-platform")
 
     enabled_timerunner = True
     get_forecasted_at_work = None
