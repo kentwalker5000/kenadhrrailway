@@ -1,5 +1,6 @@
 {% extends 'index.html' %} {% load i18n %} {% block content %}
 
+<div id="profileEditor">
 <section
 	class="oh-wrapper oh-main__topbar oh-profile-section__topbar"
 	x-data="{searchShow: false}"
@@ -14,21 +15,23 @@
 	>
 		<ul class="oh-general__tabs oh-profile-section__tab">
 			<li class="oh-general__tab">
-				<a
-					href="#"
+				<button
+					type="button"
 					class="oh-general__tab-link oh-general__tab-link--active"
-					data-action="general-tab"
-					data-target="#personal"
-					>{% trans "Personal Info" %}</a
+					data-profile-tab="personal"
+					aria-controls="personal"
+					aria-pressed="true"
+					>{% trans "Personal Info" %}</button
 				>
 			</li>
 			<li class="oh-general__tab">
-				<a
-					href="#"
+				<button
+					type="button"
 					class="oh-general__tab-link"
-					data-action="general-tab"
-					data-target="#bank"
-					>{% trans "Bank Info" %}</a
+					data-profile-tab="bank"
+					aria-controls="bank"
+					aria-pressed="false"
+					>{% trans "Bank Info" %}</button
 				>
 			</li>
 		</ul>
@@ -38,49 +41,42 @@
 	{% include 'employee/profile/personal_info.html' %}
     {% include 'employee/profile/bank_info.html' %}
 </div>
+</div>
 
-<script>
-	$(document).ready(function () {
-		$('#id_profile').change(function (e) {
+<script id="profileEditorTabs">
+    (() => {
+        const editor = document.getElementById("profileEditor");
+        const tabs = editor.querySelectorAll("[data-profile-tab]");
+        const panels = editor.querySelectorAll(".oh-general__tab-target");
+        const storageKey = "staffProfileEditTab";
 
-			const file = this.files[0];
-			const reader = new FileReader();
+        // Change local panel state only. Synthetic anchor clicks trigger the
+        // shared popstate reload handler and can recursively re-enter this code.
+        function activateTab(target) {
+            if (!["personal", "bank"].includes(target)) target = "personal";
+            tabs.forEach(tab => {
+                const active = tab.dataset.profileTab === target;
+                tab.classList.toggle("oh-general__tab-link--active", active);
+                tab.setAttribute("aria-pressed", String(active));
+            });
+            panels.forEach(panel => {
+                const hidden = panel.id !== target;
+                panel.hidden = hidden;
+                panel.classList.toggle("d-none", hidden);
+            });
+            return target;
+        }
 
-			reader.addEventListener("load", function () {
-				const imageUrl = reader.result;
-				$(".preview").attr("src", imageUrl);
-			});
-
-			reader.readAsDataURL(file);
-		});
-
-		// Active tab script
-		function activeEmpTab() {
-			var activeTab = localStorage.getItem("activeEmpTab")
-
-			if (!["#personal", "#work", "#bank"].includes(activeTab)) {
-				activeTab = "#personal";
-			}
-
-			if (activeTab != null) {
-				$(".oh-general__tab-link--active").removeClass("oh-general__tab-link--active");
-				$(`[data-target='${activeTab}']`).addClass("oh-general__tab-link--active");
-				$(".oh-general__tab-target").addClass("d-none");
-				$(activeTab).removeClass("d-none");
-				if ($(`[data-target="${activeTab}"]`).length > 0) {
-					$(`[data-target="${activeTab}"]`)[0].click();
-				}
-			}
-		}
-		activeEmpTab()
-		$("[data-action=general-tab]").on("click", function (e) {
-			e.preventDefault();
-			const targetId = $(this).attr('data-target');
-			localStorage.setItem("activeEmpTab", targetId)
-			activeEmpTab()
-		});
-
-	});
+        let savedTab = "personal";
+        try { savedTab = localStorage.getItem(storageKey); } catch (_) {}
+        activateTab(savedTab);
+        tabs.forEach(tab => {
+            tab.addEventListener("click", () => {
+                const target = activateTab(tab.dataset.profileTab);
+                try { localStorage.setItem(storageKey, target); } catch (_) {}
+            });
+        });
+    })();
 </script>
 
 {% endblock content %}

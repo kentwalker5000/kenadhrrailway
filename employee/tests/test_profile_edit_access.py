@@ -1,5 +1,6 @@
 """The self-profile action and edit endpoint must agree about access."""
 
+from bs4 import BeautifulSoup
 from django.test import TestCase
 from django.urls import reverse
 
@@ -61,6 +62,20 @@ class StaffProfileEditAccessTests(CompanyFilterTestMixin, TestCase):
 
     def test_no_restriction_shows_edit_and_opens_form(self):
         self.assert_edit_access(True)
+
+    def test_editor_tabs_are_local_buttons_with_both_forms_preserved(self):
+        response = self.client.get(reverse("edit-profile"))
+        page = BeautifulSoup(response.content, "html.parser")
+        editor = page.select_one("#profileEditor")
+        self.assertIsNotNone(editor)
+        buttons = editor.select("button[data-profile-tab]")
+        self.assertEqual(len(buttons), 2)
+        for button in buttons:
+            self.assertEqual(button["type"], "button")
+            self.assertNotIn("href", button.attrs)
+            panel = editor.select_one(f'#{button["aria-controls"]}')
+            self.assertIsNotNone(panel.select_one('form[method="post"]'))
+            self.assertIsNotNone(panel.select_one('input[name="csrfmiddlewaretoken"]'))
 
     def test_disabled_restriction_feature_does_not_hide_edit(self):
         ProfileEditFeature.objects.create(is_enabled=False)
