@@ -1,11 +1,18 @@
 {% extends "base/staff_base.html" %}
 {% load i18n %}
 
+{% block staff_shell_class %}staff-dashboard{% endblock staff_shell_class %}
+
+{% block styles %}
+  {{ block.super }}
+  {% include "base/staff_dashboard_styles.html" %}
+{% endblock styles %}
+
 {% block staff_content %}
 <section class="staff-heading" aria-labelledby="staffWelcomeTitle">
   <div>
-    <p class="staff-eyebrow">{% trans "My staff workspace" %}</p>
-    <h1 id="staffWelcomeTitle">{% trans "Welcome back," %} {{ employee.employee_first_name }}.</h1>
+    <h1 id="staffWelcomeTitle">{% trans "Dashboard" %}</h1>
+    <p class="staff-dashboard__welcome">{% trans "Welcome back," %} {{ employee.employee_first_name }}.</p>
   </div>
   <p class="staff-heading__date">
     {{ today|date:"l, j F Y" }}<br>
@@ -74,8 +81,7 @@
 <section class="staff-actions" aria-labelledby="staffActionsTitle">
   <div class="staff-section-title">
     <div>
-      <p class="staff-eyebrow">{% trans "Quick actions" %}</p>
-      <h2 id="staffActionsTitle">{% trans "Everything you need for your working day." %}</h2>
+      <h2 id="staffActionsTitle">{% trans "Quick actions" %}</h2>
     </div>
   </div>
   <div class="staff-action-grid">
@@ -108,7 +114,7 @@
 </section>
 
 <div class="staff-grid">
-  <section class="staff-card" aria-labelledby="staffLeaveTitle">
+  <section class="staff-card staff-dashboard__leave" aria-labelledby="staffLeaveTitle">
     <div class="staff-card__heading">
       <div>
         <h2 id="staffLeaveTitle">{% trans "My leave" %}</h2>
@@ -134,7 +140,7 @@
     {% endif %}
   </section>
 
-  <section class="staff-card" aria-labelledby="staffPayTitle">
+  <section class="staff-card staff-dashboard__pay" aria-labelledby="staffPayTitle">
     <div class="staff-card__heading">
       <div>
         <h2 id="staffPayTitle">{% trans "Recent payslips" %}</h2>
@@ -157,7 +163,7 @@
     {% endif %}
   </section>
 
-  <section class="staff-card" aria-labelledby="staffDocumentsTitle">
+  <section class="staff-card staff-dashboard__documents" aria-labelledby="staffDocumentsTitle">
     <div class="staff-card__heading">
       <div>
         <h2 id="staffDocumentsTitle">{% trans "My documents" %}</h2>

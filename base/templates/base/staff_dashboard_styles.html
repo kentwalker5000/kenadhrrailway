@@ -1,0 +1,108 @@
+<style>
+  /* Only the staff home adopts the dashboard layout. Other staff pages keep
+     their existing presentation; index.html owns the outer page gutters. */
+  .staff-shell.staff-dashboard {
+    --staff-ink: #333333;
+    --staff-soft: var(--primary-100, #fff0ed);
+    max-width: none;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+  .staff-dashboard .staff-nav { flex-wrap: wrap; margin-bottom: 24px; }
+  .staff-dashboard .staff-heading { align-items: center; margin-bottom: 24px; }
+  .staff-dashboard .staff-heading h1 {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: normal;
+    line-height: 1.4;
+  }
+  .staff-dashboard__welcome { margin: 4px 0 0; color: var(--staff-muted); font-size: 14px; }
+  .staff-dashboard .staff-day-card {
+    grid-template-columns: minmax(0, 2fr) minmax(240px, 1fr);
+    margin-bottom: 16px;
+    border: 1px solid var(--staff-line);
+    border-radius: 6px;
+    background: var(--staff-surface);
+    color: var(--staff-ink);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  }
+  .staff-dashboard .staff-day-card__copy,
+  .staff-dashboard .staff-day-card__schedule { min-width: 0; padding: 24px; }
+  .staff-dashboard .staff-day-card h2 { font-size: 20px; letter-spacing: normal; }
+  .staff-dashboard .staff-day-card .staff-eyebrow { color: var(--staff-blue); }
+  .staff-dashboard .staff-day-card__copy > p:not(.staff-eyebrow) { color: var(--staff-muted); }
+  .staff-dashboard .staff-day-card__schedule { background: var(--staff-soft); gap: 12px; }
+  .staff-dashboard .staff-day-card__schedule span { color: var(--staff-muted); }
+  .staff-dashboard .staff-day-card__schedule strong { overflow-wrap: anywhere; }
+  .staff-dashboard .staff-day-card .staff-button {
+    border-color: var(--staff-blue);
+    background: var(--staff-blue);
+    color: #fff;
+  }
+  .staff-dashboard .staff-day-card .staff-button:hover { background: var(--primary-700, #c9402c); }
+  .staff-dashboard .staff-actions { margin-bottom: 16px; }
+  .staff-dashboard .staff-section-title h2 { font-size: 16px; letter-spacing: normal; }
+  .staff-dashboard .staff-action-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+    gap: 16px;
+  }
+  .staff-dashboard .staff-action {
+    min-width: 0;
+    min-height: 96px;
+    padding: 20px;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    transition: border-color 0.15s;
+  }
+  .staff-dashboard .staff-action:hover { border-color: var(--staff-blue); transform: none; }
+  .staff-dashboard .staff-action:focus-visible,
+  .staff-dashboard .staff-card a:focus-visible { outline: 2px solid var(--staff-blue); outline-offset: 3px; }
+  .staff-dashboard .staff-action__icon--blue { background: var(--staff-soft); }
+  .staff-dashboard .staff-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+    grid-template-areas: "leave documents" "pay profile";
+    align-items: start;
+  }
+  .staff-dashboard__leave { grid-area: leave; }
+  .staff-dashboard__pay { grid-area: pay; }
+  .staff-dashboard__documents { grid-area: documents; }
+  .staff-dashboard .staff-card,
+  .staff-dashboard .staff-profile-card {
+    min-width: 0;
+    border-radius: 6px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  }
+  .staff-dashboard .staff-card__heading { flex-wrap: wrap; }
+  .staff-dashboard .staff-card__heading p { margin: 4px 0 0; color: var(--staff-muted); font-size: 12px; }
+  .staff-dashboard .staff-profile-card { grid-area: profile; flex-wrap: wrap; border-color: var(--staff-line); }
+  .staff-dashboard .staff-profile-card .staff-button { width: 100%; }
+  .staff-dashboard .staff-button--subtle { border-color: var(--staff-line); }
+  .staff-dashboard .staff-button--subtle:hover { background: var(--staff-surface); }
+  .dark .staff-shell.staff-dashboard {
+    --staff-ink: #f8fafc;
+    --staff-muted: #a6b3c6;
+    --staff-line: #3a3a3a;
+    --staff-surface: #242424;
+    --staff-soft: #303030;
+  }
+  .dark .staff-dashboard .staff-card,
+  .dark .staff-dashboard .staff-action,
+  .dark .staff-dashboard .staff-profile-card {
+    border-color: var(--staff-line);
+    background: var(--staff-surface);
+  }
+  .dark .staff-dashboard .staff-compact-row { color: var(--staff-ink); }
+  @media (max-width: 1024px) {
+    .staff-dashboard .staff-grid {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: "leave" "pay" "documents" "profile";
+    }
+  }
+  @media (max-width: 700px) {
+    .staff-dashboard .staff-heading { align-items: flex-start; }
+    .staff-dashboard .staff-day-card { grid-template-columns: minmax(0, 1fr); }
+    .staff-dashboard .staff-nav__links { max-width: 100%; }
+  }
+</style>

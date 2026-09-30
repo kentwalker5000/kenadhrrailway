@@ -662,7 +662,7 @@
   }
 </style>
 {% endblock styles %} {% block content %}
-<main class="staff-shell">
+<main class="staff-shell {% block staff_shell_class %}{% endblock staff_shell_class %}">
   <nav class="staff-nav" aria-label="{% trans 'Staff workspace navigation' %}">
     <a class="staff-brand" href="{% url 'staff-platform' %}">
       <span class="staff-brand__mark" aria-hidden="true">K</span>

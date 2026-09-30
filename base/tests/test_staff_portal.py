@@ -146,6 +146,33 @@ class StaffPortalTests(CompanyFilterTestMixin, TestCase):
         ):
             self.assertNotContains(response, private_value)
 
+    def test_staff_dashboard_uses_the_shared_shell_and_personal_widgets(self):
+        response = self.client.get(reverse("staff-platform"))
+        self.assertTemplateUsed(response, "index.html")
+        self.assertTemplateUsed(response, "base/staff_dashboard_styles.html")
+        page = BeautifulSoup(response.content, "html.parser")
+        dashboard = page.select_one("#ohMainContent .staff-shell.staff-dashboard")
+        self.assertIsNotNone(dashboard)
+        self.assertEqual(dashboard.select_one("h1").get_text(strip=True), "Dashboard")
+        self.assertEqual(len(dashboard.select(".staff-action-grid > a")), 5)
+        for heading in (
+            "staffLeaveTitle",
+            "staffPayTitle",
+            "staffDocumentsTitle",
+            "staffProfileTitle",
+        ):
+            self.assertIsNotNone(dashboard.select_one(f"[aria-labelledby='{heading}']"))
+
+    def test_dashboard_styling_does_not_change_staff_detail_pages(self):
+        for route in ("staff-payslips", "staff-documents"):
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route))
+                self.assertEqual(response.status_code, 200)
+                self.assertTemplateNotUsed(response, "base/staff_dashboard_styles.html")
+                page = BeautifulSoup(response.content, "html.parser")
+                self.assertIsNotNone(page.select_one(".staff-shell"))
+                self.assertIsNone(page.select_one(".staff-dashboard"))
+
     def test_staff_payslips_are_scoped_to_the_signed_in_employee(self):
         response = self.client.get(reverse("staff-payslips"))
         self.assertContains(response, "1,210.00")
