@@ -92,7 +92,8 @@ class EmployeePasswordResetTests(CompanyFilterTestMixin, TestCase):
         path = urlsplit(self.send_link()).path
         response = self.client.get(path, follow=True)
         self.assertContains(response, "Choose a new password")
-        self.assertEqual(response["Referrer-Policy"], "no-referrer")
+        self.assertEqual(response["Referrer-Policy"], "same-origin")
+        self.assertContains(response, '<meta name="referrer" content="same-origin">')
         self.assertIn("no-store", response["Cache-Control"])
         form_path = response.wsgi_request.path
         new_password = "New-Strong-Password-752!"
@@ -153,6 +154,63 @@ class EmployeePasswordResetTests(CompanyFilterTestMixin, TestCase):
         response = Client(enforce_csrf_checks=True).post(reverse("forgot-password"), {"email": self.user.username})
         self.assertEqual(response.status_code, 403)
         self.worker_start.assert_not_called()
+
+    def test_reset_form_submits_with_csrf_on_http_and_https(self):
+        for secure, use_origin in ((False, True), (True, True), (True, False)):
+            with self.subTest(secure=secure, use_origin=use_origin):
+                browser = Client(enforce_csrf_checks=True)
+                response = browser.get(
+                    urlsplit(self.send_link()).path, secure=secure, follow=True
+                )
+                self.assertContains(response, "Choose a new password")
+                self.assertEqual(response["Referrer-Policy"], "same-origin")
+                self.assertContains(
+                    response, '<meta name="referrer" content="same-origin">'
+                )
+                form_path = response.wsgi_request.path
+                origin = "https://testserver" if secure else "http://testserver"
+                headers = (
+                    {"HTTP_ORIGIN": origin}
+                    if use_origin
+                    else {"HTTP_REFERER": origin + form_path}
+                )
+                new_password = "Csrf-Reset-Password-493!"
+                response = browser.post(
+                    form_path,
+                    {
+                        "csrfmiddlewaretoken": browser.cookies["csrftoken"].value,
+                        "new_password1": new_password,
+                        "new_password2": new_password,
+                    },
+                    secure=secure,
+                    **headers,
+                )
+                self.assertRedirects(
+                    response, reverse("password_reset_complete"),
+                    fetch_redirect_response=False,
+                )
+                self.user.refresh_from_db()
+                self.assertTrue(self.user.check_password(new_password))
+
+    def test_reset_form_rejects_untrusted_origins_and_missing_csrf_token(self):
+        browser = Client(enforce_csrf_checks=True)
+        response = browser.get(urlsplit(self.send_link()).path, follow=True)
+        form_path = response.wsgi_request.path
+        new_password = "Rejected-Reset-Password-493!"
+        data = {
+            "csrfmiddlewaretoken": browser.cookies["csrftoken"].value,
+            "new_password1": new_password,
+            "new_password2": new_password,
+        }
+        for origin in ("null", "https://untrusted.example"):
+            with self.subTest(origin=origin):
+                response = browser.post(form_path, data, HTTP_ORIGIN=origin)
+                self.assertEqual(response.status_code, 403)
+        data.pop("csrfmiddlewaretoken")
+        response = browser.post(form_path, data, HTTP_ORIGIN="http://testserver")
+        self.assertEqual(response.status_code, 403)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("Old-Test-Password-938!"))
 
     def test_hr_action_requires_login_post_and_csrf(self):
         url = reverse("employee-reset-password")

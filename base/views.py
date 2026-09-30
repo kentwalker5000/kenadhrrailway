@@ -988,7 +988,10 @@ class KenadHrPasswordResetConfirmView(PasswordResetConfirmView):
 
     def dispatch(self, request, *args, **kwargs):
         response = super().dispatch(request, *args, **kwargs)
-        response["Referrer-Policy"] = "no-referrer"
+        # Keep reset URLs private across origins while preserving the Origin /
+        # Referer metadata Django requires for same-origin password form POSTs.
+        # no-referrer can make browsers send Origin: null and fail CSRF checks.
+        response["Referrer-Policy"] = "same-origin"
         return response
 
 
