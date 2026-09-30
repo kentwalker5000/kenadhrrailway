@@ -10,10 +10,10 @@ from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
 from django.views import View
 
+from accessibility.methods import check_is_accessible
 from base import views as base_views
 from base.cbv.mail_log_tab import MailLogTabList
 from base.cbv.work_shift_tab import WorkAndShiftTabView
-from base.context_processors import enable_profile_edit
 from base.forms import AddToUserGroupForm
 from employee import views
 from employee.cbv.document_request import DocumentIndividualTabList
@@ -98,15 +98,17 @@ class EmployeeProfileView(HorillaProfileView):
                     "variant": "success",
                 },
             ]
-        elif employee.pk == kwargs.get("pk") and enable_profile_edit(request).get(
-            "profile_edit_enabled"
+        # Use the same access rule as self_info_update. The feature toggle
+        # enables restrictions, not the ability to edit one's own profile.
+        elif employee.pk == kwargs.get("pk") and check_is_accessible(
+            "profile_edit", request.session.session_key + "accessibility_filter", employee
         ):
             self.actions = [
                 {
                     "title": _("Edit Profile"),
                     "src": f"/{settings.STATIC_URL}images/ui/editing.png",
                     "accessibility": "employee.cbv.accessibility.edit_accessibility",
-                    "attrs": """onclick="window.location.href='{cbv_employee_profile_edi_url}'" """,
+                    "attrs": """href="{cbv_employee_profile_edi_url}" """,
                 },
                 {
                     "title": _("Send password reset link"),
