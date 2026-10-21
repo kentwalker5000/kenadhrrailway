@@ -5,6 +5,7 @@ Accessible at /dashboard/modern/ alongside the existing dashboard.
 """
 
 import json
+import logging
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
@@ -14,6 +15,8 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
+
+logger = logging.getLogger(__name__)
 
 
 def _safe_url(url_name):
@@ -1564,8 +1567,12 @@ def _call_module_json(view_callable, request):
     """Invoke a module chart view; always return JsonResponse-compatible output."""
     try:
         return view_callable(request)
-    except Exception as exc:
-        return JsonResponse({"error": str(exc), "no_permission": True}, status=500)
+    except Exception:
+        logger.exception("Dashboard chart endpoint failed: %s", request.path)
+        return JsonResponse(
+            {"error": _("Unable to load dashboard data."), "no_permission": True},
+            status=500,
+        )
 
 
 @login_required

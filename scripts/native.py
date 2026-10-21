@@ -23,6 +23,22 @@ CONFIG = NATIVE_DIR / "config.json"
 HIDDEN = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
+def web_port():
+    """Return the localhost port used by the native web service."""
+    value = os.environ.get("KENADHR_WEB_PORT", "8001")
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise RuntimeError("KENADHR_WEB_PORT must be a valid TCP port.") from exc
+    if not 1 <= port <= 65535:
+        raise RuntimeError("KENADHR_WEB_PORT must be between 1 and 65535.")
+    return port
+
+
+def web_url(port=None):
+    return f"http://localhost:{port or web_port()}"
+
+
 def load_config(path=CONFIG):
     if not path.is_file():
         raise RuntimeError("Native setup is missing. See docs/windows-native.md.")
@@ -44,6 +60,16 @@ def app_environment(config):
     env["PATH"] = str(config["pg_bin"]) + os.pathsep + env.get("PATH", "")
     env["PYTHONUNBUFFERED"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    port = web_port()
+    if port != 8000:
+        origins = {
+            origin.strip()
+            for origin in env.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+            if origin.strip()
+        }
+        origins.update({web_url(port), f"http://127.0.0.1:{port}"})
+        env["CSRF_TRUSTED_ORIGINS"] = ",".join(sorted(origins))
+        env["PASSWORD_RESET_BASE_URL"] = web_url(port)
     return env
 
 
@@ -118,7 +144,7 @@ def running():
 
 def ready():
     try:
-        with urlopen("http://127.0.0.1:8000/ready/", timeout=2) as response:
+        with urlopen(f"http://127.0.0.1:{web_port()}/ready/", timeout=2) as response:
             return response.status == 200
     except (OSError, ValueError):
         return False
@@ -153,16 +179,17 @@ def serve(config):
     with runner_lock():
         stop_file = NATIVE_DIR / "stop.request"
         stop_file.unlink(missing_ok=True)
-        if port_busy(8000):
+        port = web_port()
+        if port_busy(port):
             raise RuntimeError(
-                "Port 8000 is occupied. Stop the other app instance first."
+                f"Port {port} is occupied. Stop the other app instance first."
             )
         postgres(config, "start")
         children = []
         with contextlib.ExitStack() as stack:
             try:
                 for name, arguments in (
-                    ("web", ["runserver", "127.0.0.1:8000", "--noreload"]),
+                    ("web", ["runserver", f"127.0.0.1:{port}", "--noreload"]),
                     ("scheduler", ["run_scheduler"]),
                 ):
                     output = stack.enter_context(
@@ -205,10 +232,11 @@ def start(config):
             raise RuntimeError(
                 "Native runner is active but not ready. Inspect the native logs."
             )
-        print("KenadHr is already running: http://localhost:8000")
+        print(f"KenadHr is already running: {web_url()}")
         return
-    if port_busy(8000):
-        raise RuntimeError("Port 8000 is occupied. Stop the other app instance first.")
+    port = web_port()
+    if port_busy(port):
+        raise RuntimeError(f"Port {port} is occupied. Stop the other app instance first.")
     with (NATIVE_DIR / "runner.log").open("ab") as output:
         process = subprocess.Popen(
             [sys.executable, str(Path(__file__).resolve()), "serve"],
@@ -224,7 +252,7 @@ def start(config):
                 f"Native startup failed. See {NATIVE_DIR / 'runner.log'}"
             )
         if running() and ready():
-            print("KenadHr is running without Docker: http://localhost:8000")
+            print(f"KenadHr is running without Docker: {web_url()}")
             return
         time.sleep(1)
     raise RuntimeError(f"Startup is still pending. Check logs in {NATIVE_DIR}.")
@@ -240,9 +268,9 @@ def stop_runner():
             raise RuntimeError(
                 "Native runner has not stopped; database left running for safety."
             )
-    if port_busy(8000):
+    if port_busy(web_port()):
         raise RuntimeError(
-            "Port 8000 is still in use; database left running for safety."
+            f"Port {web_port()} is still in use; database left running for safety."
         )
 
 

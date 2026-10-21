@@ -4,7 +4,6 @@ from django.http import QueryDict
 from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
-from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -82,10 +81,6 @@ class FaceDetectionConfigAPIView(APIView):
 
 class EmployeeFaceDetectionGetPostAPIView(APIView):
     permission_classes = [IsAuthenticated]
-
-    @method_decorator(csrf_exempt)
-    def dispatch(self, *args, **kwargs):
-        return super().dispatch(*args, **kwargs)
 
     def get_company(self, request):
         try:

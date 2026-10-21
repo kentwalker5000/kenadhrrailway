@@ -1521,6 +1521,15 @@ class Deduction(HorillaModel):
             rate_validator,
         ],
     )
+    employer_maximum_amount = models.FloatField(
+        null=True,
+        blank=True,
+        validators=[min_zero],
+        verbose_name=_("Employer maximum amount"),
+        help_text=_(
+            "Optional per-pay-period cap for the employer contribution."
+        ),
+    )
     has_max_limit = models.BooleanField(
         default=False,
         verbose_name=_("Has max limit for deduction"),

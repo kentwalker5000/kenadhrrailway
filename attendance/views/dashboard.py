@@ -13,9 +13,7 @@ from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 
 from attendance.filters import (
-    AttendanceFilters,
     AttendanceOverTimeFilter,
-    LateComeEarlyOutFilter,
 )
 from attendance.methods.utils import (
     get_month_start_end_dates,
@@ -218,13 +216,14 @@ def total_attendance(start_date, department, end_date=None):
     """
     This method is used to find total attendance
     """
-    attendance = AttendanceFilters(
-        {
-            "attendance_date__gte": start_date,
-            "attendance_date__lte": end_date,
-            "department": department,
-        }
-    ).qs
+    attendance = Attendance.objects.filter(
+        attendance_date__gte=start_date,
+        attendance_date__lte=end_date,
+    )
+    if department is not None:
+        attendance = attendance.filter(
+            employee_id__employee_work_info__department_id=department
+        )
     return attendance
 
 
@@ -232,23 +231,15 @@ def find_late_come(start_date, department=None, end_date=None):
     """
     This method is used to find late comers
     """
+    late_come_obj = AttendanceLateComeEarlyOut.objects.filter(
+        type="late_come",
+        attendance_id__attendance_date__gte=start_date,
+        attendance_id__attendance_date__lte=end_date,
+    )
     if department is not None:
-        late_come_obj = LateComeEarlyOutFilter(
-            {
-                "type": "late_come",
-                "department": department,
-                "attendance_date__gte": start_date,
-                "attendance_date__lte": end_date,
-            }
-        ).qs
-    else:
-        late_come_obj = LateComeEarlyOutFilter(
-            {
-                "type": "late_come",
-                "attendance_date__gte": start_date,
-                "attendance_date__lte": end_date,
-            }
-        ).qs
+        late_come_obj = late_come_obj.filter(
+            attendance_id__employee_id__employee_work_info__department_id=department
+        )
     return late_come_obj
 
 
@@ -256,23 +247,15 @@ def find_early_out(start_date, end_date=None, department=None):
     """
     This method is used to find early out attendances and it returns query set
     """
+    early_out_obj = AttendanceLateComeEarlyOut.objects.filter(
+        type="early_out",
+        attendance_id__attendance_date__gte=start_date,
+        attendance_id__attendance_date__lte=end_date,
+    )
     if department is not None:
-        early_out_obj = LateComeEarlyOutFilter(
-            {
-                "type": "early_out",
-                "department": department,
-                "attendance_date__gte": start_date,
-                "attendance_date__lte": end_date,
-            }
-        ).qs
-    else:
-        early_out_obj = LateComeEarlyOutFilter(
-            {
-                "type": "early_out",
-                "attendance_date__gte": start_date,
-                "attendance_date__lte": end_date,
-            }
-        ).qs
+        early_out_obj = early_out_obj.filter(
+            attendance_id__employee_id__employee_work_info__department_id=department
+        )
     return early_out_obj
 
 

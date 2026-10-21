@@ -23,6 +23,40 @@ from payroll.models.tax_models import TaxBracket
 logger = logging.getLogger(__name__)
 
 
+def annualise_income(income, pay_frequency, num_days, total_days):
+    """Return an annual income estimate for the contract's pay frequency.
+
+    A monthly salary must be annualised as twelve monthly payrolls, rather
+    than multiplied by 365/number-of-days-in-the-month.  The latter made the
+    tax for the same monthly salary vary between February and a 31-day month.
+    Calendar-day annualisation remains the fallback for an unknown frequency.
+    """
+
+    multipliers = {
+        "weekly": 52,
+        "semi_monthly": 24,
+        "monthly": 12,
+    }
+    multiplier = multipliers.get(pay_frequency)
+    if multiplier:
+        return income * multiplier
+    return income / num_days * total_days
+
+
+def period_tax_from_yearly(yearly_tax, pay_frequency, num_days, total_days):
+    """Convert annual tax back to the same standard payroll frequency."""
+
+    multipliers = {
+        "weekly": 52,
+        "semi_monthly": 24,
+        "monthly": 12,
+    }
+    multiplier = multipliers.get(pay_frequency)
+    if multiplier:
+        return yearly_tax / multiplier
+    return yearly_tax / total_days * num_days
+
+
 def calculate_taxable_amount(**kwargs):
     """Calculate the taxable amount for a given employee within a specific period.
 
@@ -69,7 +103,9 @@ def calculate_taxable_amount(**kwargs):
     check_start_date = datetime.date(year, 1, 1)
     check_end_date = datetime.date(year, 12, 31)
     total_days = (check_end_date - check_start_date).days + 1
-    yearly_income = income / num_days * total_days
+    yearly_income = annualise_income(
+        income, contract.pay_frequency, num_days, total_days
+    )
     yearly_income = compute_yearly_taxable_amount(income, yearly_income)
     yearly_income = round(yearly_income, 2)
     federal_tax = 0
@@ -100,8 +136,9 @@ def calculate_taxable_amount(**kwargs):
 
     federal_tax_for_period = 0
     if federal_tax and (tax_brackets.exists() or filing.use_py):
-        daily_federal_tax = federal_tax / total_days
-        federal_tax_for_period = daily_federal_tax * num_days
+        federal_tax_for_period = period_tax_from_yearly(
+            federal_tax, contract.pay_frequency, num_days, total_days
+        )
 
     federal_tax_for_period = convert_year_tax_to_period(
         federal_tax_for_period=federal_tax_for_period,

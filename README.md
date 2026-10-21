@@ -27,7 +27,7 @@ configuration before using real employee data.
 
 On a computer with the native setup configured, double-click `Start-KenadHr.cmd`
 to start PostgreSQL, KenadHr, and its background scheduler. Open
-<http://localhost:8000>. Use `Stop-KenadHr.cmd` to stop them without removing data.
+<http://localhost:8001>. Use `Stop-KenadHr.cmd` to stop them without removing data.
 
 See [Windows native setup](docs/windows-native.md) for VS Code commands,
 pgAdmin connection details, backups, and the one-time migration from Docker.

@@ -757,10 +757,15 @@ def calculate_employer_contribution(data):
                         id=deduction.get("deduction_id")
                     ).first()
                     if object:
-                        amount = pay_head_data.get(object.based_on)
+                        amount = pay_head_data.get(object.based_on) or 0
                         employer_contribution_amount = (
                             amount * object.employer_rate
                         ) / 100
+                        if object.employer_maximum_amount is not None:
+                            employer_contribution_amount = min(
+                                employer_contribution_amount,
+                                object.employer_maximum_amount,
+                            )
                         deduction["based_on"] = object.based_on
                         deduction["employer_contribution_amount"] = (
                             employer_contribution_amount
