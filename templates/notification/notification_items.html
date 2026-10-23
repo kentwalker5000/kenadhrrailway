@@ -154,7 +154,7 @@
         class="oh-navbar__volume-icon"
         title="{% trans 'Notification Sound' %}"
         style="position: absolute; right: 25px"
-        hx-get="{% url 'notifications:notification-sound' %}"
+        hx-get="{% url 'notification-sound' %}"
         hx-swap="none"
     >
         {% if request.user.employee_get.notification_sound.sound_enabled %}

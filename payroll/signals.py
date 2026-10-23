@@ -1,12 +1,19 @@
 from datetime import datetime
 
 from django.apps import apps
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save, pre_save, pre_delete
+from django.db.models.deletion import ProtectedError
 from django.dispatch import receiver
 
 from employee.models import EmployeeWorkInformation
 from payroll.methods.deductions import create_deductions
 from payroll.models.models import Allowance, Contract, Deduction, LoanAccount, Payslip
+
+
+@receiver(pre_delete, sender=Payslip)
+def protect_finalised_payslip(sender, instance, **kwargs):
+    if instance.status in ("confirmed", "paid"):
+        raise ProtectedError("Confirmed or paid payslips cannot be deleted.", [instance])
 
 
 @receiver(post_save, sender=EmployeeWorkInformation)

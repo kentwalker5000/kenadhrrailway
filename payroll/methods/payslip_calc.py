@@ -14,6 +14,7 @@ from django.apps import apps
 from horilla.methods import get_horilla_model_class
 from payroll.methods.deductions import update_compensation_deduction
 from payroll.methods.limits import compute_limit
+from payroll.methods.policy import deductions_exempt, pension_ceiling
 from payroll.models import models
 from payroll.models.models import (
     Allowance,
@@ -457,6 +458,8 @@ def calculate_tax_deduction(*_args, **kwargs):
         dict: A dictionary containing the serialized tax deductions.
     """
     employee = kwargs["employee"]
+    if deductions_exempt(employee):
+        return {"tax_deductions": []}
     start_date = kwargs["start_date"]
     end_date = kwargs["end_date"]
     specific_deductions = models.Deduction.objects.filter(
@@ -518,6 +521,8 @@ def calculate_pre_tax_deduction(*_args, **kwargs):
 
     """
     employee = kwargs["employee"]
+    if deductions_exempt(employee):
+        return {"pretax_deductions": [], "installments": Deduction.objects.none()}
     start_date = kwargs["start_date"]
     end_date = kwargs["end_date"]
 
@@ -623,6 +628,8 @@ def calculate_post_tax_deduction(*_args, **kwargs):
 
     """
     employee = kwargs["employee"]
+    if deductions_exempt(employee):
+        return {"post_tax_deductions": [], "net_pay_deduction": [], "installments": Deduction.objects.none()}
     start_date = kwargs["start_date"]
     end_date = kwargs["end_date"]
     allowances = kwargs["allowances"]
@@ -725,6 +732,8 @@ def calculate_net_pay_deduction(net_pay, net_pay_deductions, **kwargs):
         dict: A dictionary containing the serialized deductions and deduction amount.
     """
     day_dict = kwargs["day_dict"]
+    if kwargs.get("employee") and deductions_exempt(kwargs["employee"]):
+        return {"net_pay_deductions": [], "net_deduction": 0}
     serialized_net_pay_deductions = []
     deductions = [item["deduction"] for item in net_pay_deductions]
     deduction_amt = []
@@ -805,6 +814,8 @@ def calculate_based_on_basic_pay(*_args, **kwargs):
     basic_pay = kwargs["basic_pay"]
     day_dict = kwargs["day_dict"]
     rate = component.rate
+    if getattr(component, "statutory_code", "") == "ghana_pension":
+        basic_pay = min(basic_pay, pension_ceiling(kwargs["start_date"], kwargs["end_date"]))
     amount = basic_pay * rate / 100
     amount = compute_limit(component, amount, day_dict)
 

@@ -5,7 +5,9 @@ This module is used to register scheduled tasks
 """
 
 import json
+import logging
 from datetime import date, timedelta
+from django.core.exceptions import ValidationError
 
 from dateutil.relativedelta import relativedelta
 
@@ -70,7 +72,11 @@ def generate_payslip(date, companies, all):
         # A contract starting mid-period shortens only that employee's payslip,
         # so the adjusted start must stay local to this iteration.
         start_date = max(period_start, contract.contract_start_date)
-        payslip_data = payroll_calculation(employee, start_date, period_end)
+        try:
+            payslip_data = payroll_calculation(employee, start_date, period_end)
+        except ValidationError as exc:
+            logging.getLogger(__name__).error("Payroll skipped employee %s: %s", employee.pk, exc)
+            continue
         payslip_data["payslip"] = payslip
         data = {}
         data["employee"] = employee
@@ -83,9 +89,12 @@ def generate_payslip(date, companies, all):
         data["deduction"] = payslip_data["total_deductions"]
         data["net_pay"] = payslip_data["net_pay"]
         data["pay_data"] = json.loads(payslip_data["json_data"])
-        calculate_employer_contribution(data)
         data["installments"] = payslip_data["installments"]
-        payslip_data["instance"] = save_payslip(**data)
+        try:
+            calculate_employer_contribution(data)
+            payslip_data["instance"] = save_payslip(**data)
+        except ValidationError as exc:
+            logging.getLogger(__name__).error("Payroll skipped employee %s: %s", employee.pk, exc)
 
 
 def is_last_day_of_month(date):

@@ -18,6 +18,7 @@ import pandas as pd
 from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
 from django.http import (
@@ -1092,12 +1093,17 @@ def generate_payslip(request):
                     )
                     emp_count -= 1
                     continue
-                payslip = payroll_calculation(
-                    employee,
-                    employee_start,
-                    employee_end,
-                    month_summary=employee_summary,
-                )
+                try:
+                    payslip = payroll_calculation(
+                        employee,
+                        employee_start,
+                        employee_end,
+                        month_summary=employee_summary,
+                    )
+                except ValidationError as exc:
+                    messages.error(request, f"{employee}: {'; '.join(exc.messages)}")
+                    emp_count -= 1
+                    continue
                 payslips.append(payslip)
                 json_data.append(payslip["json_data"])
 
@@ -1114,9 +1120,14 @@ def generate_payslip(request):
                 data["deduction"] = payslip["total_deductions"]
                 data["net_pay"] = payslip["net_pay"]
                 data["pay_data"] = json.loads(payslip["json_data"])
-                calculate_employer_contribution(data)
                 data["installments"] = payslip["installments"]
-                instance = save_payslip(**data)
+                try:
+                    calculate_employer_contribution(data)
+                    instance = save_payslip(**data)
+                except ValidationError as exc:
+                    messages.error(request, f"{employee}: {'; '.join(exc.messages)}")
+                    emp_count -= 1
+                    continue
                 instances.append(instance)
                 notify.send(
                     request.user.employee_get,
@@ -1232,7 +1243,11 @@ def create_payslip(request, new_post_data=None):
                 employee = form.cleaned_data["employee_id"]
                 start_date = form.cleaned_data["start_date"]
                 end_date = form.cleaned_data["end_date"]
-                payslip_data = payroll_calculation(employee, start_date, end_date)
+                try:
+                    payslip_data = payroll_calculation(employee, start_date, end_date)
+                except ValidationError as exc:
+                    form.add_error(None, exc)
+                    return render(request, "payroll/payslip/create_payslip.html", {"individual_form": form})
                 payslip_data["payslip"] = payslip
                 data = {}
                 data["employee"] = employee
@@ -1249,9 +1264,13 @@ def create_payslip(request, new_post_data=None):
                 data["deduction"] = payslip_data["total_deductions"]
                 data["net_pay"] = payslip_data["net_pay"]
                 data["pay_data"] = json.loads(payslip_data["json_data"])
-                calculate_employer_contribution(data)
                 data["installments"] = payslip_data["installments"]
-                payslip_data["instance"] = save_payslip(**data)
+                try:
+                    calculate_employer_contribution(data)
+                    payslip_data["instance"] = save_payslip(**data)
+                except ValidationError as exc:
+                    form.add_error(None, exc)
+                    return render(request, "payroll/payslip/create_payslip.html", {"individual_form": form})
                 form = forms.PayslipForm()
                 messages.success(request, _("Payslip Saved"))
                 payslip = payslip_data["instance"]

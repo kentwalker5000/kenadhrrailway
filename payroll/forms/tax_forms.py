@@ -13,6 +13,7 @@ from django import forms
 from django.utils.translation import gettext_lazy as _
 
 from base.forms import ModelForm
+from horilla.horilla_middlewares import get_selected_company
 from payroll.methods import federal_tax
 from payroll.methods.safe_tax_code import TaxCodeValidationError, validate_tax_code
 from payroll.models.models import FilingStatus
@@ -37,6 +38,12 @@ class FilingStatusForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        selected_company = get_selected_company()
+        if not self.instance.pk and selected_company and selected_company != "all":
+            self.instance.company_id_id = selected_company
+        self.fields["previous_version"].queryset = FilingStatus.objects.filter(
+            company_id_id=self.instance.company_id_id
+        ).exclude(pk=self.instance.pk)
         attrs: dict = self.fields["use_py"].widget.attrs
         self.fields["python_code"].required = False
         attrs[

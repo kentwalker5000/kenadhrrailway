@@ -11,6 +11,7 @@ from typing import Any
 from django import forms
 from django.apps import apps
 from django.template.loader import render_to_string
+from django.urls import reverse_lazy
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
@@ -282,7 +283,7 @@ class SalaryStructureForm(ModelForm):
         """
 
         model = SalaryStructure
-        fields = ["title", "allowances", "deductions"]
+        fields = ["title", "allowances", "deductions", "deductions_exempt"]
 
     def _employees_on_structure(self):
         if not self.instance.pk:
@@ -437,7 +438,7 @@ class PayslipForm(ModelForm):
         ]
         self.fields["employee_id"].widget.attrs.update(
             {
-                "hx-get": "/payroll/check-contract-start-date",
+                "hx-get": reverse_lazy("check-contract-start-date"),
                 "hx-target": "#contractStartDateDiv",
                 "hx-include": "#payslipCreateForm",
                 "hx-trigger": "change delay:300ms",
@@ -464,7 +465,7 @@ class PayslipForm(ModelForm):
             "start_date": forms.DateInput(
                 attrs={
                     "type": "date",
-                    "hx-get": "/payroll/check-contract-start-date",
+                    "hx-get": reverse_lazy("check-contract-start-date"),
                     "hx-target": "#contractStartDateDiv",
                     "hx-include": "#payslipCreateForm",
                     "hx-trigger": "change delay:300ms",

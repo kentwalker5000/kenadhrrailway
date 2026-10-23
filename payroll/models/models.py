@@ -103,6 +103,17 @@ class FilingStatus(HorillaModel):
         verbose_name=_("Based on"),
     )
     use_py = models.BooleanField(verbose_name=_("Python Code"), default=False)
+    effective_from = models.DateField(null=True, blank=True)
+    effective_to = models.DateField(null=True, blank=True)
+    previous_version = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="later_versions",
+    )
+    payroll_policy = models.CharField(
+        max_length=30, default="standard",
+        choices=[("standard", _("Standard")), ("ghana_resident", _("Ghana resident")),
+                 ("national_service", _("National Service - no deductions"))],
+    )
     python_code = models.TextField(null=True)
     description = models.TextField(
         blank=True,
@@ -113,6 +124,23 @@ class FilingStatus(HorillaModel):
         Company, null=True, editable=False, on_delete=models.PROTECT
     )
     objects = HorillaCompanyManager()
+
+    def clean(self):
+        super().clean()
+        if self.effective_from and self.effective_to and self.effective_from > self.effective_to:
+            raise ValidationError({"effective_to": _("End date must not precede start date.")})
+        seen = {self.pk} if self.pk else set()
+        previous = self.previous_version
+        while previous:
+            if previous.pk in seen or previous.company_id_id != self.company_id_id:
+                raise ValidationError({"previous_version": _("Tax versions must belong to the same company and cannot form a cycle.")})
+            seen.add(previous.pk)
+            previous = previous.previous_version
+        if self.previous_version and (
+            not self.effective_from or not self.previous_version.effective_to
+            or self.previous_version.effective_to >= self.effective_from
+        ):
+            raise ValidationError({"previous_version": _("The previous version must end before this version starts.")})
 
     def __str__(self) -> str:
         return str(self.filing_status)
@@ -1428,6 +1456,7 @@ class Deduction(HorillaModel):
     ]
 
     title = models.CharField(max_length=255)
+    statutory_code = models.CharField(max_length=30, blank=True, default="", editable=False)
     one_time_date = models.DateField(
         null=True,
         blank=True,
@@ -1901,6 +1930,9 @@ class SalaryStructure(HorillaModel):
     title = models.CharField(
         max_length=255,
     )
+    deductions_exempt = models.BooleanField(
+        default=False, help_text=_("Exclude all deduction components and PAYE for assigned staff."),
+    )
     allowances = models.ManyToManyField(
         Allowance,
         blank=True,
@@ -2208,6 +2240,24 @@ class Payslip(HorillaModel):
             raise ValidationError(_("The start date cannot be in the future."))
 
     def save(self, *args, **kwargs):
+        if self.pk:
+            previous = Payslip._base_manager.filter(pk=self.pk).first()
+            if previous and previous.status in ("confirmed", "paid"):
+                financial_fields = (
+                    "employee_id_id", "start_date", "end_date", "contract_wage",
+                    "basic_pay", "gross_pay", "deduction", "net_pay", "pay_head_data",
+                )
+                fields = kwargs.get("update_fields")
+                if any(
+                    (fields is None or name in fields or name.removesuffix("_id") in fields)
+                    and getattr(previous, name) != getattr(self, name)
+                    for name in financial_fields
+                ):
+                    raise ValidationError(_("Confirmed or paid payslip amounts cannot be changed."))
+                if (fields is None or "status" in fields) and self.status not in (
+                    ("paid",) if previous.status == "paid" else ("confirmed", "paid")
+                ):
+                    raise ValidationError(_("Confirmed or paid payslips cannot be reopened."))
         if (
             Payslip.objects.filter(
                 employee_id=self.employee_id,

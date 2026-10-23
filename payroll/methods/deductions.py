@@ -5,6 +5,7 @@ This module is used to compute the deductions of employees
 """
 
 from payroll.models.models import Deduction
+from payroll.methods.policy import deductions_exempt
 
 
 def update_compensation_deduction(
@@ -16,6 +17,8 @@ def update_compensation_deduction(
     Args:
         compensation_amount (_type_): Gross pay or Basic pay or employee
     """
+    if deductions_exempt(employee):
+        return {"compensation_amount": compensation_amount, "deductions": [], "difference_amount": 0}
     deduction_heads = (
         Deduction.objects.filter(
             update_compensation=compensation_type, specific_employees=employee

@@ -7,6 +7,7 @@ should be introduced as a new configuration, not by rewriting old payslips.
 """
 
 import math
+from datetime import date
 
 from django.db import transaction
 
@@ -32,12 +33,17 @@ GHANA_PAYE_BRACKETS_2026 = (
     (600000.00, math.inf, 35.00),
 )
 
-# SSNIT's 2026 maximum insurable earning is GH¢69,000 a year (GH¢5,750 a
-# month).  The component's caps are per normal monthly payroll period.
+# SSNIT's 2026 maximum insurable earning is GH¢69,000 PER MONTH.
 GHANA_SSNIT_EMPLOYEE_RATE = 5.50
 GHANA_SSNIT_EMPLOYER_RATE = 13.00
-GHANA_SSNIT_MONTHLY_EMPLOYEE_CAP = 316.25
-GHANA_SSNIT_MONTHLY_EMPLOYER_CAP = 747.50
+GHANA_SSNIT_MONTHLY_EMPLOYEE_CAP = 3795.00
+GHANA_SSNIT_MONTHLY_EMPLOYER_CAP = 8970.00
+
+GHANA_PAYE_BRACKETS_2024 = (
+    (0, 5880, 0), (5880, 7200, 5), (7200, 8760, 10),
+    (8760, 46760, 17.5), (46760, 238760, 25),
+    (238760, 600000, 30), (600000, math.inf, 35),
+)
 
 
 @transaction.atomic
@@ -53,6 +59,17 @@ def configure_ghana_payroll(company):
         company_id=company,
         defaults={"currency_symbol": "GHS", "position": "postfix"},
     )
+    previous, _ = FilingStatus._base_manager.update_or_create(
+        company_id=company, filing_status="Ghana PAYE (2024-Aug 2026)",
+        defaults={"based_on": "taxable_gross_pay", "use_py": False,
+                  "payroll_policy": "ghana_resident",
+                  "effective_from": date(2024, 1, 1), "effective_to": date(2026, 8, 31)},
+    )
+    for lower, upper, rate in GHANA_PAYE_BRACKETS_2024:
+        TaxBracket.objects.update_or_create(
+            filing_status_id=previous, min_income=lower,
+            defaults={"max_income": upper, "tax_rate": rate},
+        )
     filing_status, _ = FilingStatus._base_manager.update_or_create(
         company_id=company,
         filing_status=GHANA_PAYE_NAME,
@@ -60,6 +77,10 @@ def configure_ghana_payroll(company):
             "based_on": "taxable_gross_pay",
             "use_py": False,
             "python_code": None,
+            "payroll_policy": "ghana_resident",
+            "effective_from": date(2026, 9, 1),
+            "effective_to": date(2026, 12, 31),
+            "previous_version": previous,
             "description": (
                 "Resident individual PAYE bands effective 1 September 2026."
             ),
@@ -90,6 +111,7 @@ def configure_ghana_payroll(company):
             "has_max_limit": True,
             "maximum_amount": GHANA_SSNIT_MONTHLY_EMPLOYEE_CAP,
             "include_active_employees": False,
+            "statutory_code": "ghana_pension",
         },
     )
     structure, _ = SalaryStructure._base_manager.update_or_create(
@@ -97,9 +119,10 @@ def configure_ghana_payroll(company):
         title=GHANA_STRUCTURE_NAME,
     )
     structure.deductions.add(ssnit)
-    national_service_structure, _ = SalaryStructure._base_manager.get_or_create(
+    national_service_structure, _ = SalaryStructure._base_manager.update_or_create(
         company_id=company,
         title=GHANA_NATIONAL_SERVICE_STRUCTURE_NAME,
+        defaults={"deductions_exempt": True},
     )
     national_service_filing_status, _ = FilingStatus._base_manager.update_or_create(
         company_id=company,
@@ -109,6 +132,7 @@ def configure_ghana_payroll(company):
             "use_py": False,
             "python_code": None,
             "description": "Organisation-approved National Service no-PAYE policy.",
+            "payroll_policy": "national_service",
         },
     )
     TaxBracket.objects.update_or_create(

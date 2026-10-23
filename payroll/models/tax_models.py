@@ -9,7 +9,6 @@ import math
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import reverse
-from django.utils.text import format_lazy
 from django.utils.translation import gettext_lazy as _
 
 from base.horilla_company_manager import HorillaCompanyManager
@@ -114,6 +113,13 @@ class TaxBracket(HorillaModel):
         if self.max_income is None:
             self.max_income = math.inf
 
+        if not math.isfinite(self.min_income) or self.min_income < 0:
+            raise ValidationError({"min_income": _("Minimum income must be a finite non-negative number.")})
+        if not math.isfinite(self.tax_rate) or not 0 <= self.tax_rate <= 100:
+            raise ValidationError({"tax_rate": _("Tax rate must be between 0 and 100.")})
+        if math.isnan(self.max_income):
+            raise ValidationError({"max_income": _("Enter a valid maximum income.")})
+
         if self.min_income >= self.max_income:
             raise ValidationError(
                 {"max_income": _("Maximum income must be greater than minimum income.")}
@@ -122,17 +128,7 @@ class TaxBracket(HorillaModel):
         existing_brackets = TaxBracket.objects.filter(
             filing_status_id=self.filing_status_id
         ).exclude(pk=self.pk)
-        if existing_brackets.filter(max_income__gte=self.min_income).exists():
-            tax_bracket = existing_brackets.filter(
-                max_income__gte=self.min_income
-            ).first()
-            if tax_bracket.min_income <= self.max_income:
-                raise ValidationError(
-                    {
-                        "min_income": format_lazy(
-                            "The minimum income of this tax bracket must be \
-                                greater than the maximum income of {}.",
-                            tax_bracket,
-                        )
-                    }
-                )
+        if existing_brackets.filter(
+            max_income__gt=self.min_income, min_income__lt=self.max_income
+        ).exists():
+            raise ValidationError({"min_income": _("Tax brackets must not overlap.")})

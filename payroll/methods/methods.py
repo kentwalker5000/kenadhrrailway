@@ -13,6 +13,7 @@ from django.apps import apps
 from django.core.paginator import Paginator
 from django.db import transaction
 from django.db.models import Q
+from django.core.exceptions import ValidationError
 
 # from attendance.models import Attendance
 from base.methods import (
@@ -758,6 +759,11 @@ def calculate_employer_contribution(data):
                     ).first()
                     if object:
                         amount = pay_head_data.get(object.based_on) or 0
+                        if object.statutory_code == "ghana_pension":
+                            from payroll.methods.policy import pension_ceiling
+                            start = date.fromisoformat(str(pay_head_data["start_date"]))
+                            end = date.fromisoformat(str(pay_head_data["end_date"]))
+                            amount = min(amount, pension_ceiling(start, end))
                         employer_contribution_amount = (
                             amount * object.employer_rate
                         ) / 100
@@ -778,12 +784,24 @@ def save_payslip(**kwargs):
     """
     This method is used to save the generated payslip
     """
-    filtered_instance = Payslip.objects.filter(
+    if kwargs["status"] not in dict(Payslip.status_choices):
+        raise ValidationError("Invalid payslip status.")
+    # Serialize generation for this employee, including first creation.
+    from employee.models import Employee
+    Employee._base_manager.select_for_update().get(pk=kwargs["employee"].pk)
+    scoped_payslips = Payslip.objects.filter(
         employee_id=kwargs["employee"],
         start_date=kwargs["start_date"],
         end_date=kwargs["end_date"],
+    )
+    # The company-scoped manager adds DISTINCT during requests; PostgreSQL
+    # cannot lock that query directly. Keep its scope in a subquery.
+    filtered_instance = Payslip._base_manager.select_for_update().filter(
+        pk__in=scoped_payslips.values("pk")
     ).first()
     instance = filtered_instance if filtered_instance is not None else Payslip()
+    if filtered_instance and filtered_instance.status in ("confirmed", "paid"):
+        raise ValidationError("Confirmed or paid payslips cannot be regenerated.")
     instance.employee_id = kwargs["employee"]
     instance.group_name = kwargs.get("group_name")
     instance.start_date = kwargs["start_date"]

@@ -7,6 +7,9 @@ based on their contract details and income information.
 
 import datetime
 import logging
+from decimal import Decimal, ROUND_HALF_UP
+from django.core.exceptions import ValidationError
+from payroll.methods.policy import deductions_exempt, resolve_filing, pension_ceiling
 
 from payroll.methods.methods import (
     compute_yearly_taxable_amount,
@@ -76,16 +79,27 @@ def calculate_taxable_amount(**kwargs):
     start_date = kwargs["start_date"]
     end_date = kwargs["end_date"]
     basic_pay = kwargs["basic_pay"]
+    if deductions_exempt(employee):
+        return 0
     contract = Contract.objects.filter(
         employee_id=employee, contract_status="active"
     ).first()
+    if contract is None:
+        raise ValidationError("An active contract is required for payroll.")
     filing = contract.filing_status
     if not filing:
         return 0
+    filing = resolve_filing(filing, start_date, end_date)
+    if filing.payroll_policy == "ghana_resident":
+        pension_ceiling(start_date, end_date)
+        if contract.pay_frequency != "monthly":
+            raise ValidationError("The Ghana payroll template requires monthly payroll.")
     federal_tax_for_period = 0
     tax_brackets = TaxBracket.objects.filter(filing_status_id=filing).order_by(
         "min_income"
     )
+    if not filing.use_py and not tax_brackets.exists():
+        raise ValidationError("The selected filing status has no tax brackets.")
     num_days = (end_date - start_date).days + 1
     calculation_functions = {
         "taxable_gross_pay": calculate_taxable_gross_pay,
@@ -132,7 +146,8 @@ def calculate_taxable_amount(**kwargs):
         try:
             federal_tax = run_tax_code(filing.python_code, yearly_income)
         except Exception as e:
-            logger.error(e)
+            logger.exception("Payroll tax calculation failed")
+            raise ValidationError("Tax calculation failed; the payslip was not generated.") from e
 
     federal_tax_for_period = 0
     if federal_tax and (tax_brackets.exists() or filing.use_py):
@@ -147,4 +162,4 @@ def calculate_taxable_amount(**kwargs):
         start_date=start_date,
         end_date=end_date,
     )
-    return federal_tax_for_period
+    return float(Decimal(str(federal_tax_for_period)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP))

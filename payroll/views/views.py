@@ -14,6 +14,8 @@ import pandas as pd
 from payroll.pdf import render_payslip_html
 from django.conf import settings as pay_settings
 from django.contrib import messages
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError, Q
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -498,13 +500,19 @@ def update_payslip_status(request, payslip_id):
     This method is used to update the payslip confirmation status
     """
     status = request.POST.get("status")
+    if status not in dict(Payslip.status_choices):
+        return JsonResponse({"type": "error", "message": "Invalid payslip status."}, status=400)
     view = request.POST.get("view")
     payslip = Payslip.objects.filter(id=payslip_id).first()
     if not payslip:
         return HorillaRedirect(request, message=_("Payslip not found."))
     if payslip:
         payslip.status = status
-        payslip.save()
+        try:
+            with transaction.atomic():
+                payslip.save(update_fields=["status"])
+        except (ValidationError, IntegrityError):
+            return JsonResponse({"type": "error", "message": "Confirmed or paid payslips cannot be reopened."}, status=409)
         messages.success(request, _("Payslip status updated"))
     else:
         messages.error(request, _("Payslip not found"))
@@ -524,6 +532,7 @@ def update_payslip_status(request, payslip_id):
 
 @login_required
 @hx_request_required
+@permission_required("payroll.change_payslip")
 def update_payslip_status_no_id(request):
     """
     This method is used to update the payslip confirmation status
@@ -534,7 +543,17 @@ def update_payslip_status_no_id(request):
         ids = json.loads(ids_json)
         status = request.POST["status"]
         slips = Payslip.objects.filter(id__in=ids)
-        slips.update(status=status)
+        if status not in dict(Payslip.status_choices):
+            return JsonResponse({"type": "error", "message": "Invalid payslip status."}, status=400)
+        if (status != "paid" and slips.filter(status="paid").exists()) or (
+            status not in ("confirmed", "paid") and slips.filter(status="confirmed").exists()
+        ):
+            return JsonResponse({"type": "error", "message": "Confirmed or paid payslips cannot be reopened."}, status=409)
+        try:
+            with transaction.atomic():
+                slips.update(status=status)
+        except IntegrityError:
+            return JsonResponse({"type": "error", "message": "Payslip status changed concurrently. Reload and try again."}, status=409)
         message = {
             "type": "success",
             "message": f"{slips.count()} Payslips status updated.",
