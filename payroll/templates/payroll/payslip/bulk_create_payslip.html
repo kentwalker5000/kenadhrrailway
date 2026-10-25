@@ -7,7 +7,7 @@
         <ion-icon name="close-outline"></ion-icon>
     </button>
 </div> {% endcomment %}
-<div class="oh-modal__dialog-body p-0" id="bulkPayslipModal">
+<div class="oh-modal__dialog-body p-0">
     <form action="{% url 'generate-payslip' %}" class="oh-profile-section bg-white rounded-md border border-dark-50 w-full" method="post">
         <div class="oh-profile-section__card">
         {% csrf_token %}

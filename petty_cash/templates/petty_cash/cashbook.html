@@ -1,0 +1,9 @@
+{% extends "index.html" %}
+{% load i18n %}
+{% block content %}
+{% include "generic/components.html" %}
+<div class="oh-wrapper">
+  {% include "generic/horilla_nav.html" %}
+  <div id="pettyCashbookContent">{% include "petty_cash/cashbook_content.html" %}</div>
+</div>
+{% endblock content %}

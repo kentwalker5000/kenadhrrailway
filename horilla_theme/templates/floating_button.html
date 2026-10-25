@@ -182,17 +182,17 @@
             </div>
         {% endif %}
 
-        {% if "payroll"|app_installed %}
+        {% if "petty_cash"|app_installed and perms.petty_cash.add_pettycashentry %}
             <div
                 class="fab inner-fab"
-                title="{% trans 'Create Reimbursement' %}"
+                title="{% trans 'Record Petty Cash' %}"
                 data-delay="4"
                 data-toggle="oh-modal-toggle"
-                data-target="#genericModal"
-                hx-get="{% url 'reimbursement-create' %}"
-                hx-target="#genericModalBody"
+                data-target="#objectCreateModal"
+                hx-get="{% url 'petty-cash-entry-create' %}"
+                hx-target="#objectCreateModalTarget"
             >
-                <i class="material-icons">paid</i>
+                <i class="material-icons">account_balance_wallet</i>
             </div>
         {% endif %}
 

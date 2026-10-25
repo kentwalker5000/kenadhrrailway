@@ -8,7 +8,7 @@
                 <div class="oh-org-chart__heading">
                     <h1 class="oh-main__titlebar-title fw-bold oh-org-chart__title">{% trans "Organization Chart" %}</h1>
                     <div class="oh-org-chart__manager-row">
-                        <label class="oh-org-chart__manager-label" for="managerSelect">{% trans "Reporting Managers" %} :</label>
+                        <label class="oh-org-chart__manager-label" for="managerSelect">{% trans "Drill down by reporting manager" %} :</label>
                         <div class="oh-org-chart__manager-select">
                             <select
                                 id="managerSelect"
@@ -53,11 +53,8 @@
                 </div>
             </div>
         </section>
-        <div class="oh-wrapper" id="chart_target"></div>
+        <div class="oh-wrapper" id="chart_target">
+            {% include "organisation_chart/chart.html" %}
+        </div>
     </main>
-    <script>
-        $(document).ready(function(e) {
-            htmx.trigger('#managerSelect', 'change');
-        })
-    </script>
 {% endblock %}

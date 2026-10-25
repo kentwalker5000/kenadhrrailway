@@ -137,6 +137,9 @@ urlpatterns = [
     path("", include("horilla_audit.urls")),
     path("", include("horilla_tour.urls")),
     path("employee/", include("employee.urls")),
+    path("documents/", include("horilla_documents.urls")),
+    path("council/", include("council.urls")),
+    path("petty-cash/", include("petty_cash.urls")),
     path("horilla-widget/", include("horilla_widgets.urls")),
     re_path(
         "^inbox/notifications/", include(notifications.urls, namespace="notifications")

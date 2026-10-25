@@ -1,0 +1,6 @@
+{% extends "index.html" %}
+{% load i18n %}
+
+{% block content %}
+<main class="oh-wrapper"><section class="oh-card p-4" style="max-width: 760px"><h1 class="oh-title mb-1">{{ title }}</h1><p class="oh-text--light mb-4">{% trans "Use Cash top-up when money is added to the float and Expense when cash is spent. Adjustments require you to choose whether cash moved in or out. Attach the receipt where available." %}</p><form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<div class="d-flex gap-2 mt-4"><button class="oh-btn oh-btn--secondary" type="submit">{% trans "Save entry" %}</button><a class="oh-btn oh-btn--light" href="{% url 'petty-cash-cashbook' %}">{% trans "Cancel" %}</a></div></form></section></main>
+{% endblock content %}

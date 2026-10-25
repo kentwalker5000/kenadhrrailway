@@ -149,16 +149,16 @@
             </a>
         </div>
     {% endif %}
-    {% if "payroll"|app_installed %}
-        <div id="fab6" class="fab round" data-tooltip="{% trans 'Create Reimbursement' %}">
+    {% if "petty_cash"|app_installed and perms.petty_cash.add_pettycashentry %}
+        <div id="fab6" class="fab round" data-tooltip="{% trans 'Record Petty Cash' %}">
             <a
                 class="text-light"
                 data-toggle="oh-modal-toggle"
-                data-target="#genericModal"
-                hx-get="{% url 'reimbursement-create' %}"
-                hx-target="#genericModalBody"
+                data-target="#objectCreateModal"
+                hx-get="{% url 'petty-cash-entry-create' %}"
+                hx-target="#objectCreateModalTarget"
             >
-                <i class="material-icons mt-2">paid</i>
+                <i class="material-icons mt-2">account_balance_wallet</i>
             </a>
         </div>
     {% endif %}

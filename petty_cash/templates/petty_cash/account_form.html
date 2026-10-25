@@ -1,0 +1,6 @@
+{% extends "index.html" %}
+{% load i18n %}
+
+{% block content %}
+<main class="oh-wrapper"><section class="oh-card p-4" style="max-width: 760px"><h1 class="oh-title mb-1">{{ title }}</h1><p class="oh-text--light mb-4">{% trans "A float is the physical cash assigned to an HR or finance custodian. Its opening balance is used only when the float is first set up." %}</p><form method="post">{% csrf_token %}{{ form.as_p }}<div class="d-flex gap-2 mt-4"><button class="oh-btn oh-btn--secondary" type="submit">{% trans "Save float" %}</button><a class="oh-btn oh-btn--light" href="{% url 'petty-cash-cashbook' %}">{% trans "Cancel" %}</a></div></form></section></main>
+{% endblock content %}

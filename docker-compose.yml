@@ -16,6 +16,13 @@ services:
       - media:/app/media
     environment:
       - DEBUG=1
+      # Keep the test app responsive: use Django's compiled-template cache.
+      # Set TEMPLATE_CACHE=0 temporarily only while editing templates live.
+      - TEMPLATE_CACHE=1
+      # Eight full Django workers consume multiple GB on a local Windows Docker
+      # engine and each maintains its own cold template cache. Two workers
+      # still provide eight gthread request slots for local testing.
+      - GUNICORN_WORKERS=2
       - SECRET_KEY_FILE=/app/media/.generated_secret_key
       - DB_HOST=db
       - SECRET_KEY=dev-secret-key-change-in-production
@@ -57,6 +64,7 @@ services:
       - media:/app/media
     environment:
       - DEBUG=1
+      - TEMPLATE_CACHE=1
       - SECRET_KEY_FILE=/app/media/.generated_secret_key
       - DB_HOST=db
       - SECRET_KEY=dev-secret-key-change-in-production

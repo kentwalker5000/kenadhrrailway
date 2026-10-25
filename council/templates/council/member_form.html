@@ -1,0 +1,22 @@
+{% extends "index.html" %}
+{% load i18n widget_tweaks %}
+
+{% block content %}
+<main class="oh-wrapper">
+  <div class="oh-card p-4" style="max-width: 760px;">
+    <h1 class="oh-title mb-4">{{ title }}</h1>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="oh-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% render_field field class="oh-input w-100" %}
+          {% for error in field.errors %}<p class="text-danger mt-1">{{ error }}</p>{% endfor %}
+        </div>
+      {% endfor %}
+      {% for error in form.non_field_errors %}<p class="text-danger">{{ error }}</p>{% endfor %}
+      <div class="d-flex gap-2"><button class="oh-btn oh-btn--secondary" type="submit">{% trans "Save" %}</button><a class="oh-btn oh-btn--light" href="{% if member %}{% url 'council-member-detail' member.pk %}{% else %}{% url 'council-member-list' %}{% endif %}">{% trans "Cancel" %}</a></div>
+    </form>
+  </div>
+</main>
+{% endblock content %}

@@ -1,0 +1,45 @@
+{% load i18n widget_tweaks %}
+<div class="oh-modal__dialog-header">
+  <h2 class="text-md font-semibold">{{ title }}</h2>
+  <button type="button" class="oh-modal__close--custom" onclick="$(this).closest('.oh-modal--show').removeClass('oh-modal--show')" aria-label="{% trans 'Close' %}"><ion-icon name="close-outline"></ion-icon></button>
+</div>
+<div class="oh-modal__dialog-body oh-modal__dialog-relative">
+  <form method="post" enctype="multipart/form-data" hx-post="{{ request.path }}" hx-target="#{{ modal_target }}" hx-encoding="multipart/form-data">
+    {% csrf_token %}
+    {% if is_void %}<p class="mb-3">{% trans "This removes the entry from the cash balance but keeps it in the audit trail." %}<br>{{ entry.account.name }}: {{ entry.account.currency }} {{ entry.amount|floatformat:2 }} — {{ entry.description }}</p>{% endif %}
+    <div class="oh-profile-section bg-[white] rounded-md border border-dark-50 p-[20px] w-full">
+      {{ form.non_field_errors }}
+      <div class="row">
+        {% for field in form.visible_fields %}
+        <div class="{% if field.name == 'description' or field.name == 'notes' or field.name == 'receipt' %}col-12{% else %}col-12 col-md-6{% endif %} mb-3">
+          <label class="oh-label {% if field.field.required %}required-star{% endif %}" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% if field.field.widget.input_type == 'checkbox' %}{{ field }}{% else %}{{ field|add_class:"oh-input w-100" }}{% endif %}
+          {{ field.errors }}
+          {% if field.help_text %}<small class="text-xs text-[#666]">{{ field.help_text }}</small>{% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      <div class="flex gap-2 justify-end pt-3">
+        <button type="button" class="oh-btn oh-btn--light" onclick="$(this).closest('.oh-modal--show').removeClass('oh-modal--show')">{% trans "Cancel" %}</button>
+        <button class="oh-btn {% if is_void %}oh-btn--danger{% else %}oh-btn--secondary{% endif %}" type="submit">{% if is_void %}{% trans "Void entry" %}{% else %}{% trans "Save" %}{% endif %}</button>
+      </div>
+    </div>
+  </form>
+</div>
+<script>
+  (function () {
+    var modal = document.getElementById('{{ modal_target|escapejs }}');
+    if (!modal) return;
+    var type = modal.querySelector('[name="entry_type"]');
+    var direction = modal.querySelector('[name="direction"]');
+    if (!type || !direction) return;
+    function syncDirection() {
+      var adjustment = type.value === 'adjustment';
+      direction.disabled = !adjustment;
+      direction.required = adjustment;
+      if (!adjustment) direction.value = type.value === 'top_up' ? 'in' : 'out';
+    }
+    type.addEventListener('change', syncDirection);
+    syncDirection();
+  })();
+</script>

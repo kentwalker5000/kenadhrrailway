@@ -1,4 +1,4 @@
-{% load i18n static %}
+{% load i18n static sidebar_icons %}
 {% comment %}
   Dashboard is deliberately a normal navigation link. The dashboard has its
   own data-loading lifecycle, so a full document navigation prevents stale
@@ -11,9 +11,11 @@
     data-menu="Dashboard"
 >
     <img
-        src="{% static 'images/ui/dashboard.svg' %}"
+        src="{% sidebar_icon_uri 'images/ui/dashboard.svg' %}"
         alt=""
-        class="w-4.5 h-4.5 flex-shrink-0 transition duration-300 filter brightness-1 invert"
+        width="20"
+        height="20"
+        class="sidebar-menu-icon"
     >
     <span
         class="oh-sidebar-label text-sm font-medium truncate flex-1 text-left"

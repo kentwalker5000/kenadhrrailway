@@ -105,6 +105,8 @@ INSTALLED_APPS = [
     "horilla_widgets",
     "horilla_crumbs",
     "horilla_documents",
+    "council",
+    "petty_cash",
     "horilla_views",
     "horilla_automations",
     "horilla_api",
@@ -208,7 +210,12 @@ MIDDLEWARE = [
     # First, so every log line emitted while handling the request -- including
     # ones from middleware below -- carries the correlation id.
     "horilla.observability.RequestIDMiddleware",
+    "horilla.navigation.HistoryRestoreMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Compress dynamic HTML responses.  The shared application shell is large,
+    # so this makes normal page navigation substantially cheaper over a real
+    # network while leaving already-compressed static assets untouched.
+    "django.middleware.gzip.GZipMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -325,11 +332,11 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 # ========================================
 # TEMPLATES
 # ========================================
-# In production (DEBUG=False) these are wrapped in the cached template
-# loader so Django compiles each template once per process instead of
-# re-parsing it (and re-running horilla_dbtemplate's DB-lookup chain) on
-# every include, on every request. Left uncached in DEBUG so template
-# edits during development are picked up without restarting the server.
+# Cache compiled templates by default. The shared layout is included on every
+# page and re-parsing it in DEBUG added measurable latency to normal local
+# navigation. Developers who need live template reloads can opt out with
+# TEMPLATE_CACHE=0; production always benefits from the default.
+TEMPLATE_CACHE = env.bool("TEMPLATE_CACHE", default=True)
 _TEMPLATE_LOADERS = [
     "horilla_dbtemplate.loaders.Loader",
     ("django.template.loaders.filesystem.Loader", [BASE_DIR / THEME_APP / "templates"]),
@@ -368,9 +375,9 @@ TEMPLATES = [
                 "horilla_crumbs.context_processors.breadcrumbs",
             ],
             "loaders": (
-                _TEMPLATE_LOADERS
-                if DEBUG
-                else [("django.template.loaders.cached.Loader", _TEMPLATE_LOADERS)]
+                [("django.template.loaders.cached.Loader", _TEMPLATE_LOADERS)]
+                if TEMPLATE_CACHE
+                else _TEMPLATE_LOADERS
             ),
         },
     },
@@ -464,9 +471,11 @@ HORILLA_REQUIRE_SCHEDULER = env.bool("HORILLA_REQUIRE_SCHEDULER", default=False)
 
 SIDEBARS = [
     "employee",
+    "horilla_documents",
     "attendance",
     "leave",
     "payroll",
+    "petty_cash",
     "recruitment",
     "onboarding",
     "offboarding",
@@ -600,6 +609,7 @@ APPS = [
     "base",
     "employee",
     "horilla_documents",
+    "petty_cash",
     "horilla_automations",
 ]
 

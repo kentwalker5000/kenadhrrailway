@@ -5,7 +5,12 @@ from base.forms import ModelForm
 from base.methods import reload_queryset
 from employee.filters import EmployeeFilter
 from employee.models import Employee
-from horilla_documents.models import Document, DocumentRequest
+from horilla_documents.models import (
+    Document,
+    DocumentRequest,
+    HRDocumentFolder,
+    HRLibraryDocument,
+)
 from horilla_widgets.widgets.horilla_multi_select_field import HorillaMultiSelectField
 from horilla_widgets.widgets.select_widgets import HorillaMultiSelectWidget
 
@@ -127,3 +132,42 @@ class DocumentRejectForm(ModelForm):
     class Meta:
         model = Document
         fields = ["reject_reason"]
+
+
+class HRDocumentFolderForm(forms.ModelForm):
+    """Folder metadata for the HR-owned document library."""
+
+    def clean_name(self):
+        name = self.cleaned_data["name"]
+        from horilla.horilla_middlewares import _thread_locals
+        request = getattr(_thread_locals, "request", None)
+        company = self.instance.company_id_id
+        if not self.instance.pk and request:
+            selected = request.session.get("selected_company")
+            company = selected if selected and selected != "all" else None
+        if HRDocumentFolder._base_manager.filter(company_id_id=company, name=name).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("A document folder with this name already exists in this company.")
+        return name
+
+    class Meta:
+        model = HRDocumentFolder
+        fields = ["name", "description"]
+        widgets = {"description": forms.Textarea(attrs={"rows": 3})}
+
+
+class HRLibraryDocumentForm(forms.ModelForm):
+    """Upload form intentionally excludes folder/company selection."""
+
+    class Meta:
+        model = HRLibraryDocument
+        fields = ["title", "description", "document"]
+        widgets = {
+            "description": forms.Textarea(attrs={"rows": 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Replacing the file is optional when HR is only updating the title,
+        # or description of an existing library record.
+        if self.instance and self.instance.pk:
+            self.fields["document"].required = False

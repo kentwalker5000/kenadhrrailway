@@ -19,18 +19,18 @@
 
                 <div class="oh-org-chart__manager-row">
                     <label class="oh-org-chart__manager-label" for="managerSelect">
-                        {% trans "Reporting Managers" %} :
+                        {% trans "Drill down by reporting manager" %} :
                     </label>
                     <div class="oh-org-chart__manager-select">
                         <select
                             id="managerSelect"
                             class="oh-select {% if not reporting_manager_dict %} hidden {% endif %}"
                             name="manager_id"
-                            title="{% trans 'Reporting Managers' %}"
+                            title="{% trans 'Drill down by reporting manager' %}"
                             hx-post="{% url 'organisation-chart' %}"
                             hx-target="#chart_target"
                             hx-swap="innerHTML"
-                            hx-trigger="load, change"
+                            hx-trigger="change"
                         >
                             {% for manager_id, values in reporting_manager_dict.items %}
                                 <option
@@ -63,5 +63,7 @@
             </div>
         </div>
     </div>
-    <div class="oh-wrapper" id="chart_target"></div>
+    <div class="oh-wrapper" id="chart_target">
+        {% include "organisation_chart/chart.html" %}
+    </div>
 {% endblock %}

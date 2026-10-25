@@ -1,0 +1,16 @@
+{% load i18n %}
+<div class="oh-input-group mb-3">
+  <label class="oh-label" for="cash-account">{% trans "Cash float" %}</label>
+  <select id="cash-account" class="oh-select w-100" name="account">
+    <option value="">{% trans "All cash floats" %}</option>
+    {% for account in accounts %}<option value="{{ account.pk }}" {% if selected_account == account.pk|stringformat:'s' %}selected{% endif %}>{{ account.name }}</option>{% endfor %}
+  </select>
+</div>
+<div class="oh-input-group">
+  <label class="oh-label" for="cash-status">{% trans "Entry status" %}</label>
+  <select id="cash-status" class="oh-select w-100" name="status">
+    <option value="">{% trans "All statuses" %}</option>
+    <option value="posted" {% if selected_status == 'posted' %}selected{% endif %}>{% trans "Posted" %}</option>
+    <option value="void" {% if selected_status == 'void' %}selected{% endif %}>{% trans "Void" %}</option>
+  </select>
+</div>

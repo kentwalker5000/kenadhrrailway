@@ -1,0 +1,70 @@
+{% load i18n static %}
+
+{% if perms.petty_cash.add_pettycashaccount %}
+<div class="flex justify-end mb-2"><button type="button" class="text-xs text-primary-600" data-toggle="oh-modal-toggle" data-target="#objectCreateModal" hx-get="{% url 'petty-cash-account-create' %}" hx-target="#objectCreateModalTarget">{% trans "New cash float" %}</button></div>
+{% endif %}
+<section class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+  <div id="pettyCashCashIn" class="bg-white rounded-md shadow-card p-3 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-wide text-[#666] mb-1">{% trans "Cash in" %}</p>
+      <p class="text-xs text-[#888] mb-0">{% trans "Posted top-ups and cash-in movements" %}</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% for total in cash_in_totals %}
+        <div class="rounded-md bg-green-50 border border-green-100 px-3 py-2 text-right">
+          <span class="block text-[11px] text-green-700">{{ total.account__currency }}</span>
+          <strong class="block text-base text-green-700">{{ total.amount_received|floatformat:2 }}</strong>
+        </div>
+      {% empty %}
+        <div class="rounded-md bg-[#f7f7f7] px-3 py-2 text-sm text-[#666]">{% trans "No posted cash in" %}</div>
+      {% endfor %}
+    </div>
+  </div>
+  <div id="pettyCashAmountSpent" class="bg-white rounded-md shadow-card p-3 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <p class="text-xs font-medium uppercase tracking-wide text-[#666] mb-1">{% trans "Amount spent" %}</p>
+      <p class="text-xs text-[#888] mb-0">{% trans "Posted cash-out entries in the current view" %}</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      {% for total in spending_totals %}
+        <div class="rounded-md bg-red-50 border border-red-100 px-3 py-2 text-right">
+          <span class="block text-[11px] text-red-700">{{ total.account__currency }}</span>
+          <strong class="block text-base text-red-700">{{ total.amount_spent|floatformat:2 }}</strong>
+        </div>
+      {% empty %}
+        <div class="rounded-md bg-[#f7f7f7] px-3 py-2 text-sm text-[#666]">{% trans "No posted expenses" %}</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% if accounts %}
+  <div class="flex flex-wrap items-center gap-3 mb-3 text-xs text-[#666]">
+    {% for account in accounts %}
+      <div class="flex items-center gap-2">
+        <strong>{{ account.name }}</strong>{% if account.custodian %}<span class="oh-text--light"> · {{ account.custodian }}</span>{% endif %}<span class="ms-2">{{ account.currency }} {{ account.balance|floatformat:2 }}</span>
+        {% if perms.petty_cash.change_pettycashaccount %}<button class="oh-btn oh-btn--light-bkg oh-btn--sq-sm" type="button" title="{% trans 'Edit cash float' %}" aria-label="{% trans 'Edit cash float' %}" data-toggle="oh-modal-toggle" data-target="#objectUpdateModal" hx-get="{% url 'petty-cash-account-edit' account.pk %}" hx-target="#objectUpdateModalTarget"><ion-icon name="create-outline"></ion-icon></button>{% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if entries %}
+  <div class="bg-white p-2 rounded-md shadow-card relative">
+    <div class="max-h-[calc(100vh_-_260px)] overflow-hidden overflow-y-auto overflow-x-auto heightContainer">
+      <table class="fixed-table w-full border-separate">
+        <thead class="sticky top-0 bg-[white] z-[1]"><tr class="border-b border-[#ececec]"><th class="text-sm font-medium text-left p-1.5">{% trans "Date" %}</th><th class="text-sm font-medium text-left p-1.5">{% trans "Cash float" %}</th><th class="text-sm font-medium text-left p-1.5">{% trans "Type" %}</th><th class="text-sm font-medium text-left p-1.5">{% trans "Details" %}</th><th class="text-sm font-medium text-right p-1.5">{% trans "Amount" %}</th><th class="text-sm font-medium text-left p-1.5">{% trans "Status" %}</th><th class="text-sm font-medium text-right p-1.5">{% trans "Actions" %}</th></tr></thead>
+        <tbody>{% for entry in entries %}
+          <tr class="border-b border-[#ececec]">
+            <td class="text-sm text-left px-1 py-1 text-[#666] h-[30px]">{{ entry.transaction_date }}</td><td class="text-sm text-left px-1 py-1 text-[#666] h-[30px]">{{ entry.account.name }}</td><td class="text-sm text-left px-1 py-1 text-[#666] h-[30px]">{{ entry.get_entry_type_display }}</td>
+            <td class="text-sm text-left px-1 py-1 text-[#666] h-[30px]"><strong>{{ entry.description }}</strong>{% if entry.category or entry.payee or entry.reference %}<br><small class="oh-text--light">{{ entry.category }}{% if entry.payee %} · {{ entry.payee }}{% endif %}{% if entry.reference %} · {{ entry.reference }}{% endif %}</small>{% endif %}{% if entry.status == 'void' and entry.void_reason %}<br><small class="text-danger">{% trans "Void" %}: {{ entry.void_reason }}</small>{% endif %}</td>
+            <td class="text-sm text-right px-1 py-1 whitespace-nowrap {% if entry.direction == 'out' %}text-danger{% else %}text-success{% endif %}">{% if entry.direction == 'out' %}−{% else %}+{% endif %} {{ entry.account.currency }} {{ entry.amount|floatformat:2 }}</td>
+            <td class="text-sm text-left px-1 py-1 text-[#666] h-[30px]">{% if entry.status == 'posted' %}<span class="oh-badge oh-badge--success">{% trans "Posted" %}</span>{% else %}<span class="oh-badge oh-badge--danger">{% trans "Void" %}</span>{% endif %}</td>
+<td class="text-center whitespace-nowrap px-1 py-1">{% if entry.receipt and perms.petty_cash.view_pettycashentry %}<a class="oh-btn oh-btn--light-bkg oh-btn--sq-sm" href="{% url 'petty-cash-receipt-download' entry.pk %}" title="{% trans 'Receipt' %}" aria-label="{% trans 'Receipt' %}"><ion-icon name="download-outline"></ion-icon></a>{% endif %}{% if entry.status == 'posted' and perms.petty_cash.change_pettycashentry %}<button class="oh-btn oh-btn--light-bkg oh-btn--sq-sm" type="button" data-toggle="oh-modal-toggle" data-target="#objectUpdateModal" hx-get="{% url 'petty-cash-entry-edit' entry.pk %}" hx-target="#objectUpdateModalTarget" title="{% trans 'Edit' %}" aria-label="{% trans 'Edit' %}"><ion-icon name="create-outline"></ion-icon></button><a class="oh-btn oh-btn--danger oh-btn--sq-sm" href="{% url 'petty-cash-entry-void' entry.pk %}" data-toggle="oh-modal-toggle" data-target="#objectUpdateModal" hx-get="{% url 'petty-cash-entry-void' entry.pk %}" hx-target="#objectUpdateModalTarget" title="{% trans 'Void' %}" aria-label="{% trans 'Void' %}"><ion-icon name="close-circle-outline"></ion-icon></a>{% endif %}</td>
+          </tr>
+        {% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+{% else %}
+  <div class="oh-empty"><img src="{% static 'horilla_theme/assets/img/no-records.png' %}" class="oh-404__image" alt="{% trans 'No records' %}"><h2 class="oh-empty__title">{% trans "No Records found." %}</h2><p class="oh-empty__subtitle">{% trans "No petty cash entries match your search or filter." %}</p></div>
+{% endif %}

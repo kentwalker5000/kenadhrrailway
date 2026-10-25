@@ -5,6 +5,10 @@
 
 <script src="{% static 'htmx/htmx.min.js' %}"></script>
 <script>
+    // Keep employee/payroll HTML out of persistent browser history snapshots.
+    // Also discard snapshots created by older versions of the navigation.
+    htmx.config.historyCacheSize = 0;
+    try { localStorage.removeItem('htmx-history-cache'); } catch (_) {}
     document.body.addEventListener('htmx:configRequest', (event) => {
       event.detail.headers['X-CSRFToken'] = '{{ csrf_token }}'
       if (event.detail.elt && event.detail.elt.closest && event.detail.elt.closest('[hx-push-url]')) {
@@ -36,16 +40,39 @@
 <script src="{% static '/base/time_settings.js' %}"></script>
 <script src="{% static '/base/date_formatting.js' %}"></script>
 
-<script src="{% static 'build/js/pivottable.min.js' %}"></script>
-<script src="{% static 'build/js/pivottable_plot.min.js' %}"></script>
-<script src="{% static 'build/js/pivottable_ploty.min.js' %}"></script>
-<script src="{% static 'build/js/pivottable_excel.min.js' %}"></script>
-<script src="{% static 'build/js/vendor/jspdf.umd.min.js' %}"></script>
-<script src="{% static 'build/js/vendor/jspdf.plugin.autotable.min.js' %}"></script>
+{# Pivot charts, Excel export, and PDF export are loaded by report pages only.
+   Loading them here made every sub-page download and parse roughly 5 MB of
+   reporting code it could never use. #}
 {% if 'attendance'|app_installed %}
     <script src="{% static 'attendance/actions.js' %}"></script>
 {% endif %}
 <script type="module" src="{% static 'images/ionicons/ui_icons/ionicons/ionicons.esm.js' %}"></script>
+<script nomodule src="{% static 'images/ionicons/ui_icons/ionicons/ionicons.js' %}"></script>
+<script>
+  // Ionicons are enhanced custom elements. The CSS fallback in index.html
+  // keeps icon-only action buttons legible until enhancement completes. If a
+  // module load is interrupted, retry with the bundled legacy loader once.
+  (function () {
+    var source = "{% static 'images/ionicons/ui_icons/ionicons/ionicons.js' %}";
+    var retried = false;
+    function retryIonicons() {
+      if (window.customElements && window.customElements.get("ion-icon")) return;
+      if (retried) return;
+      retried = true;
+      var script = document.createElement("script");
+      script.src = source;
+      script.defer = true;
+      script.dataset.ioniconsFallback = "true";
+      document.head.appendChild(script);
+    }
+    window.setTimeout(retryIonicons, 1200);
+    document.addEventListener("htmx:afterSettle", function () {
+      // Custom elements upgrade newly swapped action controls automatically.
+      // Retrying is harmless when the icon library is already registered.
+      window.setTimeout(retryIonicons, 0);
+    });
+  })();
+</script>
 <script src="{% static '/build/js/sweetAlert.js' %}"></script>
 <script>
     // Clear all query parameters from the URL

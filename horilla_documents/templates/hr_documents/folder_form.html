@@ -1,0 +1,20 @@
+{% extends "index.html" %}
+{% load i18n %}
+
+{% block content %}
+{% include "generic/components.html" %}
+<div class="oh-wrapper">
+  {% include "generic/horilla_nav.html" %}
+  <section class="bg-white rounded-md shadow-card p-4" style="max-width: 760px">
+    <h1 class="text-lg font-semibold mb-4">{{ title }}</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="flex gap-2 justify-end mt-4">
+        <a class="oh-btn oh-btn--light" href="{% url 'hr-document-library' %}">{% trans "Cancel" %}</a>
+        <button class="oh-btn oh-btn--secondary" type="submit">{% trans "Save folder" %}</button>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock content %}

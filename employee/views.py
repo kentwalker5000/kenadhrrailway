@@ -3795,100 +3795,71 @@ def redeem_points(request, emp_id):
 @login_required
 def organisation_chart(request):
     """
-    This method is used to view oganisation chart
+    Render the company-wide hierarchy first, with optional manager drill-down.
     """
     selected_company = request.session.get("selected_company")
-    if (
-        request.GET.get("employee_work_info__company_id") == None
-        and selected_company != "all"
-    ):
-        reporting_managers = Employee.objects.filter(
-            is_active=True,
-            reporting_manager__isnull=False,
-            employee_work_info__company_id=selected_company,
-        ).distinct()
-    else:
-        reporting_managers = Employee.objects.filter(
-            is_active=True,
-            reporting_manager__isnull=False,
-        ).distinct()
+    employees = Employee.objects.filter(is_active=True).select_related(
+        "employee_work_info__reporting_manager_id",
+        "employee_work_info__job_position_id",
+    )
+    if request.GET.get("employee_work_info__company_id") is None and selected_company not in (None, "all"):
+        employees = employees.filter(employee_work_info__company_id=selected_company)
 
-    # Iterate through the queryset and add reporting manager id and name to the dictionary
-    result_dict = {item.id: item.get_full_name() for item in reporting_managers}
-
-    entered_req_managers = []
-
+    roots = employees.filter(
+        employee_work_info__reporting_manager_id__isnull=True
+    ).order_by("employee_first_name", "employee_last_name")
+    reporting_managers = employees.filter(reporting_manager__isnull=False).distinct().order_by(
+        "employee_first_name", "employee_last_name"
+    )
     # Helper function to recursively create the hierarchy structure
-    def create_hierarchy(manager):
+    def create_hierarchy(manager, visited=None):
         """
         Hierarchy generator method
         """
+        visited = set() if visited is None else visited
+        if manager.id in visited:
+            return []
+        visited.add(manager.id)
         nodes = []
-        # check the manager is a reporting manager if yes, store it into entered_req_managers
-        if manager.id in result_dict.keys():
-            entered_req_managers.append(manager)
-        # filter the subordinates
-        subordinates = Employee.objects.filter(
-            is_active=True, employee_work_info__reporting_manager_id=manager
-        ).exclude(id=manager.id)
+        subordinates = employees.filter(
+            employee_work_info__reporting_manager_id=manager
+        ).exclude(id=manager.id).order_by("employee_first_name", "employee_last_name")
 
-        # itrating through subordinates
         for employee in subordinates:
-            if employee in entered_req_managers:
+            if employee.id in visited:
                 continue
-            # check the employee is a reporting manager if yes,remove className store
-            # it into entered_req_managers
-            if employee.id in result_dict.keys():
-                nodes.append(
-                    {
-                        "name": employee.get_full_name(),
-                        "title": getattr(
-                            employee.get_job_position(), "job_position", _("Not set")
-                        ),
-                        "children": create_hierarchy(employee),
-                    }
-                )
-                entered_req_managers.append(employee)
-
-            else:
-                nodes.append(
-                    {
-                        "name": employee.get_full_name(),
-                        "title": getattr(
-                            employee.get_job_position(), "job_position", _("Not set")
-                        ),
-                        "className": "middle-level",
-                        "children": create_hierarchy(employee),
-                    }
-                )
+            nodes.append(
+                {
+                    "name": employee.get_full_name(),
+                    "title": getattr(
+                        employee.get_job_position(), "job_position", _("Not set")
+                    ),
+                    "children": create_hierarchy(employee, visited),
+                }
+            )
         return nodes
 
-    selected_company = request.session.get("selected_company")
-    if (
-        request.GET.get("employee_work_info__company_id") == None
-        and selected_company != "all"
-    ):
-        reporting_managers = Employee.objects.filter(
-            is_active=True,
-            reporting_manager__isnull=False,
-            employee_work_info__company_id=selected_company,
-        ).distinct()
-    else:
-        reporting_managers = Employee.objects.filter(
-            is_active=True, reporting_manager__isnull=False
-        ).distinct()
+    manager = roots.first() or employees.first()
+    if manager is None:
+        context = {"act_datasource": {}, "reporting_manager_dict": {}, "act_manager_id": None}
+        return render(request, "organisation_chart/org_chart.html", context=context)
 
-    manager = request.user.employee_get
-
-    if len(reporting_managers) == 0:
-        new_dict = {}
-    else:
-        new_dict = {reporting_managers[0].id: _("My view"), **result_dict}
-    # POST method is used to change the reporting manager
+    # The root represents the complete organisation. The remaining values are
+    # deliberate drill-down entry points, never a prerequisite to seeing it.
+    new_dict = {manager.id: _("Entire organisation")}
+    new_dict.update(
+        {
+            item.id: item.get_full_name()
+            for item in reporting_managers
+            if item.id != manager.id
+        }
+    )
     if request.method == "POST":
-        if request.POST.get("manager_id"):
-            manager_id = int(request.POST.get("manager_id"))
-            manager = Employee.objects.get(id=manager_id)
+        manager_id = request.POST.get("manager_id")
+        if manager_id and manager_id.isdecimal():
+            selected_manager = employees.filter(id=int(manager_id)).first()
+            if selected_manager is not None:
+                manager = selected_manager
         node = {
             "name": manager.get_full_name(),
             "title": getattr(manager.get_job_position(), "job_position", _("Not set")),

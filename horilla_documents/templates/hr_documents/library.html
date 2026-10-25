@@ -1,0 +1,10 @@
+{% extends "index.html" %}
+{% load i18n %}
+
+{% block content %}
+{% include "generic/components.html" %}
+<div class="oh-wrapper">
+  {% include "generic/horilla_nav.html" %}
+  <div id="hrDocumentLibraryContent">{% include "hr_documents/library_content.html" %}</div>
+</div>
+{% endblock content %}

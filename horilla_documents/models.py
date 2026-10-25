@@ -10,6 +10,7 @@ from django.urls import reverse_lazy
 from django.utils.translation import gettext as _
 
 from base.horilla_company_manager import HorillaCompanyManager
+from base.models import Company
 from employee.models import Employee
 from horilla.models import HorillaModel, upload_path
 from horilla_views.cbv_methods import render_template
@@ -29,6 +30,15 @@ FORMATS = [
     ("png", "PNG"),
     ("jpeg", "JPEG"),
 ]
+
+# HR library files are internal business records, not employee-submitted
+# documents. Keep the allow-list deliberately narrow so an upload cannot be
+# used to store executable or web content in the application media store.
+HR_LIBRARY_ALLOWED_EXTENSIONS = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx",
+    ".csv", ".txt", ".jpg", ".jpeg", ".png",
+}
+HR_LIBRARY_MAX_SIZE_BYTES = 25 * 1024 * 1024
 
 
 def document_create(instance):
@@ -218,3 +228,83 @@ class Document(HorillaModel):
             path="cbv/documents/document_row_actions.html",
             context={"instance": self},
         )
+
+
+class HRDocumentFolder(HorillaModel):
+    """A company-scoped folder for HR-owned internal documents."""
+
+    name = models.CharField(max_length=120, verbose_name=_("Folder name"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+    company_id = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.PROTECT, verbose_name=_("Company")
+    )
+
+    objects = HorillaCompanyManager(related_company_field="company_id")
+
+    class Meta:
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company_id", "name"], name="unique_hr_document_folder_name"
+            )
+        ]
+        verbose_name = _("HR document folder")
+        verbose_name_plural = _("HR document folders")
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        # New folders inherit the selected tenant. Storing the tenant on both
+        # folders and files lets the company manager scope direct file URLs too.
+        if not self.pk and not self.company_id:
+            from horilla import horilla_middlewares
+
+            request = getattr(horilla_middlewares._thread_locals, "request", None)
+            selected_company = request.session.get("selected_company") if request else None
+            if selected_company and selected_company != "all":
+                self.company_id = Company.find(selected_company)
+        super().save(*args, **kwargs)
+
+
+class HRLibraryDocument(HorillaModel):
+    """An HR-owned file stored in an HR document folder, never an employee file."""
+
+    folder = models.ForeignKey(
+        HRDocumentFolder, on_delete=models.PROTECT, related_name="documents", verbose_name=_("Folder")
+    )
+    title = models.CharField(max_length=150, verbose_name=_("Title"))
+    description = models.TextField(blank=True, verbose_name=_("Description"))
+    document = models.FileField(upload_to=upload_path, verbose_name=_("Document"))
+    company_id = models.ForeignKey(
+        Company, null=True, blank=True, on_delete=models.PROTECT, verbose_name=_("Company")
+    )
+
+    objects = HorillaCompanyManager(related_company_field="company_id")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = _("HR library document")
+        verbose_name_plural = _("HR library documents")
+
+    def __str__(self):
+        return self.title
+
+    def clean(self):
+        super().clean()
+        if not self.document:
+            return
+        extension = os.path.splitext(self.document.name)[1].lower()
+        if extension not in HR_LIBRARY_ALLOWED_EXTENSIONS:
+            raise ValidationError(
+                {"document": _("Upload a PDF, Office document, spreadsheet, text file, or image only.")}
+            )
+        if self.document.size > HR_LIBRARY_MAX_SIZE_BYTES:
+            raise ValidationError({"document": _("Document size cannot exceed 25 MB.")})
+
+    def save(self, *args, **kwargs):
+        # A file always inherits its folder's company; forms cannot move a
+        # document across tenants by submitting a different company value.
+        if self.folder_id:
+            self.company_id = self.folder.company_id
+        super().save(*args, **kwargs)

@@ -65,7 +65,7 @@
             rel="stylesheet"
             href="{% static 'horilla_theme/assets/css/v1_styles.css' %}?v=3"
         >
-        <link rel="stylesheet" href="{% static 'build/css/pivottable.min.css' %}">
+        {% block report_styles %}{% endblock %}
         {% with theme=theme_obj %}
             <style>
                 /* ── Centralized design tokens ─────────────────────────────────────
@@ -189,6 +189,43 @@
                 .hover\:text-primary-600:hover { color: {{ theme.primary_600|default:"#E54F38" }}; }
                 .focus\:border-primary-600:focus { border-color: {{ theme.primary_600|default:"#E54F38" }}; }
 
+                /* Action buttons are intentionally compact and often contain only
+                   an Ionicon. Reserve a visible icon box immediately so a delayed
+                   web-component upgrade never leaves a coloured empty button. */
+                .oh-btn ion-icon {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    width: 1rem;
+                    height: 1rem;
+                    min-width: 1rem;
+                    color: inherit !important;
+                    font-size: 1rem;
+                    line-height: 1;
+                }
+                .oh-btn ion-icon:not(.hydrated)::before {
+                    display: block;
+                    font-family: Arial, sans-serif;
+                    font-size: 1rem;
+                    font-weight: 700;
+                    line-height: 1;
+                    content: "•";
+                }
+                .oh-btn ion-icon[name*="create"]:not(.hydrated)::before,
+                .oh-btn ion-icon[name*="pencil"]:not(.hydrated)::before { content: "✎"; }
+                .oh-btn ion-icon[name*="trash"]:not(.hydrated)::before,
+                .oh-btn ion-icon[name*="close"]:not(.hydrated)::before,
+                .oh-btn ion-icon[name*="remove"]:not(.hydrated)::before { content: "×"; }
+                .oh-btn ion-icon[name*="checkmark"]:not(.hydrated)::before { content: "✓"; }
+                .oh-btn ion-icon[name*="add"]:not(.hydrated)::before { content: "+"; }
+                .oh-btn ion-icon[name*="copy"]:not(.hydrated)::before,
+                .oh-btn ion-icon[name*="duplicate"]:not(.hydrated)::before { content: "⧉"; }
+                .oh-btn ion-icon[name*="download"]:not(.hydrated)::before { content: "↓"; }
+                .oh-btn ion-icon[name*="upload"]:not(.hydrated)::before { content: "↑"; }
+                .oh-btn ion-icon[name*="mail"]:not(.hydrated)::before { content: "✉"; }
+                .oh-btn ion-icon[name*="eye"]:not(.hydrated)::before { content: "◉"; }
+                .oh-btn ion-icon[name*="ellipsis"]:not(.hydrated)::before { content: "⋮"; }
+
                 /* Active list/grid view-toggle button (.oh-view-btn--active) —
                    its border was hardcoded red in v1_styles.css. */
                 .oh-view-btn--active {
@@ -262,12 +299,13 @@
                 (function () {
                     try {
                         var stored = localStorage.getItem('sidebarPinned');
-                        var pinned = stored === null ? true : stored === 'true';
+                        var pinned = (stored === null || stored === 'true') &&
+                            !window.matchMedia('(max-width: 991.98px)').matches;
                         if (pinned) {
                             var sidebarEl = document.getElementById('sidebar');
                             var contentEl = document.currentScript.parentNode;
                             if (sidebarEl) sidebarEl.classList.add('sidebar-pinned');
-                            if (contentEl) contentEl.style.marginLeft = '13rem';
+                            if (contentEl) contentEl.style.marginLeft = '15.75rem';
                         }
                     } catch (_) {}
                 })();
@@ -278,7 +316,7 @@
                     {% include "horilla_theme/components/header.html" %}
                 </div>
 
-                <div id="ohMainContent" class="p-6 pt-24">
+                <div id="ohMainContent" class="p-6 pt-24" hx-history-elt hx-history="false">
                     {% block content %}
                         {% include "horilla_theme/components/dashboard.html" %}
                     {% endblock %}
@@ -343,6 +381,8 @@
         </div>
         {% include "generic/components.html" %}
         {% include "horilla_theme/components/footer_scripts.html" %}
+        {# Large export/reporting libraries are opt-in per report page. #}
+        {% block page_libraries %}{% endblock %}
         <script>
             document.body.addEventListener("showMessages", function () {
                 var b = document.getElementById("reloadMessagesButton");

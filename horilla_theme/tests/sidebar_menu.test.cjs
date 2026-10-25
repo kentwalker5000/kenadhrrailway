@@ -11,6 +11,8 @@ const template = readFileSync(path.join(__dirname,
 const functions = [
     'setActiveSidebarMenu', 'showFlyout', 'hideFlyout',
     'closeSidebarMenus', 'toggleSidebarMenu', 'syncSidebarToUrl',
+    'sidebarLinkMatchScore', 'applySidebarPin', 'syncReferenceToggleLabel',
+    'sidebarRequestSource',
 ].map((name) => {
     const match = template.match(new RegExp(`        function ${name}\\([^]*?\\n        \\}`));
     assert.ok(match, `Template must contain ${name}`);
@@ -33,6 +35,7 @@ function element(classes = []) {
         },
         getAttribute: (name) => attributes[name] ?? null,
         setAttribute: (name, value) => { attributes[name] = value; },
+        removeAttribute: (name) => { delete attributes[name]; },
         querySelector: () => null,
         getBoundingClientRect: () => ({ top: 0, right: 72 }),
     };
@@ -59,7 +62,10 @@ function setup(pinned = true) {
     });
     const sidebar = element(pinned ? ['sidebar-pinned'] : []);
     const flyout = element();
+    const viewport = { matches: false };
+    const saved = {};
     const document = {
+        getElementById: () => null,
         querySelectorAll(selector) {
             switch (selector) {
                 case '.sideboxmain.sidebox-current':
@@ -75,6 +81,7 @@ function setup(pinned = true) {
             }
         },
         querySelector(selector) {
+            if (selector === '.oh-main-content') return null;
             assert.equal(selector, '#sidebar .sidebar-item.sidebar-open .sideboxmain');
             return menus.find((m) => m.item.classList.contains('sidebar-open'))?.button ?? null;
         },
@@ -88,12 +95,14 @@ function setup(pinned = true) {
         flyoutCloseTimer: null,
         clearTimeout() {},
         positionFlyout() {},
-        localStorage: { setItem() {} },
-        window: { location: { pathname: '/employee/view/' } },
+        localStorage: { setItem(key, value) { saved[key] = value; } },
+        referenceToggle: null,
+        window: { location: { pathname: '/employee/view/' }, matchMedia: () => viewport },
     });
     vm.runInContext(functions, context);
+    context.syncSidebarToUrl();
     return {
-        menus, context, flyout,
+        menus, context, flyout, sidebar, viewport, saved,
         click: (menu) => context.toggleSidebarMenu(menu.item, menu.button),
     };
 }
@@ -108,7 +117,7 @@ for (const pinned of [true, false]) {
             for (const menu of menus) {
                 const active = menu === selected;
                 assert.equal(menu.button.getAttribute('aria-expanded'), String(active));
-                assert.equal(menu.button.classList.contains('sidebox-current'), active);
+                assert.equal(menu.button.classList.contains('sidebox-current'), menu === menus[0]);
                 assert.equal(menu.item.classList.contains('sidebar-open'), pinned && active);
             }
         }
@@ -128,8 +137,8 @@ for (const pinned of [true, false]) {
         context.syncSidebarToUrl();
         click(menus[1]);
         context.syncSidebarToUrl();
-        assert.equal(menus[0].button.classList.contains('sidebox-current'), false);
-        assert.equal(menus[1].button.classList.contains('sidebox-current'), true);
+        assert.equal(menus[0].button.classList.contains('sidebox-current'), true);
+        assert.equal(menus[1].button.classList.contains('sidebox-current'), false);
         assert.equal(menus[1].button.getAttribute('aria-expanded'), 'true');
         // The content's current link remains marked independently of menu expansion.
         assert.equal(menus[0].link.classList.contains('oh-sidebar-active-link'), true);
@@ -174,4 +183,107 @@ test('URL updates highlight the current page when no menu is open', () => {
     context.syncSidebarToUrl();
     assert.equal(menus[0].button.classList.contains('sidebox-current'), false);
     assert.equal(menus[2].button.classList.contains('sidebox-current'), true);
+});
+
+for (const pinned of [true, false]) {
+    test(`closing an unrelated menu preserves the page highlight (pinned=${pinned})`, () => {
+        const { menus, context, click } = setup(pinned);
+        click(menus[1]);
+        click(menus[1]);
+        assert.equal(menus[0].button.classList.contains('sidebox-current'), true);
+        assert.equal(menus[1].button.classList.contains('sidebox-current'), false);
+        context.syncSidebarToUrl();
+        assert.equal(menus[0].button.classList.contains('sidebox-current'), true);
+    });
+}
+
+test('detail route prefixes survive every background URL sync', () => {
+    const { menus, context } = setup();
+    menus[0].link.dataset.matchPrefixes = '/employee/detail/';
+    context.window.location.pathname = '/employee/detail/42/';
+    for (let i = 0; i < 3; i++) {
+        context.syncSidebarToUrl();
+        assert.equal(menus[0].link.getAttribute('aria-current'), 'page');
+        assert.equal(menus[0].button.classList.contains('sidebox-current'), true);
+    }
+});
+
+test('the most specific path wins without matching unrelated path prefixes', () => {
+    const { menus, context } = setup();
+    menus[1].link.setAttribute('href', '/employee/');
+    context.syncSidebarToUrl();
+    assert.equal(menus[0].link.getAttribute('aria-current'), 'page');
+    assert.equal(menus[1].link.getAttribute('aria-current'), null);
+    context.window.location.pathname = '/employee-other/';
+    context.syncSidebarToUrl();
+    assert.ok(menus.every(m => !m.button.classList.contains('sidebox-current')));
+    assert.ok(menus.every(m => m.link.getAttribute('aria-current') === null));
+});
+
+test('query strings do not break page matching', () => {
+    const { menus, context } = setup();
+    menus[0].link.setAttribute('href', '/employee/view/?year=2026');
+    context.syncSidebarToUrl();
+    assert.equal(menus[0].link.getAttribute('aria-current'), 'page');
+});
+
+test('collapsing closes expanded menus and resets accessibility state', () => {
+    const { menus, context, sidebar, click } = setup();
+    click(menus[1]);
+    context.applySidebarPin(false, true);
+    assert.equal(sidebar.classList.contains('sidebar-pinned'), false);
+    assert.ok(menus.every(m => !m.item.classList.contains('sidebar-open')));
+    assert.ok(menus.every(m => m.button.getAttribute('aria-expanded') === 'false'));
+    assert.equal(menus[0].button.classList.contains('sidebox-current'), true);
+});
+
+test('expanding closes the flyout and clears its owner', () => {
+    const { menus, context, flyout, click } = setup(false);
+    click(menus[1]);
+    context.applySidebarPin(true, true);
+    assert.equal(flyout.classList.contains('is-visible'), false);
+    assert.equal(context.currentFlyoutBtn, null);
+    assert.ok(menus.every(m => m.button.getAttribute('aria-expanded') === 'false'));
+});
+
+test('narrow screens use flyouts and preserve the saved desktop preference', () => {
+    const { menus, context, sidebar, flyout, viewport, saved, click } = setup();
+    click(menus[1]);
+    viewport.matches = true;
+    context.applySidebarPin(true, false);
+    assert.equal(sidebar.classList.contains('sidebar-pinned'), false);
+    assert.equal(saved.sidebarPinned, 'true');
+    click(menus[1]);
+    assert.equal(flyout.classList.contains('is-visible'), true);
+    viewport.matches = false;
+    context.applySidebarPin(context.sidebarPinned, false);
+    assert.equal(sidebar.classList.contains('sidebar-pinned'), true);
+    assert.equal(flyout.classList.contains('is-visible'), false);
+    assert.ok(menus.every(m => m.button.getAttribute('aria-expanded') === 'false'));
+});
+
+test('HTMX owns history without duplicate pushes or unconditional Back/Forward reloads', () => {
+    assert.doesNotMatch(template, /window\.history\.pushState/);
+    assert.doesNotMatch(template, /window\.onpopstate\s*=/);
+    assert.doesNotMatch(template, /addEventListener\("popstate", function.*reload/);
+    assert.match(template, /hx-push-url="true"/);
+    assert.match(template, /hx-sync="#sidebar:replace"/);
+    assert.match(template, /htmx:historyRestore/);
+    const index = readFileSync(path.join(__dirname, '../templates/index.html'), 'utf8');
+    assert.match(index, /id="ohMainContent"[^>]*hx-history-elt[^>]*hx-history="false"/);
+});
+
+test('navigation fallback identifies the sidebar source when swap events fire on the content', () => {
+    const { menus, context } = setup();
+    const target = element();
+    assert.equal(context.sidebarRequestSource({ detail: {
+        elt: target, requestConfig: { elt: menus[0].link },
+    } }), menus[0].link);
+    assert.equal(context.sidebarRequestSource({ detail: { elt: menus[0].link } }), menus[0].link);
+});
+
+test('all inline sidebar scripts compile after rendering template tags', () => {
+    for (const match of template.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)) {
+        new vm.Script(match[1].replace(/\{%[\s\S]*?%\}/g, '').replace(/\{\{[\s\S]*?\}\}/g, ''));
+    }
 });

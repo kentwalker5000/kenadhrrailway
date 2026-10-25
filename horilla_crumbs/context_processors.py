@@ -724,6 +724,7 @@ def breadcrumbs(request):
 
         reset = (
             (is_htmx and is_sidebar_nav)
+            or request.META.get("HTTP_HX_HISTORY_RESTORE_REQUEST") == "true"
             or (not is_htmx and not referer_path)
             or len(local_trail) <= 1
         )

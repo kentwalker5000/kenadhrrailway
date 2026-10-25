@@ -561,7 +561,8 @@
     	});
     }
 
-    // Auto-expand tree to specified depth on initial load
+    // The default is the entire company tree. Manager selection above is an
+    // optional drill-down, not a prerequisite to seeing the hierarchy.
     function autoExpandLevels(depth) {
     	const tree = document.querySelector(".genealogy-tree");
     	if (!tree) return;
@@ -589,7 +590,7 @@
     	$(".genealogy-tree ul").hide();
     	$(".genealogy-tree > ul").show();
     	$(".genealogy-tree ul.active").show();
-    	autoExpandLevels(3);
+        autoExpandLevels(99);
 
     	$(".genealogy-tree li").each(function () {
     		if ($(this).children("ul").length) {

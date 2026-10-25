@@ -1,0 +1,43 @@
+{% extends "index.html" %}
+{% load i18n %}
+
+{% block content %}
+<main class="oh-wrapper">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="oh-title">{% trans "Council Members" %}</h1>
+      <p class="oh-text--light mb-0">{% trans "Private governing-body records, separate from employee records." %}</p>
+    </div>
+    {% if perms.council.add_councilmember %}
+      <a class="oh-btn oh-btn--secondary" href="{% url 'council-member-create' %}">{% trans "Add council member" %}</a>
+    {% endif %}
+  </div>
+
+  <div class="oh-card p-4">
+    <form class="d-flex gap-2 mb-4" method="get">
+      <input class="oh-input" type="search" name="q" value="{{ query }}" placeholder="{% trans 'Search by name' %}">
+      <button class="oh-btn oh-btn--light" type="submit">{% trans "Search" %}</button>
+    </form>
+
+    <div class="oh-sticky-table">
+      <div class="oh-sticky-table__table oh-table--highlight">
+        <div class="oh-sticky-table__thead"><div class="oh-sticky-table__tr">
+          <div class="oh-sticky-table__th">{% trans "Name" %}</div><div class="oh-sticky-table__th">{% trans "Role" %}</div><div class="oh-sticky-table__th">{% trans "Organisation" %}</div><div class="oh-sticky-table__th">{% trans "Term" %}</div>
+        </div></div>
+        <div class="oh-sticky-table__tbody">
+          {% for member in members %}
+          <a class="oh-sticky-table__tr text-decoration-none" href="{% url 'council-member-detail' member.pk %}">
+            <div class="oh-sticky-table__td"><strong>{{ member.full_name }}</strong><br><span class="oh-text--light">{{ member.email|default:"—" }}</span></div>
+            <div class="oh-sticky-table__td">{{ member.get_role_display }}</div>
+            <div class="oh-sticky-table__td">{{ member.organisation|default:"—" }}</div>
+            <div class="oh-sticky-table__td">{{ member.term_start|default:"—" }} – {{ member.term_end|default:"—" }}</div>
+          </a>
+          {% empty %}
+          <div class="oh-sticky-table__tr"><div class="oh-sticky-table__td">{% trans "No council members found." %}</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock content %}

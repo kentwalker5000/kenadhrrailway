@@ -1,4 +1,4 @@
-{% load static i18n horillafilters %}
+{% load static i18n horillafilters sidebar_icons %}
 {% get_company as theme_obj %}
 <style>
     #sidebar,
@@ -608,18 +608,28 @@
         padding: 0.625rem 0.7rem !important;
         gap: 0.7rem !important;
     }
+    /* Reserve the icon box before utility CSS or image decoding completes. */
+    #sidebar nav .sideboxmain .sidebar-menu-icon {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 20px !important;
+        height: 20px !important;
+        min-width: 20px !important;
+        flex: 0 0 20px !important;
+        object-fit: contain;
+    }
     #sidebar .sideboxmain.sidebox-active:not(.sidebox-current) {
-        background: transparent !important;
+        background: #f3f5f7 !important;
         color: #657180 !important;
         box-shadow: none !important;
     }
     #sidebar.sidebar-pinned .sidebar-item.sidebar-open .sideboxmain {
-        background: #e8f0ff !important;
-        color: #1d4ed8 !important;
+        background: #f3f5f7 !important;
         box-shadow: none !important;
     }
     #sidebar.sidebar-pinned .sidebar-item.sidebar-open .oh-sidebar-label {
-        color: #1d4ed8 !important;
+        color: inherit !important;
     }
     #sidebar .sideboxmain.sidebox-current {
         background: #e8f0ff !important;
@@ -672,6 +682,8 @@
     }
     #sidebarFlyout {
         min-width: 13.75rem;
+        max-height: calc(100dvh - 16px);
+        overflow-y: auto;
         padding: 0.625rem;
         border-color: #e6ebf0;
         border-radius: 0.75rem;
@@ -718,6 +730,7 @@
         left: 15.75rem !important;
     }
     @media (max-width: 991.98px) {
+        #sidebar .sidebar-reference-toggle { display: none !important; }
         #sidebar,
         #sidebar.sidebar-pinned { width: 4.5rem !important; }
         #sidebar.sidebar-pinned .oh-sidebar-label { opacity: 0 !important; pointer-events: none !important; }
@@ -851,9 +864,11 @@
                         aria-haspopup="true"
                     >
                         <img
-                            src="{% static menues.img_src %}"
+                            src="{% sidebar_icon_uri menues.img_src %}"
                             alt=""
-                            class="w-4.5 h-4.5 flex-shrink-0 transition duration-300 group-hover:filter group-hover:brightness-0 group-hover:invert"
+                            width="20"
+                            height="20"
+                            class="sidebar-menu-icon"
                         >
                         <span
                             class="oh-sidebar-label text-sm font-medium truncate flex-1 text-left"
@@ -881,6 +896,7 @@
                                     hx-select="#ohMainContent > *"
                                     hx-swap="innerHTML show:window:top"
                                     hx-push-url="true"
+                                    hx-sync="#sidebar:replace"
                                 >{{ submenu.menu }}</a>
                             </li>
                         {% endfor %}
@@ -1005,7 +1021,7 @@
         }
 
         function fullNavigateFromEvent(evt) {
-          var trigger = evt && evt.detail && evt.detail.elt;
+          var trigger = sidebarRequestSource(evt);
           var dest =
             (evt.detail && evt.detail.pathInfo && evt.detail.pathInfo.requestPath) ||
             (trigger && trigger.getAttribute && trigger.getAttribute("href")) ||
@@ -1013,8 +1029,13 @@
           window.location.href = dest;
         }
 
+        function sidebarRequestSource(evt) {
+          var detail = evt && evt.detail;
+          // beforeSwap fires on the target, not the originating sidebar link.
+          return detail && ((detail.requestConfig && detail.requestConfig.elt) || detail.elt);
+        }
+
         function setActiveSidebarMenu(btn) {
-          if (!btn) return;
           // Persistent current-page highlight: clear from every module button, then
           // apply to the active one. Distinct from the hover-only 'sidebox-active'
           // class so it survives mouseleave.
@@ -1022,10 +1043,10 @@
             document.querySelectorAll(".sideboxmain.sidebox-current").forEach(function (b) {
               if (b !== btn) b.classList.remove("sidebox-current");
             });
-            btn.classList.add("sidebox-current");
+            if (btn) btn.classList.add("sidebox-current");
           } catch (_) {}
           try {
-            if (btn.dataset.menu) localStorage.setItem("activeSidebarMenu", btn.dataset.menu);
+            if (btn && btn.dataset.menu) localStorage.setItem("activeSidebarMenu", btn.dataset.menu);
           } catch (_) {}
         }
 
@@ -1088,19 +1109,7 @@
           liItems.forEach(function (li) { flyoutListEl.appendChild(li.cloneNode(true)); });
           if (window.htmx) htmx.process(flyoutListEl);
 
-          // Restore active-link highlight in flyout
-          var path = window.location.pathname;
-          flyoutListEl.querySelectorAll("a[href]").forEach(function (a) {
-            // Some submenu links (e.g. Hours Balance) have a query string baked
-            // into their href (?year=2026) by a server-side accessibility
-            // hook. location.pathname never includes the query string, so
-            // strip it from href before comparing or it can never match.
-            var href = (a.getAttribute("href") || "").split("?")[0];
-            var extraPrefixes = (a.dataset.matchPrefixes || "").split(",").filter(Boolean);
-            var matches = (href && href !== "/" && path.startsWith(href)) ||
-              extraPrefixes.some(function (p) { return path.startsWith(p); });
-            if (matches) a.classList.add("oh-sidebar-active-link");
-          });
+          syncSidebarToUrl();
 
           positionFlyout(item.getBoundingClientRect());
           flyoutEl.classList.add("is-visible");
@@ -1139,7 +1148,6 @@
             closeSidebarMenus(item);
             item.classList.toggle("sidebar-open", !isOpen);
             btn.setAttribute("aria-expanded", isOpen ? "false" : "true");
-            if (!isOpen) setActiveSidebarMenu(btn);
             hideFlyout();
             return;
           }
@@ -1152,51 +1160,9 @@
           closeSidebarMenus();
           showFlyout(item, btn);
           btn.setAttribute("aria-expanded", "true");
-          setActiveSidebarMenu(btn);
         }
 
-        /* Legacy hover listeners intentionally disabled: module menus are click-only. */
-        /*
-        // Attach hover listeners to all sidebar items
-        document.querySelectorAll(".sidebar-item").forEach(function (item) {
-          var btn = item.querySelector(".sideboxmain");
-          if (!btn) return;
-          // Module menus are deliberately click-controlled.
-          if (false) item.addEventListener("mouseleave", function (e) {
-            // If the mouse moved directly into the flyout panel, keep the hover indicator alive
-            if (flyoutEl && flyoutEl.contains(e.relatedTarget)) return;
-            // Don't strip the highlight synchronously: there's a 6px gap between the
-            // module rail and the flyout, so crossing into the flyout reports a
-            // relatedTarget outside it — clearing here would leave the flyout open
-            // with its owning button un-highlighted. Let scheduleFlyoutClose()/
-            // hideFlyout() clear the hover state when the flyout actually closes;
-            // moving straight to another item clears it via showFlyout() instead.
-            scheduleFlyoutClose();
-          });
-        });
-
-        // Top-menu links (e.g. Dashboard) are direct <a> tags, not inside .sidebar-item.
-        // Clear any leftover hover indicator the moment the mouse enters them.
-        document.querySelectorAll("a.sideboxmain").forEach(function (link) {
-          if (false) link.addEventListener("mouseenter", function () {
-            if (currentFlyoutBtn) { currentFlyoutBtn.classList.remove("sidebox-active"); currentFlyoutBtn = null; }
-            scheduleFlyoutClose();
-          });
-        });
-
-        document.addEventListener("click", function (e) {
-          if (sidebarEl && sidebarEl.contains(e.target)) return;
-          if (flyoutEl && flyoutEl.contains(e.target)) return;
-          hideFlyout();
-        });
-
-        document.addEventListener("keydown", function (e) {
-          if (e.key !== "Escape") return;
-          closeSidebarMenus();
-          hideFlyout();
-        });
-
-        */
+        // Menus are click-controlled; pointer movement does not close them.
         document.addEventListener("click", function (e) {
           if (sidebarEl && sidebarEl.contains(e.target)) return;
           if (flyoutEl && flyoutEl.contains(e.target)) return;
@@ -1219,18 +1185,11 @@
             e.preventDefault();
             e.stopPropagation();
             var href = link.getAttribute("href") || link.getAttribute("hx-get") || "/";
-            // Capture the owning module button BEFORE hideFlyout() nulls currentFlyoutBtn
-            var activeModuleBtn = currentFlyoutBtn;
             hideFlyout();
             if (isStandaloneUrl(href)) { window.location.href = href; return; }
             var target = document.getElementById("ohMainContent");
             if (!target || !window.htmx) { window.location.href = href; return; }
-            document.querySelectorAll(".sidebar-subnav-link").forEach(function (l) { l.classList.remove("oh-sidebar-active-link"); });
-            link.classList.add("oh-sidebar-active-link");
-            // activeModuleBtn is always the correct parent — no href-matching needed
-            if (activeModuleBtn) setActiveSidebarMenu(activeModuleBtn);
             bumpGrace(1500);
-            window.history.pushState({}, "", href);
             htmx.ajax("GET", href, {
               source: link, target: "#ohMainContent",
               select: "#ohMainContent > *", swap: "innerHTML show:window:top",
@@ -1241,46 +1200,7 @@
 
         // Highlight active module button based on current URL (no accordion to open)
         function ohAccordionInit() {
-          var path = window.location.pathname;
-          var matchedBtn = null;
-          document.querySelectorAll(".sidebar-subnav-link").forEach(function (link) {
-            // Strip any query string (e.g. Hours Balance's ?year=2026) before
-            // comparing — location.pathname never includes one.
-            var href = (link.getAttribute("href") || "").split("?")[0];
-            var extraPrefixes = (link.dataset.matchPrefixes || "").split(",").filter(Boolean);
-            var matches = (href && href !== "/" && href !== "#" && path.startsWith(href)) ||
-              extraPrefixes.some(function (p) { return path.startsWith(p); });
-            if (matches) {
-              link.classList.add("oh-sidebar-active-link");
-              if (!matchedBtn) {
-                var item = link.closest(".sidebar-item");
-                matchedBtn = item && item.querySelector(".sideboxmain");
-              }
-            }
-          });
-          // Top-level links with no submenu (e.g. Dashboard) aren't covered by
-          // the subnav-link scan above — check them directly against the URL
-          // so a fresh load on /dashboard/ highlights Dashboard, not whatever
-          // module was last active in localStorage.
-          if (!matchedBtn) {
-            document.querySelectorAll("a.sideboxmain[href]").forEach(function (link) {
-              if (matchedBtn) return;
-              var href = (link.getAttribute("href") || "").split("?")[0];
-              var extraPrefixes = (link.dataset.matchPrefixes || "").split(",").filter(Boolean);
-              if ((href && href !== "/" && href !== "#" && path.startsWith(href)) ||
-                  extraPrefixes.some(function (p) { return path.startsWith(p); })) matchedBtn = link;
-            });
-          }
-          if (matchedBtn) {
-            setActiveSidebarMenu(matchedBtn);
-          } else {
-            var lastMenu = null;
-            try { lastMenu = localStorage.getItem("activeSidebarMenu"); } catch (_) {}
-            if (lastMenu) {
-              var btn = document.querySelector('.sideboxmain[data-menu="' + lastMenu.replace(/"/g, '\\"') + '"]');
-              if (btn) setActiveSidebarMenu(btn);
-            }
-          }
+          syncSidebarToUrl();
         }
 
         ohAccordionInit();
@@ -1294,14 +1214,16 @@
 
         function applySidebarPin(pinned, animate) {
           sidebarPinned = pinned;
+          var expanded = pinned && !window.matchMedia("(max-width: 991.98px)").matches;
           var content = document.querySelector(".oh-main-content");
 
           // Suppress transition on initial load to prevent a margin slide on page open
           if (!animate && content) content.style.transition = "none";
 
-          sidebarEl.classList.toggle("sidebar-pinned", pinned);
-          if (content) content.style.marginLeft = pinned ? "15.75rem" : "4.5rem";
-          if (pinned && typeof hideFlyout === "function") hideFlyout();
+          closeSidebarMenus();
+          hideFlyout();
+          sidebarEl.classList.toggle("sidebar-pinned", expanded);
+          if (content) content.style.marginLeft = expanded ? "15.75rem" : "4.5rem";
 
           // Keep the lock button's tooltip/aria-label in sync with the state.
           // (The open vs closed padlock icon itself is swapped via CSS on .sidebar-pinned.)
@@ -1317,10 +1239,16 @@
             });
           }
           try { localStorage.setItem("sidebarPinned", pinned ? "true" : "false"); } catch (_) {}
+          syncReferenceToggleLabel();
         }
 
         // Apply saved state immediately (no animation) to avoid layout flash
         applySidebarPin(sidebarPinned, false);
+        window.matchMedia("(max-width: 991.98px)").addEventListener("change", function () {
+          applySidebarPin(sidebarPinned, false);
+        });
+        window.addEventListener("resize", hideFlyout);
+        sidebarEl.querySelector("nav").addEventListener("scroll", hideFlyout);
 
         var pinBtn = document.getElementById("sidebarPinBtn");
         if (pinBtn) {
@@ -1333,10 +1261,11 @@
         var referenceToggle = document.getElementById("sidebarReferenceToggle");
         function syncReferenceToggleLabel() {
           if (!referenceToggle) return;
-          var label = sidebarPinned ? "{% trans 'Collapse sidebar' %}" : "{% trans 'Expand sidebar' %}";
+          var expanded = sidebarEl.classList.contains("sidebar-pinned");
+          var label = expanded ? "{% trans 'Collapse sidebar' %}" : "{% trans 'Expand sidebar' %}";
           referenceToggle.title = label;
           referenceToggle.setAttribute("aria-label", label);
-          referenceToggle.setAttribute("aria-pressed", sidebarPinned ? "true" : "false");
+          referenceToggle.setAttribute("aria-pressed", expanded ? "true" : "false");
         }
         syncReferenceToggleLabel();
         if (referenceToggle) {
@@ -1348,37 +1277,49 @@
         }
 
         // Re-highlight active module + link after any URL change (HTMX or browser back/forward)
+        function sidebarLinkMatchScore(link, path) {
+          var prefixes = [link.getAttribute("href") || ""].concat(
+            (link.dataset.matchPrefixes || "").split(",")
+          );
+          return prefixes.reduce(function (score, prefix) {
+            if (prefix === "/" && path === "/") return Math.max(score, 1);
+            prefix = prefix.trim().split(/[?#]/)[0].replace(/\/$/, "");
+            if (!prefix || prefix.charAt(0) !== "/") return score;
+            return path === prefix || path.startsWith(prefix + "/")
+              ? Math.max(score, prefix.length) : score;
+          }, 0);
+        }
+
+        // The current page and the open menu are deliberately independent.
         function syncSidebarToUrl() {
-          document.querySelectorAll(".sidebar-subnav-link").forEach(function (l) {
-            l.classList.remove("oh-sidebar-active-link");
-          });
           var path = window.location.pathname;
           var matchedBtn = null;
-          document.querySelectorAll(".sidebar-subnav-link").forEach(function (link) {
-            // Strip any query string (e.g. Hours Balance's ?year=2026) before
-            // comparing — location.pathname never includes one.
-            var href = (link.getAttribute("href") || "").split("?")[0];
-            if (href && href !== "/" && path.startsWith(href)) {
-              link.classList.add("oh-sidebar-active-link");
-              if (!matchedBtn) {
-                var item = link.closest(".sidebar-item");
-                matchedBtn = item && item.querySelector(".sideboxmain");
-              }
+          var bestScore = 0;
+          var links = document.querySelectorAll(".sidebar-subnav-link");
+          links.forEach(function (link) {
+            var score = sidebarLinkMatchScore(link, path);
+            if (score > bestScore) {
+              bestScore = score;
+              var item = link.closest(".sidebar-item");
+              matchedBtn = item && item.querySelector(".sideboxmain");
             }
           });
-          if (!matchedBtn) {
-            document.querySelectorAll("a.sideboxmain[href]").forEach(function (link) {
-              if (matchedBtn) return;
-              var href = (link.getAttribute("href") || "").split("?")[0];
-              if (href && href !== "/" && href !== "#" && path.startsWith(href)) matchedBtn = link;
-            });
-          }
-          // Background HTMX updates must not reactivate the page's old module
-          // while the user is browsing a different, still-open menu.
-          var openBtn = currentFlyoutBtn || document.querySelector("#sidebar .sidebar-item.sidebar-open .sideboxmain");
-          if (openBtn || matchedBtn) setActiveSidebarMenu(openBtn || matchedBtn);
+          document.querySelectorAll("a.sideboxmain[href]").forEach(function (link) {
+            var score = sidebarLinkMatchScore(link, path);
+            if (score > bestScore) { bestScore = score; matchedBtn = link; }
+            link.removeAttribute("aria-current");
+          });
+          links.forEach(function (link) {
+            var active = bestScore > 0 && sidebarLinkMatchScore(link, path) === bestScore;
+            link.classList.toggle("oh-sidebar-active-link", active);
+            if (active) link.setAttribute("aria-current", "page");
+            else link.removeAttribute("aria-current");
+          });
+          setActiveSidebarMenu(matchedBtn);
+          if (matchedBtn && matchedBtn.getAttribute("href")) matchedBtn.setAttribute("aria-current", "page");
         }
-        document.addEventListener("htmx:pushUrl", syncSidebarToUrl);
+        document.addEventListener("htmx:pushedIntoHistory", syncSidebarToUrl);
+        document.addEventListener("htmx:replacedInHistory", syncSidebarToUrl);
         document.addEventListener("htmx:afterSettle", syncSidebarToUrl);
         window.addEventListener("popstate", syncSidebarToUrl);
 
@@ -1410,16 +1351,7 @@
             var target = document.getElementById("ohMainContent");
             if (!target || !window.htmx) { window.location.href = href; return; }
 
-            document.querySelectorAll(".sidebar-subnav-link").forEach(function (l) {
-              l.classList.remove("oh-sidebar-active-link");
-            });
-            link.classList.add("oh-sidebar-active-link");
-            var parentItem = link.closest(".sidebar-item");
-            var parentBtn = parentItem && parentItem.querySelector(".sideboxmain");
-            if (parentBtn) setActiveSidebarMenu(parentBtn);
-
             bumpGrace(1500);
-            window.history.pushState({}, "", href);
             htmx.ajax("GET", href, {
               source: link,
               target: "#ohMainContent",
@@ -1467,6 +1399,14 @@
           } catch (_) {}
         });
 
+        function updateSidebarBreadcrumbs(responseText) {
+          if (!responseText) return;
+          var doc = new DOMParser().parseFromString(responseText, "text/html");
+          var newCrumbs = doc.getElementById("breadcrumbs-container");
+          var currentCrumbs = document.getElementById("breadcrumbs-container");
+          if (newCrumbs && currentCrumbs) currentCrumbs.innerHTML = newCrumbs.innerHTML;
+        }
+
         document.addEventListener("htmx:afterSettle", function (evt) {
           bumpGrace(200);
           var info = evt && evt.detail;
@@ -1481,17 +1421,13 @@
           var xhr = info.xhr;
           if (!xhr || !xhr.responseText) return;
           try {
-            var parser = new DOMParser();
-            var doc = parser.parseFromString(xhr.responseText, "text/html");
-            var newCrumbs = doc.getElementById("breadcrumbs-container");
-            var currentCrumbs = document.getElementById("breadcrumbs-container");
-            if (newCrumbs && currentCrumbs) currentCrumbs.innerHTML = newCrumbs.innerHTML;
+            updateSidebarBreadcrumbs(xhr.responseText);
           } catch (_) {}
         });
 
         document.addEventListener("htmx:beforeSwap", function (evt) {
           try {
-            var trigger = evt && evt.detail && evt.detail.elt;
+            var trigger = sidebarRequestSource(evt);
             if (!(sidebarEl && trigger && sidebarEl.contains(trigger))) return;
             var xhr = evt.detail.xhr;
             if (!xhr || xhr.status < 200 || xhr.status >= 400) return;
@@ -1504,7 +1440,7 @@
 
         function sidebarNavError(evt) {
           try {
-            var trigger = evt && evt.detail && evt.detail.elt;
+            var trigger = sidebarRequestSource(evt);
             if (!(sidebarEl && trigger && sidebarEl.contains(trigger))) return;
             fullNavigateFromEvent(evt);
           } catch (_) {}
@@ -1514,12 +1450,25 @@
         document.addEventListener("htmx:timeout", sidebarNavError);
         document.addEventListener("htmx:targetError", sidebarNavError);
 
-        /*
-         * Browser back/forward: remove HTMX's own popstate handler and reload
-         * instead — the sessionStorage cache is stale for programmatic htmx.ajax calls.
-         */
-        window.onpopstate = null;
-        window.addEventListener("popstate", function () { window.location.reload(); });
+        // HTMX owns history. It restores only #ohMainContent, leaving the shell
+        // and its event handlers intact instead of reloading the whole app.
+        document.addEventListener("htmx:historyCacheMiss", function () {
+          (window._activeAutoRefreshTimers || []).forEach(clearInterval);
+          window._activeAutoRefreshTimers = [];
+        });
+        document.addEventListener("htmx:historyRestore", function (evt) {
+          if (shouldFallbackToFullNav(evt.detail.serverResponse)) {
+            window.location.reload();
+            return;
+          }
+          closeSidebarMenus();
+          hideFlyout();
+          syncSidebarToUrl();
+          updateSidebarBreadcrumbs(evt.detail.serverResponse);
+        });
+        document.addEventListener("htmx:historyCacheMissLoadError", function () {
+          window.location.reload();
+        });
 
         document.addEventListener("keydown", function (e) {
           if (e.key === "Escape") hideFlyout();

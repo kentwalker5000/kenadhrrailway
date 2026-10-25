@@ -1,0 +1,34 @@
+{% load i18n static %}
+<style>
+  /* Match the Employee Actions icon set, without leaving a blank control if
+     the asynchronous Ionicons bundle has not hydrated yet. */
+  .document-action-icon { display: inline-flex; align-items: center; justify-content: center; width: 1rem; height: 1rem; line-height: 1; }
+  .document-action-icon ion-icon { display: inline-flex; width: 1rem; height: 1rem; font-size: 1rem; color: inherit; }
+  .document-action-icon ion-icon:not(.hydrated) { display: none; }
+  .document-action-icon ion-icon.hydrated + .document-action-icon__fallback { display: none; }
+  .document-action-icon__fallback { display: inline-flex; align-items: center; justify-content: center; width: 1rem; height: 1rem; font-size: 1rem; font-weight: 700; line-height: 1; }
+</style>
+<p id="hrDocumentLibraryIntro" class="text-sm text-[#666] mb-3">{% trans "Organisation and HR records kept separately from employee document uploads." %}</p>
+{% for folder in folders %}
+  <section class="hr-document-folder bg-white p-3 rounded-md shadow-card mb-3">
+    <div class="flex flex-wrap justify-between items-start gap-2 pb-2 border-b border-[#ececec]">
+      <div class="min-w-0"><h2 class="text-sm font-semibold mb-1">{{ folder.name }}</h2>{% if folder.description %}<p class="text-xs text-[#666] mb-0">{{ folder.description }}</p>{% endif %}</div>
+      <div class="hr-document-folder-actions flex items-center gap-1">
+        {% if perms.horilla_documents.change_hrdocumentfolder %}<button type="button" class="oh-btn oh-btn--light-bkg oh-btn--sq-sm" title="{% trans 'Edit folder' %}" aria-label="{% trans 'Edit folder' %}" data-toggle="oh-modal-toggle" data-target="#objectUpdateModal" hx-get="{% url 'hr-document-folder-edit' folder.pk %}" hx-target="#objectUpdateModalTarget"><span class="document-action-icon" aria-hidden="true"><ion-icon name="create-outline"></ion-icon><span class="document-edit-mark document-action-icon__fallback">&#9998;</span></span></button>{% endif %}
+        {% if perms.horilla_documents.add_hrlibrarydocument %}<button type="button" class="oh-btn oh-btn--secondary oh-btn--sq-sm" title="{% trans 'Upload document' %}" aria-label="{% trans 'Upload document' %}" data-toggle="oh-modal-toggle" data-target="#objectCreateModal" hx-get="{% url 'hr-document-upload' folder.pk %}" hx-target="#objectCreateModalTarget"><span class="document-action-icon" aria-hidden="true"><ion-icon name="cloud-upload-outline"></ion-icon><span class="document-upload-mark document-action-icon__fallback">&#8679;</span></span></button>{% endif %}
+        {% if perms.horilla_documents.delete_hrdocumentfolder %}
+          {% if folder.documents.all %}
+            <button class="oh-btn oh-btn--light-bkg oh-btn--sq-sm" type="button" disabled title="{% trans 'Remove the documents in this folder before deleting it.' %}" aria-label="{% trans 'Folder cannot be deleted while it contains documents' %}"><span class="document-action-icon" aria-hidden="true"><ion-icon name="trash-outline"></ion-icon><span class="document-delete-mark document-action-icon__fallback">&times;</span></span></button>
+          {% else %}
+            <form class="inline" hx-post="{% url 'hr-document-folder-delete' folder.pk %}" hx-target="#hrDocumentLibraryContent" hx-confirm="{% trans 'Delete this empty folder?' %}">{% csrf_token %}<button class="oh-btn oh-btn--danger oh-btn--sq-sm" type="submit" title="{% trans 'Delete folder' %}" aria-label="{% trans 'Delete folder' %}"><span class="document-action-icon" aria-hidden="true"><ion-icon name="trash-outline"></ion-icon><span class="document-delete-mark document-action-icon__fallback">&times;</span></span></button></form>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% if folder.documents.all %}
+      <div class="max-h-[260px] overflow-y-auto"><table class="fixed-table w-full border-separate"><tbody>{% for document in folder.documents.all %}<tr class="border-b border-[#ececec]"><td class="text-sm px-1 py-2 min-w-[180px]"><strong>{{ document.title }}</strong>{% if document.description %}<br><small class="text-[#666]">{{ document.description }}</small>{% endif %}</td><td class="text-right px-1 py-2 whitespace-nowrap">{% if perms.horilla_documents.view_hrlibrarydocument %}<a class="oh-btn oh-btn--light-bkg oh-btn--sq-sm" href="{% url 'hr-document-download' document.pk %}" title="{% trans 'Download' %}" aria-label="{% trans 'Download' %}"><span class="document-action-icon" aria-hidden="true"><ion-icon name="download-outline"></ion-icon><span class="document-download-mark document-action-icon__fallback">&#8595;</span></span></a>{% endif %}{% if perms.horilla_documents.change_hrlibrarydocument %}<button type="button" class="oh-btn oh-btn--light-bkg oh-btn--sq-sm" title="{% trans 'Edit' %}" aria-label="{% trans 'Edit' %}" data-toggle="oh-modal-toggle" data-target="#objectUpdateModal" hx-get="{% url 'hr-document-edit' document.pk %}" hx-target="#objectUpdateModalTarget"><span class="document-action-icon" aria-hidden="true"><ion-icon name="create-outline"></ion-icon><span class="document-edit-mark document-action-icon__fallback">&#9998;</span></span></button>{% endif %}{% if perms.horilla_documents.delete_hrlibrarydocument %}<form class="inline" hx-post="{% url 'hr-document-delete' document.pk %}" hx-target="#hrDocumentLibraryContent" hx-confirm="{% trans 'Delete this document?' %}">{% csrf_token %}<button class="oh-btn oh-btn--danger oh-btn--sq-sm" type="submit" title="{% trans 'Delete' %}" aria-label="{% trans 'Delete' %}"><span class="document-action-icon" aria-hidden="true"><ion-icon name="trash-outline"></ion-icon><span class="document-delete-mark document-action-icon__fallback">&times;</span></span></button></form>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+    {% else %}<p class="text-xs text-[#666] pt-3 mb-0">{% trans "No HR documents in this folder yet." %}</p>{% endif %}
+  </section>
+{% empty %}
+  <div class="oh-empty"><img src="{% static 'horilla_theme/assets/img/no-records.png' %}" class="oh-404__image" alt=""><h2 class="oh-empty__title">{% if query %}{% trans "No matching folders or documents." %}{% else %}{% trans "No document folders yet." %}{% endif %}</h2><p class="oh-empty__subtitle">{% if query %}{% trans "Try another folder or document name." %}{% else %}{% trans "Create a folder for policies, contracts, payroll records, compliance files, and other internal material." %}{% endif %}</p></div>
+{% endfor %}

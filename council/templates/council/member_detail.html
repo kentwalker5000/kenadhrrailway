@@ -1,0 +1,21 @@
+{% extends "index.html" %}
+{% load i18n %}
+
+{% block content %}
+<main class="oh-wrapper">
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div><a class="oh-text--light" href="{% url 'council-member-list' %}">← {% trans "Council Members" %}</a><h1 class="oh-title mt-2">{{ member.full_name }}</h1><p class="oh-text--light mb-0">{{ member.get_role_display }}{% if member.organisation %} · {{ member.organisation }}{% endif %}</p></div>
+    <div class="d-flex gap-2">
+      {% if perms.council.change_councilmember %}<a class="oh-btn oh-btn--light" href="{% url 'council-member-edit' member.pk %}">{% trans "Edit" %}</a>{% endif %}
+      {% if perms.council.delete_councilmember %}<form method="post" action="{% url 'council-member-delete' member.pk %}" onsubmit="return confirm('{% trans "Delete this council member and their documents?" %}')">{% csrf_token %}<button class="oh-btn oh-btn--danger" type="submit">{% trans "Delete" %}</button></form>{% endif %}
+    </div>
+  </div>
+
+  <div class="row">
+    <section class="col-lg-5 mb-4"><div class="oh-card p-4"><h2 class="oh-title">{% trans "Profile" %}</h2><dl class="mt-3"><dt>{% trans "Email" %}</dt><dd>{{ member.email|default:"—" }}</dd><dt>{% trans "Phone" %}</dt><dd>{{ member.phone|default:"—" }}</dd><dt>{% trans "Term" %}</dt><dd>{{ member.term_start|default:"—" }} – {{ member.term_end|default:"—" }}</dd><dt>{% trans "Internal notes" %}</dt><dd>{{ member.notes|default:"—"|linebreaksbr }}</dd></dl></div></section>
+    <section class="col-lg-7 mb-4"><div class="oh-card p-4"><div class="d-flex justify-content-between"><div><h2 class="oh-title">{% trans "Private Documents" %}</h2><p class="oh-text--light">{% trans "Visible only to council document managers." %}</p></div>{% if perms.council.change_councildocument %}<a class="oh-btn oh-btn--secondary" href="{% url 'council-member-document-upload' member.pk %}">{% trans "Upload" %}</a>{% endif %}</div>
+      {% for document in documents %}<div class="d-flex justify-content-between align-items-center border-top py-3"><div><strong>{{ document.title }}</strong><br><span class="oh-text--light">{{ document.description|default:"" }}{% if document.expires_on %} · {% trans "Expires" %}: {{ document.expires_on }}{% endif %}</span></div><div class="d-flex gap-2"><a class="oh-btn oh-btn--light" href="{% url 'council-document-download' document.pk %}">{% trans "Download" %}</a>{% if perms.council.delete_councildocument %}<form method="post" action="{% url 'council-document-delete' document.pk %}" onsubmit="return confirm('{% trans "Delete this document?" %}')">{% csrf_token %}<button class="oh-btn oh-btn--danger" type="submit">{% trans "Delete" %}</button></form>{% endif %}</div></div>{% empty %}<p class="oh-text--light">{% trans "No private documents are available to your role." %}</p>{% endfor %}
+    </div></section>
+  </div>
+</main>
+{% endblock content %}

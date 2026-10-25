@@ -1,14 +1,16 @@
-{% load i18n %}
+{% load i18n modal_components %}
+{% render_shared_modals as include_shared_modals %}
+{% if include_shared_modals %}
 
 <div
     class="oh-modal"
     id="allocationModal"
     role="dialog"
-    aria-labelledby="allocationModal"
+    aria-labelledby="allocationModalTitle"
 >
     <div class="oh-modal__dialog oh-modal__dialog-process max-w-[900px]">
         <div class="oh-modal__dialog-header">
-            <span class="text-md font-semibold" id="addEmployeeModalLabel">{% trans "Allocation" %}</span>
+            <span class="text-md font-semibold" id="allocationModalTitle">{% trans "Allocation" %}</span>
             <button
                 class="oh-modal__close"
                 aria-label="{% trans 'Close' %}"
@@ -119,17 +121,6 @@
     <div class="oh-activity-sidebar__body" id="genericOffCanvas"></div>
 </div>
 
-<div class="oh-modal" id="allocationModal" role="dialog" aria-labelledby="allocationModal" aria-hidden="true">
-    <div class="oh-modal__dialog oh-modal__dialog--custom oh-modal__dialog-process">
-        <div class="oh-modal__dialog-header">
-            <span class="oh-modal__dialog-title" id="addEmployeeModalLabel">{% trans "Allocation" %}</span>
-            <button class="oh-modal__close" aria-label="{% trans 'Close' %}">
-                <ion-icon name="close-outline"></ion-icon>
-            </button>
-        </div>
-        <div class="oh-modal__dialog-body oh-modal__dialog-body-process" id="allocationModalBody"></div>
-    </div>
-</div>
 
 <div class="oh-modal" id="objectDetailW75Modal" role="dialog" aria-labelledby="allocationModal">
     <div class="oh-modal__dialog oh-modal__dialog-process max-w-[900px]">
@@ -205,3 +196,4 @@
 </script>
 {% block generic_components %}
 {% endblock generic_components %}
+{% endif %}
