@@ -48,6 +48,7 @@
         position: relative;
         overflow: hidden;
         cursor: pointer;
+        border: 0;
     }
 
     .fab:hover {
@@ -138,10 +139,24 @@
     .inner-fab:nth-of-type(7) { background-color: #f97316; }
     .inner-fab:nth-of-type(8) { background-color: #3b82f6; }
     .inner-fab:nth-of-type(9) { background-color: #ec4899; }
+
+    .fab-status {
+        position: absolute;
+        left: 0;
+        bottom: 50px;
+        width: max-content;
+        max-width: min(300px, 70vw);
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: #fff;
+        color: #333;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, .18);
+        font-size: 12px;
+    }
 </style>
 
 <div class="fab-container" id="fabContainer">
-    <div class="inner-fabs">
+    <div class="inner-fabs" hx-request='{"timeout":45000}'>
         {% comment %} <div
             class="fab inner-fab"
             title="{% trans 'Dashboard Charts' %}"
@@ -254,30 +269,140 @@
     </div>
 
     <!-- Main FAB button -->
-    <div class="fab main-fab" title="{% trans 'Quick Actions' %}">
-        <i class="material-icons fab-icon">arrow_forward</i>
-    </div>
+    <button type="button" class="fab main-fab" title="{% trans 'Quick Actions' %}" aria-label="{% trans 'Quick Actions' %}" aria-expanded="false">
+        <i class="material-icons fab-icon" aria-hidden="true">arrow_forward</i>
+    </button>
+    <div class="fab-status" role="status" aria-live="polite" hidden></div>
 </div>
 
 <script>
-    $(document).ready(function() {
+    (function () {
+        const container = document.getElementById("fabContainer");
+        const button = container.querySelector(".main-fab");
+        const status = container.querySelector(".fab-status");
+        let ready = document.readyState !== "loading";
+        let pendingAction = null;
 
-        let fabContainer = $("#fabContainer");
-        let mainFab = fabContainer.find(".main-fab");
-
-        mainFab.on("click", function(e) {
-            fabContainer.toggleClass("show");
+        container.querySelectorAll(".inner-fab").forEach(function (action) {
+            action.setAttribute("role", "button");
+            action.setAttribute("tabindex", "0");
+            action.addEventListener("keydown", function (event) {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    action.click();
+                }
+            });
         });
 
-        $(document).on("click", function(e) {
-            let target = $(e.target);
-            let isCloseButton = target.closest(".oh-modal__close, .oh-modal__close--custom").length > 0;
+        function setOpen(open) {
+            container.classList.toggle("show", open);
+            button.setAttribute("aria-expanded", String(open));
+            if (!open) {
+                pendingAction = null;
+                status.hidden = true;
+            }
+        }
 
-            if (
-                !(target.closest('.fab-container').length || isCloseButton)
-            ) {
-                fabContainer.removeClass("show");
+        button.addEventListener("click", function () {
+            setOpen(!container.classList.contains("show"));
+        });
+        document.addEventListener("click", function (event) {
+            if (!event.target.closest(".fab-container, .oh-modal__close, .oh-modal__close--custom")) {
+                setOpen(false);
             }
         });
-    });
+
+        // The menu is interactive before the rest of the page and HTMX load.
+        // Remember an early selection and replay it once the page is ready.
+        container.addEventListener("click", function (event) {
+            const action = event.target.closest(".inner-fab");
+            if (!action || (ready && window.htmx)) return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            if (ready) {
+                pendingAction = null;
+                status.textContent = "{% trans 'Quick actions could not load. Please refresh the page and try again.' %}";
+                status.hidden = false;
+                return;
+            }
+            pendingAction = action;
+            status.textContent = "{% trans 'Getting quick actions ready…' %}";
+            status.hidden = false;
+        }, true);
+        document.addEventListener("DOMContentLoaded", function () {
+            ready = true;
+            if (!pendingAction) return;
+            window.setTimeout(function () {
+                if (!pendingAction) return;
+                if (!window.htmx) {
+                    status.textContent = "{% trans 'Quick actions could not load. Please refresh the page and try again.' %}";
+                    pendingAction = null;
+                    return;
+                }
+                const action = pendingAction;
+                pendingAction = null;
+                status.hidden = true;
+                action.click();
+            }, 0);
+        });
+
+        function showRequestState(target, action, failed) {
+            if (!target) return;
+            target.replaceChildren();
+            const header = document.createElement("div");
+            header.className = "oh-modal__dialog-header";
+            const close = document.createElement("button");
+            close.type = "button";
+            close.className = "oh-modal__close";
+            close.setAttribute("aria-label", "{% trans 'Close' %}");
+            close.textContent = "×";
+            close.addEventListener("click", function () {
+                const modal = target.closest(".oh-modal");
+                if (modal) modal.classList.remove("oh-modal--show");
+            });
+            header.appendChild(close);
+            const body = document.createElement("div");
+            body.className = "oh-modal__dialog-body";
+            body.setAttribute("role", "status");
+            const message = document.createElement("p");
+            message.textContent = failed
+                ? "{% trans 'Unable to load this action. Check your connection and try again.' %}"
+                : "{% trans 'Loading…' %}";
+            body.appendChild(message);
+            if (failed) {
+                const retry = document.createElement("button");
+                retry.type = "button";
+                retry.className = "oh-btn oh-btn--secondary mt-2";
+                retry.textContent = "{% trans 'Retry' %}";
+                retry.addEventListener("click", function () { action.click(); });
+                body.appendChild(retry);
+            }
+            target.append(header, body);
+        }
+
+        document.addEventListener("htmx:beforeRequest", function (event) {
+            const action = event.detail.elt && event.detail.elt.closest && event.detail.elt.closest(".inner-fab");
+            if (!action || !container.contains(action)) return;
+            const target = event.detail.target;
+            showRequestState(target, action, false);
+            if (target) {
+                target.setAttribute("aria-busy", "true");
+                const modal = target.closest(".oh-modal");
+                if (modal) modal.classList.add("oh-modal--show");
+            }
+        });
+        ["htmx:responseError", "htmx:sendError", "htmx:timeout"].forEach(function (name) {
+            document.addEventListener(name, function (event) {
+                const action = event.detail.elt && event.detail.elt.closest && event.detail.elt.closest(".inner-fab");
+                if (!action || !container.contains(action)) return;
+                showRequestState(event.detail.target, action, true);
+            });
+        });
+        document.addEventListener("htmx:afterRequest", function (event) {
+            const action = event.detail.elt && event.detail.elt.closest && event.detail.elt.closest(".inner-fab");
+            if (action && container.contains(action) && event.detail.target) {
+                event.detail.target.removeAttribute("aria-busy");
+            }
+        });
+    })();
 </script>

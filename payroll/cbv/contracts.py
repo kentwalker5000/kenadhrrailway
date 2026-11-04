@@ -305,7 +305,6 @@ class ContractsDetailView(HorillaDetailedView):
         (_("Salary Structure"), "salary_structure_id"),
         (_("Pay Frequency"), "get_pay_frequency_display"),
         (_("Status"), "get_status_display"),
-        (_("Calculate Leave Amount"), "cal_leave_amount", True),
         (_("Note"), "note_col", True),
         (_("Document"), "edocument_col", True),
     ]

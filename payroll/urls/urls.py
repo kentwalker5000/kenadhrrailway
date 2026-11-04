@@ -11,6 +11,7 @@ from payroll import dashboard as pay_dashboard
 from payroll.cbv import contracts, dashboard, payslip_automation, settings_tabs
 from payroll.models.models import Contract, Payslip
 from payroll.views import views
+from payroll.views.loss_of_pay import loss_of_pay_settings
 
 urlpatterns = [
     path("", include("payroll.urls.component_urls")),
@@ -56,6 +57,7 @@ urlpatterns = [
     path("payslip-pdf/<int:id>/", views.payslip_pdf, name="payslip-pdf"),
     # path("contract-filter/", views.contract_filter, name="contract-filter"),
     path("settings/", views.settings, name="payroll-settings"),
+    path("configuration/loss-of-pay/", loss_of_pay_settings, name="loss-of-pay-settings"),
     path(
         "payslip-status-update/<int:payslip_id>/",
         views.update_payslip_status,

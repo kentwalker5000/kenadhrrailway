@@ -389,7 +389,7 @@ WSGI_APPLICATION = "horilla.wsgi.application"
 # INTERNATIONALIZATION
 # ========================================
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = env("TIME_ZONE", default="Asia/Kolkata")
+TIME_ZONE = env("TIME_ZONE", default="Africa/Accra")
 USE_I18N = True
 USE_TZ = True
 

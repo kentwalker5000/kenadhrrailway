@@ -616,6 +616,13 @@ class UpdateAttendanceRequestFormView(HorillaFormView):
     form_class = AttendanceRequestForm
     model = Attendance
 
+    def dispatch(self, request, *args, **kwargs):
+        from attendance.permissions import can_manage_attendance
+        attendance = Attendance.objects.filter(pk=kwargs.get("pk")).first()
+        if attendance and not (attendance.employee_id.employee_user_id == request.user or can_manage_attendance(request.user, attendance)):
+            return HttpResponse("You cannot edit this attendance request.", status=403)
+        return super().dispatch(request, *args, **kwargs)
+
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.view_id = "attendanceRequest"

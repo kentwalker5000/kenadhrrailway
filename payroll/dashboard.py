@@ -262,53 +262,49 @@ def payroll_status_pipeline(request):
 @login_required
 @permission_required("payroll.view_payslip")
 def payroll_top_earners(request):
-    """Top 10 employees by net pay this month."""
+    """Top 10 employees by net pay, including clearly marked estimates."""
     from employee.models import Employee
     from payroll.models.models import Payslip
 
     from_date, to_date = _parse_period(request)
     today = to_date
     first_of_month = from_date
-    earners = []
-
-    try:
-        data = (
-            Payslip.objects.filter(
-                start_date__gte=first_of_month,
-                start_date__lte=to_date,
-                status__in=["confirmed", "paid"],
-            )
-            .values(
-                "employee_id",
-                "employee_id__employee_first_name",
-                "employee_id__employee_last_name",
-            )
-            .annotate(total_net=Sum("net_pay"), total_gross=Sum("gross_pay"))
-            .order_by("-total_net")[:10]
+    data = list(
+        Payslip.objects.filter(
+            start_date__gte=first_of_month,
+            start_date__lte=to_date,
+            status__in=["draft", "review_ongoing", "confirmed", "paid"],
         )
-
-        avatar_by_employee_id = {
-            emp.id: emp.get_avatar()
-            for emp in Employee.objects.filter(
-                id__in=[item["employee_id"] for item in data]
-            )
-        }
-
-        for item in data:
-            first = item["employee_id__employee_first_name"] or ""
-            last = item["employee_id__employee_last_name"] or ""
-
-            earners.append(
-                {
-                    "id": item["employee_id"],
-                    "name": f"{first} {last}".strip(),
-                    "avatar": avatar_by_employee_id.get(item["employee_id"]),
-                    "net": round(float(item["total_net"] or 0), 2),
-                    "gross": round(float(item["total_gross"] or 0), 2),
-                }
-            )
-    except Exception:
-        pass
+        .values(
+            "employee_id",
+            "employee_id__employee_first_name",
+            "employee_id__employee_last_name",
+        )
+        .annotate(
+            total_net=Sum("net_pay"),
+            total_gross=Sum("gross_pay"),
+            estimate_count=Count("id", filter=Q(status__in=["draft", "review_ongoing"])),
+        )
+        .order_by("-total_net", "employee_id")[:10]
+    )
+    avatar_by_employee_id = {
+        emp.id: emp.get_avatar()
+        for emp in Employee.objects.filter(id__in=[item["employee_id"] for item in data])
+    }
+    earners = []
+    for item in data:
+        first = item["employee_id__employee_first_name"] or ""
+        last = item["employee_id__employee_last_name"] or ""
+        earners.append(
+            {
+                "id": item["employee_id"],
+                "name": f"{first} {last}".strip(),
+                "avatar": avatar_by_employee_id.get(item["employee_id"]),
+                "net": round(float(item["total_net"] or 0), 2),
+                "gross": round(float(item["total_gross"] or 0), 2),
+                "estimated": item["estimate_count"] > 0,
+            }
+        )
 
     return JsonResponse({"earners": earners, "month": today.strftime("%B %Y")})
 
@@ -410,13 +406,8 @@ def payroll_loan_summary(request):
         for loan in qs[:15]:
             emp = loan.employee_id
             # Calculate remaining amount from installments
-            total_installments = loan.installments or 1
             installment_amount = loan.installment_amount or 0
-            total_payable = installment_amount * total_installments
-
-            # Count paid installments from deduction_ids
-            paid_installments = loan.deduction_ids.count()
-            paid_amount = paid_installments * installment_amount
+            paid_amount = float(loan.paid_amount())
             remaining = max(0, loan.loan_amount - paid_amount)
 
             loans.append(

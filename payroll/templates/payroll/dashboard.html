@@ -669,11 +669,11 @@
     // ─── TOP EARNERS ───
     function loadTopEarners() {
     fetchP("{% url 'payroll-dashboard-earners' %}")
-        .then(r => r.json())
+        .then(r => { if (!r.ok) throw new Error('Unable to load top earners'); return r.json(); })
         .then(data => {
             const el = document.getElementById('pd-top-earners');
             document.getElementById('earners-month').textContent = data.month;
-            if (!data.earners.length) { el.innerHTML = '<div class="pd-info-panel__empty">{% trans "No payslips this month" %}</div>'; return; }
+            if (!data.earners.length) { el.innerHTML = '<div class="pd-info-panel__empty">{% trans "No payslips in this period" %}</div>'; return; }
             el.innerHTML = data.earners.map(e => {
                 const initials = e.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
                 const avatarInner = e.avatar ? `<img src="${e.avatar}" alt="">` : initials;
@@ -681,12 +681,12 @@
                     <div class="pd-list-item__avatar">${avatarInner}</div>
                     <div class="pd-list-item__info">
                         <div class="pd-list-item__name">${e.name}</div>
-                        <div class="pd-list-item__detail">{% trans "Gross" %}: ${fmt(e.gross)}</div>
+                        <div class="pd-list-item__detail">{% trans "Gross" %}: ${fmt(e.gross)} · ${e.estimated ? '{% trans "Estimate (includes draft or review)" %}' : '{% trans "Confirmed or paid" %}'}</div>
                     </div>
                     <div class="pd-list-item__value" style="color:var(--pd-green);">${fmt(e.net)}</div>
                 </a>`;
             }).join('');
-        }).catch(() => { document.getElementById('pd-top-earners').innerHTML = '<div class="pd-info-panel__empty">{% trans "No data" %}</div>'; });
+        }).catch(() => { document.getElementById('pd-top-earners').innerHTML = '<div class="pd-info-panel__empty">{% trans "Unable to load top earners" %}</div>'; });
     }
     loadTopEarners();
 

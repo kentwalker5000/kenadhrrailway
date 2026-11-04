@@ -1038,7 +1038,7 @@ class PeriodForm(ModelForm):
 
         model = Period
         fields = "__all__"
-        exclude = ["is_active"]
+        exclude = ["is_active", "is_open"]
         widgets = {
             "period_name": forms.TextInput(
                 attrs={"placeholder": "Q1.", "class": "oh-input w-100"}

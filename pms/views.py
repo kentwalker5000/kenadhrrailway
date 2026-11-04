@@ -15,6 +15,8 @@ from dateutil.relativedelta import relativedelta
 from django import forms
 from django.contrib import messages
 from django.core.paginator import Paginator
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import ProtectedError, Q
 from django.db.utils import IntegrityError
 from django.forms import modelformset_factory
@@ -1972,45 +1974,15 @@ def feedback_answer_get(request, id, **kwargs):
             request, message=_("No Feedback found matching the query.")
         )
 
-    # check if the feedback start_date is not started yet
-    if feedback.start_date > datetime.date.today():
-        messages.info(request, _("Feedback not started yet"))
+    from pms.review_workflow import review_access_error
+    access_error = review_access_error(feedback, Employee.objects.filter(employee_user_id=request.user).first())
+    if access_error:
+        messages.error(request, access_error)
         return redirect(reverse("feedback-view"))
 
-    # check if the feedback end_date is not over
-    if feedback.end_date and feedback.end_date < datetime.date.today():
-        messages.info(request, _("Feedback is due/closed"))
-        return redirect(reverse("feedback-view"))
-    user = request.user
-    employee = Employee.objects.filter(employee_user_id=user).first()
-    answer = Answer.objects.filter(feedback_id=feedback, employee_id=employee)
     question_template = feedback.question_template_id
     questions = question_template.question.all()
     options = QuestionOptions.objects.all()
-    feedback_employees = (
-        [feedback.employee_id]
-        + [feedback.manager_id]
-        + list(feedback.colleague_id.all())
-        + list(feedback.subordinate_id.all())
-        + list(feedback.others_id.all())
-    )
-    if not employee in feedback_employees:
-        messages.info(request, _("You are not allowed to answer"))
-        return redirect(reverse("feedback-view"))
-
-    # Employee does not have an answer object
-    for employee in feedback_employees:
-        has_answer = Answer.objects.filter(
-            employee_id=employee, feedback_id=feedback
-        ).exists()
-    if has_answer:
-        feedback.status = "Closed"
-        feedback.save()
-
-    # Check if the feedback has already been answered
-    if answer:
-        messages.info(request, _("Feedback already answered"))
-        return redirect(reverse("feedback-view"))
 
     context = {
         "questions": questions,
@@ -2022,6 +1994,8 @@ def feedback_answer_get(request, id, **kwargs):
 
 
 @login_required
+@require_http_methods(["POST"])
+@transaction.atomic
 def feedback_answer_post(request, id):
     """
     This view is used to create feedback answer ,
@@ -2030,7 +2004,8 @@ def feedback_answer_post(request, id):
     Returns:
         it will redirect to feedback_list_view if the form was success full.
     """
-    feedback = Feedback.find(id)
+    from pms.review_workflow import review_access_error, validate_answers
+    feedback = Feedback.objects.select_for_update().filter(pk=id).first()
     if not feedback:
         return HorillaRedirect(
             request, message=_("No Feedback found matching the query.")
@@ -2038,21 +2013,31 @@ def feedback_answer_post(request, id):
 
     user = request.user
     employee = Employee.objects.filter(employee_user_id=user).first()
+    if feedback.period_id:
+        # Serialize submissions against HR closing the period as well.
+        feedback.period = Period.objects.select_for_update().get(pk=feedback.period_id)
+    access_error = review_access_error(feedback, employee)
+    if access_error:
+        return HttpResponse(access_error, status=403)
     question_template = feedback.question_template_id
     questions = question_template.question.all()
 
+    try:
+        validated = validate_answers(questions, request.POST)
+    except ValidationError as exc:
+        messages.error(request, exc.messages[0])
+        return render(request, "feedback/answer/feedback_answer.html", {
+            "questions": questions, "options": QuestionOptions.objects.all(), "feedback": feedback,
+        }, status=400)
+
     if request.method == "POST":
-        for question in questions:
-            if request.POST.get(f"answer{question.id}"):
-                answer = request.POST.get(f"answer{question.id}")
-                Answer.objects.get_or_create(
-                    answer={"answer": answer},
-                    question_id=question,
-                    feedback_id=feedback,
-                    employee_id=employee,
-                )
-                feedback.status = "On Track"
-                feedback.save()
+        for question, answer in validated:
+            Answer.objects.create(answer={"answer": answer}, question_id=question,
+                                  feedback_id=feedback, employee_id=employee)
+        reviewer_ids = {reviewer.pk for reviewer in feedback.requested_employees()}
+        answered_ids = set(Answer.objects.filter(feedback_id=feedback).values_list("employee_id_id", flat=True))
+        feedback.status = "Closed" if reviewer_ids.issubset(answered_ids) else "On Track"
+        feedback.save()
         for key_result in feedback.employee_key_results_id.all():
             if request.POST.get(f"key_result{key_result.id}"):
                 answer = request.POST.get(f"key_result{key_result.id}")

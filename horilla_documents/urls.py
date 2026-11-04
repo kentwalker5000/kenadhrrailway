@@ -10,6 +10,7 @@ urlpatterns = [
     path("library/folders/<int:folder_id>/delete/", views.folder_delete, name="hr-document-folder-delete"),
     path("library/folders/<int:folder_id>/upload/", views.document_upload, name="hr-document-upload"),
     path("library/documents/<int:document_id>/edit/", views.document_edit, name="hr-document-edit"),
+    path("library/documents/<int:document_id>/view/", views.document_view, name="hr-document-view"),
     path("library/documents/<int:document_id>/download/", views.document_download, name="hr-document-download"),
     path("library/documents/<int:document_id>/delete/", views.document_delete, name="hr-document-delete"),
 ]

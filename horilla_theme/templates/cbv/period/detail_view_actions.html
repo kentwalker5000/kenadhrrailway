@@ -1,4 +1,7 @@
 {% load basefilters i18n static %}
+{% if perms.pms.change_period %}
+<button type="button" class="px-4 py-2 rounded-md border text-xs" hx-get="{% url 'quarter-control' instance.pk %}" hx-target="#genericModalBody" data-toggle="oh-modal-toggle" data-target="#genericModal">{% trans "Open / Close Reviews" %}</button>
+{% endif %}
 
 {% if perms.pms.change_period or request.user|filtersubordinates %}
     <a

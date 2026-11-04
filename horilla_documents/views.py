@@ -167,6 +167,23 @@ def document_edit(request, document_id):
 
 @login_required
 @permission_required("horilla_documents.view_hrlibrarydocument")
+def document_view(request, document_id):
+    """Open an HR library file inline when the browser supports its type."""
+    document = get_object_or_404(HRLibraryDocument.objects.all(), pk=document_id)
+    if not document.document:
+        raise Http404
+    # Keep the same company-scoped permission boundary as downloads. Browsers
+    # preview PDFs, images, and text inline; unsupported Office formats will
+    # still be handled by the browser without exposing a storage URL.
+    return FileResponse(
+        document.document.open("rb"),
+        as_attachment=False,
+        filename=document.document.name.rsplit("/", 1)[-1],
+    )
+
+
+@login_required
+@permission_required("horilla_documents.view_hrlibrarydocument")
 def document_download(request, document_id):
     document = get_object_or_404(HRLibraryDocument.objects.all(), pk=document_id)
     if not document.document:

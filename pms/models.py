@@ -33,6 +33,7 @@ class Period(HorillaModel):
     )
     start_date = models.DateField()
     end_date = models.DateField()
+    is_open = models.BooleanField(default=False, verbose_name=_("Open for reviews"))
     company_id = models.ManyToManyField(Company, blank=True, verbose_name=_("Company"))
     objects = HorillaCompanyManager("company_id")
 
@@ -1031,6 +1032,10 @@ class Feedback(HorillaModel):
     review_cycle = models.CharField(
         max_length=100, null=False, blank=False, verbose_name=_("Title")
     )
+    period = models.ForeignKey(
+        Period, null=True, blank=True, on_delete=models.PROTECT,
+        related_name="reviews", verbose_name=_("Review Period"),
+    )
     manager_id = models.ForeignKey(
         Employee,
         related_name="feedback_manager",
@@ -1104,6 +1109,9 @@ class Feedback(HorillaModel):
         ordering = ["-id"]
         verbose_name = _("Feedback")
         verbose_name_plural = _("Feedbacks")
+        constraints = [
+            models.UniqueConstraint(fields=["period", "employee_id"], name="unique_period_employee_review")
+        ]
 
     def save(self, *args, **kwargs):
         start_date = self.start_date

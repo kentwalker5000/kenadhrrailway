@@ -966,7 +966,8 @@ class LeaveRequest(HorillaModel):
         ordering = ["-id"]
         verbose_name = _("Leave Request")
         verbose_name_plural = _("Leave Requests")
-        permissions = (("can_view_on_leave", "Can View On Leave"),)
+        permissions = (("can_view_on_leave", "Can View On Leave"),
+                       ("final_approve_leaverequest", "Can give final HR approval after manager review"))
         # Leave is queried as "who is off between these dates" and "what is
         # pending", both across all employees -- neither of which the FK
         # indexes Django creates can serve.
@@ -990,6 +991,26 @@ class LeaveRequest(HorillaModel):
             path="cbv/my_leave_request/comment.html",
             context={"instance": self},
         )
+
+    def approval_stage(self):
+        from leave.approval_workflow import approval_stage
+        return approval_stage(self)
+
+    def approval_action_label(self):
+        request = getattr(horilla_middlewares._thread_locals, "request", None)
+        work = EmployeeWorkInformation.objects.filter(employee_id=self.employee_id).first()
+        if request and work and work.reporting_manager_id_id == getattr(request.user.employee_get, "pk", None):
+            from leave.approval_workflow import current_review, is_ceo_for_hr_leave
+            manager_work = EmployeeWorkInformation.objects.filter(employee_id=work.reporting_manager_id).first()
+            if manager_work and current_review(self, work.reporting_manager_id_id) and is_ceo_for_hr_leave(self, manager_work, work):
+                return _("Approve")
+            return _("Review")
+        return _("Approve")
+
+    def can_reject(self):
+        from leave.approval_workflow import can_reject
+        request = getattr(horilla_middlewares._thread_locals, "request", None)
+        return bool(request and can_reject(self, request.user))
 
     def cancel_confirmation_action(self):
         """
@@ -1501,8 +1522,7 @@ class LeaveRequest(HorillaModel):
                         applicable_condition = condition
                         break
 
-        if applicable_condition and self.status == "requested":
-            LeaveRequestConditionApproval.objects.filter(leave_request_id=self).delete()
+        if applicable_condition and self.status == "requested" and not LeaveRequestConditionApproval.objects.filter(leave_request_id=self).exists():
             sequence = 0
             managers = applicable_condition.approval_managers()
             for manager in managers:
@@ -1766,26 +1786,9 @@ class LeaveRequest(HorillaModel):
         return result
 
     def is_approved(self):
+        from leave.approval_workflow import can_approve
         request = getattr(horilla_middlewares._thread_locals, "request", None)
-        if request:
-            if not hasattr(request.user, "_horilla_employee_cache"):
-                request.user._horilla_employee_cache = Employee.objects.filter(
-                    employee_user_id=request.user
-                ).first()
-            employee = request.user._horilla_employee_cache
-
-            multiple_approvals = self.multiple_approvals()
-            condition_approval = None
-            if multiple_approvals and employee:
-                for approval in multiple_approvals["approvals"]:
-                    if approval.manager_id_id == employee.id:
-                        condition_approval = approval
-                        break
-
-            if condition_approval:
-                return not condition_approval.is_approved
-            else:
-                return True
+        return bool(request and can_approve(self, request.user))
 
     def delete(self, *args, **kwargs):
         if self.status == "requested":
@@ -2083,6 +2086,14 @@ class LeaveRequestConditionApproval(models.Model):
     is_rejected = models.BooleanField(default=False)
     leave_request_id = models.ForeignKey(LeaveRequest, on_delete=models.CASCADE)
     manager_id = models.ForeignKey(Employee, on_delete=models.CASCADE)
+
+
+class LeaveManagerReview(models.Model):
+    id = models.AutoField(primary_key=True)
+    leave_request = models.OneToOneField(LeaveRequest, on_delete=models.CASCADE, related_name="manager_review")
+    reviewed_by = models.ForeignKey(Employee, on_delete=models.PROTECT)
+    reviewed_at = models.DateTimeField(auto_now=True)
+    request_signature = models.CharField(max_length=64)
 
 
 class RestrictLeave(HorillaModel):

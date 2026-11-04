@@ -32,6 +32,7 @@ class HRDocumentLibraryTests(TestCase):
         self.assertContains(response, 'id="hrDocumentLibraryContent"')
         self.assertContains(response, 'data-target="#objectCreateModal"')
         self.assertContains(response, 'document-upload-mark document-action-icon__fallback')
+        self.assertContains(response, 'document-view-mark document-action-icon__fallback')
         self.assertContains(response, 'document-edit-mark document-action-icon__fallback')
         self.assertContains(response, 'document-delete-mark document-action-icon__fallback')
 
@@ -56,6 +57,23 @@ class HRDocumentLibraryTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Policies")
         self.assertContains(response, "Remote-work policy")
+
+    def test_document_view_action_opens_the_protected_file_inline(self):
+        document = HRLibraryDocument._base_manager.create(
+            folder=self.folder,
+            company_id=self.company,
+            title="Remote-work policy",
+            document=SimpleUploadedFile("remote-work-policy.pdf", b"test", "application/pdf"),
+        )
+        library = self.client.get(reverse("hr-document-library"))
+        view_url = reverse("hr-document-view", args=[document.pk])
+        self.assertContains(library, view_url)
+        self.assertContains(library, 'target="_blank"')
+
+        response = self.client.get(view_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response["Content-Disposition"].startswith("inline"))
+        self.assertEqual(b"".join(response.streaming_content), b"test")
 
     def test_sidebar_navigation_gets_the_complete_page(self):
         response = self.client.get(

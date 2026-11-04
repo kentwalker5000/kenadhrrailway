@@ -101,7 +101,7 @@ class PublicHomepageTests(SimpleTestCase):
             if asset:
                 with self.subTest(asset=asset):
                     self.assertTrue(asset.startswith("/static/"))
-                    self.assertIsNotNone(finders.find(asset.removeprefix("/static/")))
+                    self.assertIsNotNone(finders.find(urlsplit(asset).path.removeprefix("/static/")))
             if tag == "img":
                 self.assertIn("alt", attrs)
 

@@ -60,6 +60,10 @@ class PayrollSettingsTabView(HorillaTabView):
                 "title": _("Payslip Auto Generation"),
                 "url": f"{reverse('payroll-settings-auto-payslip-tab')}",
             },
+            {
+                "title": _("Loss of Pay"),
+                "url": reverse("loss-of-pay-settings"),
+            },
         ]
 
     def get_context_data(self, **kwargs: Any):

@@ -343,6 +343,12 @@ class EmployeeForm(ModelForm):
                 )
         return badge_id
 
+    def clean_shirt_size(self):
+        # Preserve the size when an older form or integration omits the field.
+        if self.instance.pk and self.add_prefix("shirt_size") not in self.data:
+            return self.instance.shirt_size
+        return self.cleaned_data["shirt_size"]
+
 
 class EmployeeWorkInformationForm(ModelForm):
     """
@@ -565,6 +571,7 @@ excel_columns = [
     ("phone", _("Phone")),
     ("experience", _("Experience")),
     ("gender", _("Gender")),
+    ("shirt_size", _("Shirt Size")),
     ("dob", _("Date of Birth")),
     ("country", _("Country")),
     ("state", _("State")),

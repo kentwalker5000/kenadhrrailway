@@ -14,7 +14,7 @@
             color: #1f2937;
             font-size: 0.75rem;
             transition-duration: 300ms;
-            transition-property: all;
+            transition-property: color, background-color, border-color;
         }
 
         .oh-tabs__tab--active {
@@ -41,6 +41,10 @@
         }
         .requested--dot {
             background-color: orange;
+        }
+
+        #requestsContent {
+            min-height: 24rem;
         }
     </style>
 
@@ -91,6 +95,13 @@
                 if (!buttonEl || typeof htmx === "undefined") return;
                 var url = buttonEl.getAttribute("data-url");
                 if (!url) return;
+                // The tab shell, toolbar and rows arrive in separate swaps.
+                // Keep the existing panel height while those requests finish
+                // so the page and its scrollbar do not collapse and expand.
+                var content = document.getElementById("requestsContent");
+                if (content) {
+                    content.style.minHeight = Math.max(384, content.getBoundingClientRect().height) + "px";
+                }
                 var tabId = buttonEl.getAttribute("data-tab-id");
                 document.querySelectorAll(".requests-tab-btn").forEach(function (btn) {
                     btn.classList.remove("oh-tabs__tab--active");

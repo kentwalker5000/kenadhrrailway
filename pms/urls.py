@@ -17,8 +17,10 @@ from pms.cbv import (
 )
 
 from . import models, views
+from .quarter_views import quarter_control
 
 urlpatterns = [
+    path("quarter-control/<int:pk>/", quarter_control, name="quarter-control"),
     path(
         "individual-performance-tab-list/<int:pk>/",
         feedback.PerformanceTab.as_view(),

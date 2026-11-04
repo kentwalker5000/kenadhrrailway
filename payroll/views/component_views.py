@@ -261,6 +261,7 @@ def payroll_calculation(employee, start_date, end_date, month_summary=None):
     installments = (
         pretax_deductions["installments"] | post_tax_deductions["installments"]
     )
+    list(installments)  # Freeze the calculated reservations until save-time validation.
 
     taxable_gross_pay = calculate_taxable_gross_pay(**kwargs)
     tax_deductions = calculate_tax_deduction(**kwargs)
@@ -314,6 +315,10 @@ def payroll_calculation(employee, start_date, end_date, month_summary=None):
     for deduction in update_net_pay_deductions:
         net_pay_deduction_list.append(deduction)
     net_pay = net_pay - net_pay_deductions["net_deduction"]
+    if installments.exists() and round(net_pay, 2) < 0:
+        raise ValidationError(
+            _("Loan repayments exceed available pay. Adjust the repayment schedule before generating payroll.")
+        )
     payslip_data = {
         "employee": employee,
         "contract_wage": contract_wage,
@@ -1926,8 +1931,12 @@ def delete_loan(request):
                 )
             ).exists()
         ):
-            loan.delete()
-            messages.success(request, _("Loan account deleted"))
+            from django.db.models.deletion import ProtectedError
+            try:
+                loan.delete()
+                messages.success(request, _("Loan account deleted"))
+            except ProtectedError:
+                messages.error(request, _("Loan account cannot be deleted because it is included in payroll."))
         else:
             messages.error(request, _("Loan account cannot be deleted"))
     if request.headers.get("HX-Request"):
@@ -1940,62 +1949,19 @@ def delete_loan(request):
 
 
 @login_required
-@permission_required("payroll.view_loanaccount")
+@permission_required("payroll.change_loanaccount")
+@require_POST
 def edit_installment_amount(request):
-    loan_id = request.GET.get("loan_id")
-    ded_id = request.GET.get("ded_id")
-    amount_raw = request.POST.get("amount")
-    if not loan_id or not ded_id or not amount_raw:
-        return HorillaRedirect(request, message=_("Missing required parameters."))
-    try:
-        value = float(amount_raw) if amount_raw else 0.0
-        if not math.isfinite(value):
-            value = 0.0
-    except (TypeError, ValueError):
-        value = 0.0
+    from payroll.methods.loans import change_installment_amount
 
-    loans = LoanAccount.objects.filter(id=loan_id)
-    loan = loans.first()
+    loan = LoanAccount.objects.filter(pk=request.GET.get("loan_id")).first()
     if not loan:
         return HorillaRedirect(request, message=_("Loan not found."))
-    deductions = loan.deduction_ids.all().order_by("one_time_date")
-    deduction = deductions.filter(id=ded_id).first()
-    if not deduction:
-        return HorillaRedirect(request, message=_("Deduction not found."))
-    deductions_before = deductions.filter(one_time_date__lt=deduction.one_time_date)
-    deductions_after = deductions.filter(one_time_date__gt=deduction.one_time_date)
-    total_sum = deductions_before.aggregate(Sum("amount"))["amount__sum"] or 0
-
-    balance_instalment = len(deductions_after) if len(deductions_after) != 0 else 1
-
-    new_installment = (loan.loan_amount - total_sum - value) / balance_instalment
-    new_installment = round(new_installment, 2)
-    if total_sum + value > loan.loan_amount:
-        value = loan.loan_amount - total_sum
-        new_installment = 0
-
-    if not deduction.installment_payslip:
-        deduction.amount = value
-        deduction.save()
-
-        for item in deductions.filter(one_time_date__gt=deduction.one_time_date):
-            if new_installment > 0:
-                item.amount = new_installment
-                item.save()
-            else:
-                item.delete()
-                loan.deduction_ids.remove(item)
-
-        # If there are no deductions after the current one and a new installment amount is calculated,
-        if len(deductions_after) == 0 and new_installment != 0:
-            date = get_next_month_same_date(deduction.one_time_date)
-            installment = create_deductions(loan, new_installment, date)
-            loan.deduction_ids.add(installment)
-
-        loans.update(installments=len(loan.deduction_ids.all()))
+    try:
+        change_installment_amount(loan, request.GET.get("ded_id"), request.POST.get("amount"))
         messages.success(request, _("Installment amount updated successfully"))
-    else:
-        messages.error(request, _("Cannot change paid installments "))
+    except ValidationError as exc:
+        messages.error(request, " ".join(exc.messages))
 
     return render(
         request,

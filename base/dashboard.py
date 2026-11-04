@@ -1491,17 +1491,35 @@ def dashboard_leave_coverage(request):
         if scoped_ids is not None:
             emp_qs = emp_qs.filter(id__in=scoped_ids)
         active_total = emp_qs.count()
-        active_ids = set(emp_qs.values_list("id", flat=True))
+        end_of_window = today + timedelta(days=6)
+        leave_qs = LeaveRequest.objects.filter(
+            status="approved",
+            start_date__lte=end_of_window,
+        ).filter(
+            Q(end_date__gte=today)
+            | Q(end_date__isnull=True, start_date__gte=today)
+        )
+        if scoped_ids is not None:
+            leave_qs = leave_qs.filter(employee_id__in=scoped_ids)
 
-        for offset in range(7):
+        # Fetch the whole seven-day window once. The previous implementation
+        # made one distinct-count query per day; with real leave data those
+        # seven serial queries were the dashboard's slowest chart request.
+        leave_by_day = [set() for _ in range(7)]
+        for employee_id, start_date, end_date in leave_qs.values_list(
+            "employee_id", "start_date", "end_date"
+        ):
+            first_day = max(start_date, today)
+            # A null end date represents a one-day leave in this model.
+            last_day = min(end_date or start_date, end_of_window)
+            for offset in range((last_day - first_day).days + 1):
+                leave_by_day[(first_day + timedelta(days=offset) - today).days].add(
+                    employee_id
+                )
+
+        for offset, employee_ids in enumerate(leave_by_day):
             day = today + timedelta(days=offset)
-            leave_qs = LeaveRequest.objects.filter(
-                start_date__lte=day,
-                status="approved",
-            ).filter(Q(end_date__gte=day) | Q(end_date__isnull=True, start_date=day))
-            if scoped_ids is not None:
-                leave_qs = leave_qs.filter(employee_id__in=scoped_ids)
-            on_leave = leave_qs.values("employee_id").distinct().count()
+            on_leave = len(employee_ids)
             coverage_pct = (
                 round(((active_total - on_leave) / active_total) * 100, 1)
                 if active_total > 0
@@ -1519,21 +1537,11 @@ def dashboard_leave_coverage(request):
             )
 
         # Today: on-leave headcount by department (top 8)
-        today_leave_ids = set(
-            LeaveRequest.objects.filter(
-                start_date__lte=today,
-                status="approved",
-            )
-            .filter(Q(end_date__gte=today) | Q(end_date__isnull=True, start_date=today))
-            .values_list("employee_id", flat=True)
-            .distinct()
-        )
-        if scoped_ids is not None:
-            today_leave_ids &= active_ids
+        today_leave_ids = leave_by_day[0]
 
         if today_leave_ids:
             dept_rows = (
-                Employee.objects.filter(id__in=today_leave_ids)
+                Employee.objects.filter(is_active=True, id__in=today_leave_ids)
                 .values("employee_work_info__department_id__department")
                 .annotate(count=Count("id"))
                 .order_by("-count")[:8]
@@ -1661,9 +1669,34 @@ def dashboard_leave_trends(request):
 
 @login_required
 def dashboard_leave_by_department(request):
-    from leave.views import overall_leave
+    """Approved leave requests by department with one grouped query.
 
-    return _call_module_json(overall_leave, request)
+    The legacy helper loops over every department and issues a ``COUNT`` for
+    each. On a populated organisation that N+1 pattern delayed the dashboard
+    by several seconds.
+    """
+    if not (
+        request.user.is_superuser
+        or request.user.has_perm("leave.view_leaverequest")
+    ):
+        return JsonResponse({"no_permission": True})
+
+    from django.db.models import Count
+    from leave.filters import LeaveRequestFilter
+
+    rows = (
+        LeaveRequestFilter(request.GET)
+        .qs.exclude(employee_id__employee_work_info__department_id__isnull=True)
+        .values("employee_id__employee_work_info__department_id__department")
+        .annotate(count=Count("id"))
+        .order_by("employee_id__employee_work_info__department_id__department")
+    )
+    return JsonResponse(
+        {
+            "labels": [row["employee_id__employee_work_info__department_id__department"] for row in rows],
+            "data": [row["count"] for row in rows],
+        }
+    )
 
 
 @login_required

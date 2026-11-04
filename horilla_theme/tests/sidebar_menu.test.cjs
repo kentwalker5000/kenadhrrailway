@@ -12,7 +12,7 @@ const functions = [
     'setActiveSidebarMenu', 'showFlyout', 'hideFlyout',
     'closeSidebarMenus', 'toggleSidebarMenu', 'syncSidebarToUrl',
     'sidebarLinkMatchScore', 'applySidebarPin', 'syncReferenceToggleLabel',
-    'sidebarRequestSource',
+    'sidebarRequestSource', 'keepSidebarMenuOpenForLink', 'openCurrentSidebarMenu',
 ].map((name) => {
     const match = template.match(new RegExp(`        function ${name}\\([^]*?\\n        \\}`));
     assert.ok(match, `Template must contain ${name}`);
@@ -82,6 +82,9 @@ function setup(pinned = true) {
         },
         querySelector(selector) {
             if (selector === '.oh-main-content') return null;
+            if (selector === '.sideboxmain.sidebox-current') {
+                return menus.find((m) => m.button.classList.contains('sidebox-current'))?.button ?? null;
+            }
             assert.equal(selector, '#sidebar .sidebar-item.sidebar-open .sideboxmain');
             return menus.find((m) => m.item.classList.contains('sidebar-open'))?.button ?? null;
         },
@@ -100,7 +103,11 @@ function setup(pinned = true) {
         window: { location: { pathname: '/employee/view/' }, matchMedia: () => viewport },
     });
     vm.runInContext(functions, context);
+    // The template's first URL sync runs before `sidebarEl` is assigned. Keep
+    // that ordering here so accordion tests start from the real initial state.
+    context.sidebarEl = null;
     context.syncSidebarToUrl();
+    context.sidebarEl = sidebar;
     return {
         menus, context, flyout, sidebar, viewport, saved,
         click: (menu) => context.toggleSidebarMenu(menu.item, menu.button),
@@ -132,15 +139,16 @@ for (const pinned of [true, false]) {
         assert.equal(flyout.classList.contains('is-visible'), false);
     });
 
-    test(`${mode}: background page updates preserve the newly opened menu`, () => {
+    test(`${mode}: URL updates keep the current module available`, () => {
         const { menus, click, context } = setup(pinned);
         context.syncSidebarToUrl();
         click(menus[1]);
         context.syncSidebarToUrl();
         assert.equal(menus[0].button.classList.contains('sidebox-current'), true);
         assert.equal(menus[1].button.classList.contains('sidebox-current'), false);
-        assert.equal(menus[1].button.getAttribute('aria-expanded'), 'true');
-        // The content's current link remains marked independently of menu expansion.
+        assert.equal(menus[1].button.getAttribute('aria-expanded'), pinned ? 'false' : 'true');
+        assert.equal(menus[0].item.classList.contains('sidebar-open'), pinned);
+        // The content's current link remains marked as active after navigation.
         assert.equal(menus[0].link.classList.contains('oh-sidebar-active-link'), true);
     });
 }
@@ -163,6 +171,24 @@ test('an empty menu cannot close the currently open menu', () => {
     click(menus[1]);
     assert.equal(menus[0].item.classList.contains('sidebar-open'), true);
     assert.equal(menus[0].button.classList.contains('sidebox-current'), true);
+});
+
+test('selecting a submenu keeps its pinned parent accordion open', () => {
+    const { menus, context, click } = setup();
+    click(menus[1]);
+    context.keepSidebarMenuOpenForLink(menus[1].link);
+    assert.equal(menus[1].item.classList.contains('sidebar-open'), true);
+    assert.equal(menus[1].button.getAttribute('aria-expanded'), 'true');
+    assert.ok(menus.filter((menu) => menu !== menus[1]).every(
+        (menu) => !menu.item.classList.contains('sidebar-open'),
+    ));
+});
+
+test('a full-page navigation reopens the current module in the pinned sidebar', () => {
+    const { menus, context } = setup();
+    context.openCurrentSidebarMenu();
+    assert.equal(menus[0].item.classList.contains('sidebar-open'), true);
+    assert.equal(menus[0].button.getAttribute('aria-expanded'), 'true');
 });
 
 test('closing a flyout clears its previous owner and accessibility state', () => {
@@ -269,6 +295,9 @@ test('HTMX owns history without duplicate pushes or unconditional Back/Forward r
     assert.match(template, /hx-push-url="true"/);
     assert.match(template, /hx-sync="#sidebar:replace"/);
     assert.match(template, /htmx:historyRestore/);
+    const historyRestore = template.match(/htmx:historyRestore[\s\S]*?updateSidebarBreadcrumbs\(evt\.detail\.serverResponse\);/);
+    assert.ok(historyRestore, 'History restore handler must remain present');
+    assert.doesNotMatch(historyRestore[0], /closeSidebarMenus\(\);/);
     const index = readFileSync(path.join(__dirname, '../templates/index.html'), 'utf8');
     assert.match(index, /id="ohMainContent"[^>]*hx-history-elt[^>]*hx-history="false"/);
 });

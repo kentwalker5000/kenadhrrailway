@@ -708,80 +708,17 @@ class HolidayGetUpdateDeleteAPIView(APIView):
 class LeaveRequestApproveAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get_leave_request(self, pk):
-        try:
-            return LeaveRequest.objects.get(pk=pk)
-        except LeaveRequest.DoesNotExist as e:
-            raise serializers.ValidationError(e)
-
-    def leave_approve_calculation(self, leave_request, available_leave):
-        if leave_request.requested_days > available_leave.available_days:
-            leave = leave_request.requested_days - available_leave.available_days
-            leave_request.approved_available_days = available_leave.available_days
-            available_leave.available_days = 0
-            available_leave.carryforward_days = (
-                available_leave.carryforward_days - leave
-            )
-
-            leave_request.approved_carryforward_days = leave
-        else:
-            temp = available_leave.available_days
-            available_leave.available_days = temp - leave_request.requested_days
-            leave_request.approved_available_days = leave_request.requested_days
-        available_leave.save()
-
-    def leave_multiple_approve(self, request, leave_request, available_leave):
-        if request.user.is_superuser:
-            LeaveRequestConditionApproval.objects.filter(
-                leave_request_id=leave_request
-            ).update(is_approved=True)
-            self.leave_approve_calculation(leave_request, available_leave)
-            leave_request.status = "approved"
-            leave_request.save()
-        else:
-            conditional_requests = leave_request.multiple_approvals()
-            approver = [
-                manager
-                for manager in conditional_requests["managers"]
-                if manager.employee_user_id == request.user
-            ]
-            condition_approval = LeaveRequestConditionApproval.objects.filter(
-                manager_id=approver[0], leave_request_id=leave_request
-            ).first()
-            condition_approval.is_approved = True
-            condition_approval.save()
-            if approver[0] == conditional_requests["managers"][-1]:
-                self.leave_approve_calculation(leave_request, available_leave)
-                leave_request.status = "approved"
-                leave_request.save()
-
     @manager_permission_required("leave.change_leaverequest")
     def put(self, request, pk):
-        leave_request = self.get_leave_request(pk)
-        serializer = LeaveRequestApproveSerializer(leave_request, data=request.data)
-        if serializer.is_valid():
-            available_leave = serializer.validated_data.get("available_leave")
-            if not leave_request.multiple_approvals():
-                self.leave_approve_calculation(leave_request, available_leave)
-                leave_request.status = "approved"
-                leave_request.save()
-            else:
-                self.leave_multiple_approve(request, leave_request, available_leave)
-            with contextlib.suppress(Exception):
-                notify.send(
-                    request.user.employee_get,
-                    recipient=leave_request.employee_id.employee_user_id,
-                    verb="Your Leave request has been approved",
-                    verb_ar="تمت الموافقة على طلب الإجازة الخاص بك",
-                    verb_de="Ihr Urlaubsantrag wurde genehmigt",
-                    verb_es="Se ha aprobado su solicitud de permiso",
-                    verb_fr="Votre demande de congé a été approuvée",
-                    icon="people-circle",
-                    redirect=f"/leave/user-request-view?id={leave_request.id}",
-                    api_redirect=f"/api/leave/user-request/{leave_request.id}",
-                )
-            return Response(status=200)
-        return Response(serializer.errors, status=400)
+        from django.core.exceptions import PermissionDenied, ValidationError
+        from leave.approval_workflow import approve_leave
+        try:
+            leave, message = approve_leave(pk, request.user)
+        except PermissionDenied as exc:
+            return Response({"detail": str(exc)}, status=403)
+        except (ValidationError, LeaveRequest.DoesNotExist) as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response({"detail": message, "status": leave.status}, status=200)
 
 
 class LeaveRequestRejectAPIView(APIView):
@@ -809,7 +746,10 @@ class LeaveRequestRejectAPIView(APIView):
     @manager_permission_required("leave.change_leaverequest")
     def put(self, request, pk):
         leave_request = self.get_leave_request(pk)
-        employee_id = request.user.employee_get
+        from leave.approval_workflow import can_reject
+        if not can_reject(leave_request, request.user):
+            return Response({"detail": "You cannot reject this request at its current approval stage."}, status=403)
+        employee_id = leave_request.employee_id
         if leave_request.status != "rejected":
             self.leave_calculation(leave_request, employee_id)
             with contextlib.suppress(Exception):
@@ -950,20 +890,16 @@ class LeaveRequestBulkApproveDeleteAPIview(APIView):
     @manager_permission_required("leave.change_leaverequest")
     def put(self, request):
         leave_requests = self.get_leave_requests(request)
+        from django.core.exceptions import PermissionDenied, ValidationError
+        from leave.approval_workflow import approve_leave
+        results = []
         for leave_request in leave_requests:
-            employee_id = leave_request.employee_id
-            leave_type_id = leave_request.leave_type_id
-            available_leave = AvailableLeave.objects.get(
-                leave_type_id=leave_type_id, employee_id=employee_id
-            )
-            total_available_leave = (
-                available_leave.available_days + available_leave.carryforward_days
-            )
-            if total_available_leave >= leave_request.requested_days:
-                self.leave_approve_calculation(leave_request, available_leave)
-                leave_request.status = "approved"
-                leave_request.save()
-        return Response(status=200)
+            try:
+                leave, message = approve_leave(leave_request.pk, request.user)
+                results.append({"id": leave.pk, "status": leave.status, "detail": message})
+            except (PermissionDenied, ValidationError) as exc:
+                results.append({"id": leave_request.pk, "error": str(exc)})
+        return Response({"results": results}, status=200)
 
     @manager_permission_required("leave.delete_leaverequest")
     def delete(self, request):

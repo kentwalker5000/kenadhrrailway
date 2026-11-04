@@ -1,6 +1,9 @@
 {% load i18n %}{% load basefilters %}
 {% if perms.pms.change_period or perms.pms.delete_period or request.user|filtersubordinates %}
     <div onclick="event.stopPropagation()" class="flex items-center justify-center gap-1">
+        {% if perms.pms.change_period %}
+        <button type="button" class="oh-btn oh-btn--light-bkg px-2" hx-get="{% url 'quarter-control' instance.pk %}" hx-target="#genericModalBody" data-toggle="oh-modal-toggle" data-target="#genericModal">{% trans "Reviews" %}</button>
+        {% endif %}
         {% if perms.pms.change_period or request.user|filtersubordinates %}
             <a
                 data-toggle="oh-modal-toggle"

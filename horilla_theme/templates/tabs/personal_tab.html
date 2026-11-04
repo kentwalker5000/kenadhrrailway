@@ -33,6 +33,12 @@
                             </dd>
                         </div>
                         <div class="flex items-baseline justify-between gap-3 py-2">
+                            <dt class="text-xs font-medium text-color-600">{% trans "Shirt size" %}</dt>
+                            <dd class="text-right text-sm {% if employee.shirt_size %}font-medium text-dark-500{% else %}italic text-dark-100{% endif %}">
+                                {{ employee.get_shirt_size_display|default:_("Not set") }}
+                            </dd>
+                        </div>
+                        <div class="flex items-baseline justify-between gap-3 py-2">
                             <dt class="text-xs font-medium text-color-600">{% trans "Experience" %}</dt>
                             <dd class="text-right text-sm {% if employee.experience %}font-medium text-dark-500{% else %}italic text-dark-100{% endif %}">
                                 {% if employee.experience %}{{ employee.experience }}

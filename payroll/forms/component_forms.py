@@ -791,6 +791,9 @@ class LoanAccountForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["installment_amount"].disabled = True
+        self.fields["installment_amount"].required = False
+        self.fields["installment_amount"].help_text = _("Calculated from the amount and total installments; the final installment includes any rounding remainder.")
         if not self.instance.pk:
             self.initial["provided_date"] = str(datetime.date.today())
             self.initial["installment_start_date"] = str(datetime.date.today())
@@ -823,6 +826,8 @@ class LoanAccountForm(ModelForm):
                     "installments",
                     "installment_amount",
                     "installment_start_date",
+                    "provided_date",
+                    "disbursed_externally",
                 ]
             for field_name in locked_fields:
                 if field_name not in self.fields:

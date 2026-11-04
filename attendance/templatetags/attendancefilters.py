@@ -21,6 +21,11 @@ from horilla.horilla_middlewares import _thread_locals
 
 register = template.Library()
 
+@register.filter
+def requires_clock_location(user):
+    from geofencing.checks import active_geofence
+    return bool(active_geofence(getattr(user, "employee_get", None)))
+
 
 @register.filter(name="is_string")
 def is_string(value):

@@ -998,185 +998,37 @@ def leave_request_delete(request, id):
 @login_required
 @manager_can_enter("leave.change_leaverequest")
 def leave_request_approve(request, id, emp_id=None):
-    """
-    function used to approve a leave request.
-
-    Parameters:
-    request (HttpRequest): The HTTP request object.
-    id : leave request id
-    emp_id : employee id if the approval operation comes from "/employee/employee-view/{employee_id}/" template.
-
-
-    Returns:
-    GET : If `emp_id` is provided, it returns to the "/employee/employee-view/{employee_id}/" template after approval.
-          Otherwise, it returns to the default leave request view template.
-    """
-    leave_request = LeaveRequest.find(id)
-    if not leave_request:
-        return HorillaRedirect(
-            request, message=_("No leave rquest found matching the query.")
-        )
-    employee_id = leave_request.employee_id
-    if not request.user.is_superuser:
-        if employee_id == request.user.employee_get:
-            messages.error(request, _("You cannot approve your own leave request."))
-            if emp_id is not None:
-                employee_id = emp_id
-                return redirect(f"/employee/employee-view/{employee_id}/")
-            return HorillaRedirect(request)
-    leave_type_id = leave_request.leave_type_id
+    """Record manager review or company HR's final approval."""
+    from django.core.exceptions import PermissionDenied, ValidationError
+    from leave.approval_workflow import approve_leave
     try:
-        available_leave = AvailableLeave.objects.get(
-            leave_type_id=leave_type_id, employee_id=employee_id
-        )
-    except AvailableLeave.DoesNotExist:
-        messages.error(
-            request,
-            _("No available leave record found for this employee and leave type."),
-        )
-        if request.headers.get("HX-Request"):
-            response = HttpResponse("", status=200)
-            response["HX-Trigger"] = json.dumps(
-                {
-                    "reloadLeaveRequestList": {"target": "body"},
-                    "horillaMessage": {
-                        "level": "error",
-                        "text": str(
-                            _(
-                                "No available leave record found for this employee and leave type."
-                            )
-                        ),
-                    },
-                }
-            )
-            return response
-        return HorillaRedirect(request)
-
-    total_available_leave = (
-        available_leave.available_days + available_leave.carryforward_days
-    )
-    send_notification = False
-    approved = False
-    error_message = ""
-    if leave_request.status != "approved":
-        if total_available_leave >= leave_request.requested_days:
-            if leave_request.requested_days > available_leave.carryforward_days:
-                leave = leave_request.requested_days - available_leave.carryforward_days
-                leave_request.approved_carryforward_days = (
-                    available_leave.carryforward_days
+        leave_request, message = approve_leave(id, request.user)
+        messages.success(request, message)
+        level = "success"
+        if leave_request.status == "approved":
+            with contextlib.suppress(Exception):
+                notify.send(
+                    request.user.employee_get,
+                    recipient=leave_request.employee_id.employee_user_id,
+                    verb="Your leave request has been approved.",
+                    icon="people-circle",
+                    redirect=reverse("user-request-view") + f"?id={leave_request.pk}",
                 )
-                available_leave.carryforward_days = 0
-                available_leave.available_days = available_leave.available_days - leave
-                leave_request.approved_available_days = leave
-            else:
-                temp = available_leave.carryforward_days
-                available_leave.carryforward_days = temp - leave_request.requested_days
-                leave_request.approved_carryforward_days = leave_request.requested_days
-            leave_request.status = "approved"
-            if not leave_request.multiple_approvals():
-                leave_request.save()
-                available_leave.save()
-                send_notification = True
-                approved = True
-            else:
-                if request.user.is_superuser:
-                    LeaveRequestConditionApproval.objects.filter(
-                        leave_request_id=leave_request
-                    ).update(is_approved=True)
-                    leave_request.save()
-                    available_leave.save()
-                    send_notification = True
-                    approved = True
-                else:
-                    conditional_requests = leave_request.multiple_approvals()
-                    approver = next(
-                        (
-                            manager
-                            for manager in conditional_requests["managers"]
-                            if manager == request.user.employee_get
-                        ),
-                        None,
-                    )
-                    condition_approval = LeaveRequestConditionApproval.objects.filter(
-                        manager_id=approver, leave_request_id=leave_request
-                    ).first()
-                    if condition_approval is None:
-                        error_message = str(
-                            _("You are not an approver for this leave request.")
-                        )
-                        messages.error(request, error_message)
-                    else:
-                        condition_approval.is_approved = True
-                        managers = []
-                        for manager in conditional_requests["managers"]:
-                            managers.append(manager.employee_user_id)
-                        if len(managers) > condition_approval.sequence:
-                            with contextlib.suppress(Exception):
-                                notify.send(
-                                    request.user.employee_get,
-                                    recipient=managers[condition_approval.sequence],
-                                    verb="You have a new leave request to validate.",
-                                    verb_ar="لديك طلب إجازة جديد يجب التحقق منه.",
-                                    verb_de="Sie haben eine neue Urlaubsanfrage zur Validierung.",
-                                    verb_es="Tiene una nueva solicitud de permiso que debe validar.",
-                                    verb_fr="Vous avez une nouvelle demande de congé à valider.",
-                                    icon="people-circle",
-                                    redirect=f"/leave/request-view?id={leave_request.id}",
-                                )
-                        condition_approval.save()
-                        approved = True
-                        if approver == conditional_requests["managers"][-1]:
-                            leave_request.save()
-                            available_leave.save()
-                            send_notification = True
-            if approved:
-                messages.success(request, _("Leave request approved successfully.."))
-                if send_notification:
-                    with contextlib.suppress(Exception):
-                        notify.send(
-                            request.user.employee_get,
-                            recipient=leave_request.employee_id.employee_user_id,
-                            verb="Your Leave request has been approved",
-                            verb_ar="تمت الموافقة على طلب الإجازة الخاص بك",
-                            verb_de="Ihr Urlaubsantrag wurde genehmigt",
-                            verb_es="Se ha aprobado su solicitud de permiso",
-                            verb_fr="Votre demande de congé a été approuvée",
-                            icon="people-circle",
-                            redirect=reverse("user-request-view")
-                            + f"?id={leave_request.id}",
-                        )
-                    mail_thread = LeaveMailSendThread(
-                        request, leave_request, type="approve"
-                    )
-                    mail_thread.start()
-        else:
-            error_message = str(
-                _(f"{employee_id} dont have enough leave days to approve the request..")
-            )
-            messages.error(request, error_message)
-    else:
-        error_message = str(_("Leave request already approved"))
-        messages.error(request, error_message)
+            LeaveMailSendThread(request, leave_request, type="approve").start()
+    except (PermissionDenied, ValidationError, LeaveRequest.DoesNotExist) as exc:
+        message = exc.messages[0] if isinstance(exc, ValidationError) else str(exc)
+        level = "error"
+        messages.error(request, message)
     if request.headers.get("HX-Request"):
-        response = HttpResponse("", status=200)
-        trigger_data = {"reloadLeaveRequestList": {"target": "body"}}
-        if approved:
-            trigger_data["horillaMessage"] = {
-                "level": "success",
-                "text": str(_("Leave request approved successfully..")),
-            }
-        elif error_message:
-            trigger_data["horillaMessage"] = {
-                "level": "error",
-                "text": error_message,
-            }
-        response["HX-Trigger"] = json.dumps(trigger_data)
+        response = HttpResponse("")
+        response["HX-Trigger"] = json.dumps({
+            "reloadLeaveRequestList": {"target": "body"},
+            "horillaMessage": {"level": level, "text": message},
+        })
         return response
     if emp_id is not None:
-        employee_id = emp_id
-        return redirect(f"/employee/employee-view/{employee_id}/")
+        return redirect(f"/employee/employee-view/{emp_id}/")
     return HorillaRedirect(request)
-
 
 @login_required
 @manager_can_enter("leave.change_leaverequest")
@@ -1246,6 +1098,7 @@ def leave_bulk_reject(request):
 @login_required
 @hx_request_required
 @manager_can_enter("leave.change_leaverequest")
+@transaction.atomic
 def leave_request_cancel(request, id, emp_id=None):
     """
     function used to Reject leave request.
@@ -1260,6 +1113,11 @@ def leave_request_cancel(request, id, emp_id=None):
           Otherwise, it returns to the default leave request view template.
 
     """
+    from leave.approval_workflow import can_reject
+    leave_request = LeaveRequest.objects.select_for_update().get(pk=id)
+    if not can_reject(leave_request, request.user):
+        messages.error(request, _("You cannot reject this request at its current approval stage."))
+        return HttpResponse("You cannot reject this request at its current approval stage.", status=403)
     form = RejectForm()
     if request.method == "POST":
         form = RejectForm(request.POST)

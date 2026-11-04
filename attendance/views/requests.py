@@ -10,6 +10,7 @@ from datetime import date, datetime, time
 from urllib.parse import parse_qs
 
 from django.contrib import messages
+from django.db import transaction, models
 from django.db.models import ProtectedError, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -17,6 +18,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.http import require_http_methods
+from django.utils import timezone
 
 from attendance.filters import AttendanceFilters, AttendanceRequestReGroup
 from attendance.forms import (
@@ -27,14 +29,17 @@ from attendance.forms import (
 )
 from attendance.methods.utils import (
     get_diff_dict,
+    format_time,
     get_employee_last_name,
     paginator_qry,
     shift_schedule_today,
+    strtime_seconds,
 )
 from attendance.models import (
     Attendance,
     AttendanceActivity,
     AttendanceLateComeEarlyOut,
+    AttendanceOverTime,
     BatchAttendance,
 )
 from attendance.views.clock_in_out import early_out, late_come
@@ -69,6 +74,78 @@ def _clean_requested_data_none_strings(requested_data):
     return {
         key: None if value == "None" else value for key, value in requested_data.items()
     }
+
+
+def reconcile_corrected_activity(attendance, previous_date):
+    """Keep the first/last clock events consistent with an approved correction."""
+    if not attendance.attendance_clock_in or not attendance.attendance_clock_in_date:
+        return
+    activities = list(AttendanceActivity.objects.filter(
+        employee_id=attendance.employee_id, attendance_date=previous_date
+    ).order_by("clock_in_date", "clock_in", "pk"))
+    if not activities:
+        activities = [AttendanceActivity(employee_id=attendance.employee_id)]
+    for activity in activities:
+        activity.attendance_date = attendance.attendance_date
+        activity.shift_day = attendance.attendance_day
+    first, last = activities[0], activities[-1]
+    first.clock_in_date = attendance.attendance_clock_in_date
+    first.clock_in = attendance.attendance_clock_in
+    first.in_datetime = timezone.make_aware(datetime.combine(first.clock_in_date, first.clock_in))
+    last.clock_out_date = attendance.attendance_clock_out_date
+    last.clock_out = attendance.attendance_clock_out
+    last.out_datetime = (timezone.make_aware(datetime.combine(last.clock_out_date, last.clock_out))
+                         if last.clock_out_date and last.clock_out else None)
+    for activity in activities:
+        activity.save()
+
+
+def apply_attendance_correction(attendance):
+    previous_date = attendance.attendance_date
+    previous_month = (attendance.attendance_date.year, attendance.attendance_date.strftime("%B").lower())
+    previous_employee_id = attendance.employee_id_id
+    old_work = attendance.at_work_second or 0
+    old_overtime = attendance.approved_overtime_second or 0
+    old_pending = max(0, strtime_seconds(attendance.minimum_hour) - old_work)
+    requested_data = attendance.requested_data
+    if requested_data is not None:
+        if isinstance(requested_data, str):
+            requested_data = json.loads(requested_data)
+        for name, value in _clean_requested_data_none_strings(requested_data).items():
+            field = Attendance._meta.get_field(name)
+            if isinstance(field, models.ForeignKey):
+                setattr(attendance, field.attname, field.target_field.to_python(value) if value is not None else None)
+            else:
+                setattr(attendance, name, field.to_python(value))
+    if attendance.employee_id_id != previous_employee_id:
+        raise ValueError("An attendance correction cannot change its employee.")
+    if attendance.attendance_date != previous_date:
+        attendance.attendance_day = EmployeeShiftDay.objects.get(day=attendance.attendance_date.strftime("%A").lower())
+    attendance.requested_data = None
+    if attendance.request_type == "create_request":
+        attendance.request_type = "created_request"
+    attendance.save()
+    # Convert string values supplied by the request back to Django date/time values.
+    attendance.refresh_from_db()
+    new_month = (attendance.attendance_date.year, attendance.attendance_date.strftime("%B").lower())
+    if previous_month != new_month:
+        # save() applied the change in totals to the new month; move the
+        # original contribution there as well and remove it from the old one.
+        for (year, month), direction in ((previous_month, -1), (new_month, 1)):
+            account, _ = AttendanceOverTime.objects.get_or_create(
+                employee_id=attendance.employee_id, year=year, month=month,
+                defaults={"hour_account_second": 0, "hour_pending_second": 0, "overtime_second": 0},
+            )
+            AttendanceOverTime.objects.filter(pk=account.pk).update(
+                hour_account_second=models.F("hour_account_second") + direction * old_work,
+                hour_pending_second=models.F("hour_pending_second") + direction * old_pending,
+                overtime_second=models.F("overtime_second") + direction * old_overtime,
+            )
+            account.refresh_from_db()
+            account.worked_hours = format_time(account.hour_account_second or 0)
+            account.pending_hours = format_time(account.hour_pending_second or 0)
+            account.overtime = format_time(account.overtime_second or 0)
+            account.save(update_fields=["worked_hours", "pending_hours", "overtime"])
 
 
 @login_required
@@ -322,6 +399,10 @@ def attendance_request_changes(request, attendance_id):
             request, message=_("No Attendance found matching the query.")
         )
 
+    from attendance.permissions import can_manage_attendance
+    if not (attendance.employee_id.employee_user_id == request.user or can_manage_attendance(request.user, attendance)):
+        return HttpResponse("You cannot request changes to this attendance.", status=403)
+
     if request.GET.get("previous_url"):
         form = AttendanceRequestForm(initial=request.GET.dict())
     else:
@@ -420,6 +501,10 @@ def validate_attendance_request(request, attendance_id):
             request, message=_("No Attendance found matching the query.")
         )
 
+    from attendance.permissions import can_view_attendance
+    if not can_view_attendance(request.user, attendance):
+        return HttpResponse("You cannot view this attendance request.", status=403)
+
     first_dict = attendance.serialize()
     empty_data = {
         "employee_id": None,
@@ -465,6 +550,7 @@ def validate_attendance_request(request, attendance_id):
 @login_required
 @manager_can_enter("attendance.change_attendance")
 @require_http_methods(["POST"])
+@transaction.atomic
 def approve_validate_attendance_request(request, attendance_id):
     """
     This method is used to validate the attendance requests
@@ -475,6 +561,10 @@ def approve_validate_attendance_request(request, attendance_id):
             request, message=_("No Attendance found matching the query.")
         )
 
+    from attendance.permissions import can_manage_attendance
+    if not can_manage_attendance(request.user, attendance):
+        return HttpResponse("You cannot approve this attendance request.", status=403)
+
     prev_attendance_date = attendance.attendance_date
     prev_attendance_clock_in_date = attendance.attendance_clock_in_date
     prev_attendance_clock_in = attendance.attendance_clock_in
@@ -483,45 +573,8 @@ def approve_validate_attendance_request(request, attendance_id):
     attendance.is_validate_request = False
     attendance.request_description = None
     attendance.approved_by = request.user.employee_get
-    attendance.save()
-    if attendance.requested_data is not None:
-        requested_data = _clean_requested_data_none_strings(
-            json.loads(attendance.requested_data)
-        )
-        Attendance.objects.filter(id=attendance_id).update(**requested_data)
-        # DUE TO AFFECT THE OVERTIME CALCULATION ON SAVE METHOD, SAVE THE INSTANCE ONCE MORE
-        attendance = Attendance.objects.get(id=attendance_id)
-        attendance.save()
-    if attendance.request_type == "create_request":
-        attendance.request_type = "created_request"
-        attendance.requested_data = None
-        attendance.save()
-    if (
-        attendance.attendance_clock_out is None
-        or attendance.attendance_clock_out_date is None
-    ):
-        attendance.attendance_validated = True
-        activity = AttendanceActivity.objects.filter(
-            employee_id=attendance.employee_id,
-            attendance_date=prev_attendance_date,
-            clock_in_date=prev_attendance_clock_in_date,
-            clock_in=prev_attendance_clock_in,
-        )
-        if activity:
-            activity.update(
-                employee_id=attendance.employee_id,
-                attendance_date=attendance.attendance_date,
-                clock_in_date=attendance.attendance_clock_in_date,
-                clock_in=attendance.attendance_clock_in,
-            )
-
-        else:
-            AttendanceActivity.objects.create(
-                employee_id=attendance.employee_id,
-                attendance_date=attendance.attendance_date,
-                clock_in_date=attendance.attendance_clock_in_date,
-                clock_in=attendance.attendance_clock_in,
-            )
+    apply_attendance_correction(attendance)
+    reconcile_corrected_activity(attendance, prev_attendance_date)
 
     # Create late come or early out objects
     shift = attendance.shift_id
@@ -608,11 +661,9 @@ def cancel_attendance_request(request, attendance_id):
     """
     try:
         attendance = Attendance.objects.get(id=attendance_id)
-        if (
-            attendance.employee_id.employee_user_id == request.user
-            or is_reportingmanager(request)
-            or request.user.has_perm("attendance.change_attendance")
-        ):
+        from attendance.permissions import can_manage_attendance
+        if attendance.employee_id.employee_user_id == request.user or can_manage_attendance(request.user, attendance):
+            was_new_request = attendance.request_type == "create_request"
             attendance.is_validate_request_approved = False
             attendance.is_validate_request = False
             attendance.request_description = None
@@ -620,7 +671,7 @@ def cancel_attendance_request(request, attendance_id):
             attendance.request_type = None
 
             attendance.save()
-            if attendance.request_type == "create_request":
+            if was_new_request:
                 attendance.delete()
                 messages.success(request, _("The requested attendance is removed."))
             else:
@@ -637,6 +688,8 @@ def cancel_attendance_request(request, attendance_id):
                 icon="close-circle-outline",
                 redirect=reverse("request-attendance-view"),
             )
+        else:
+            return HttpResponse("You cannot reject this attendance request.", status=403)
     except (Attendance.DoesNotExist, OverflowError):
         messages.error(request, _("Attendance request not found"))
     if request.headers.get("HX-Request"):
@@ -701,6 +754,7 @@ def select_all_filter_attendance_request(request):
 
 @login_required
 @manager_can_enter("attendance.change_attendance")
+@transaction.atomic
 def bulk_approve_attendance_request(request):
     """
     This method is used to validate the attendance requests
@@ -709,10 +763,9 @@ def bulk_approve_attendance_request(request):
     filtered_ids = []
     for attendance_id in ids:
         attendance = Attendance.objects.get(id=attendance_id)
-        if attendance.employee_id != request.user.employee_get:
+        from attendance.permissions import can_manage_attendance
+        if can_manage_attendance(request.user, attendance):
             filtered_ids.append(attendance_id)
-    if request.user.is_superuser:
-        filtered_ids = ids
     for attendance_id in filtered_ids:
         attendance = Attendance.objects.get(id=attendance_id)
         prev_attendance_date = attendance.attendance_date
@@ -723,41 +776,8 @@ def bulk_approve_attendance_request(request):
         attendance.is_validate_request = False
         attendance.request_description = None
         attendance.approved_by = request.user.employee_get
-        attendance.save()
-        if attendance.requested_data is not None:
-            requested_data = _clean_requested_data_none_strings(
-                json.loads(attendance.requested_data)
-            )
-            Attendance.objects.filter(id=attendance_id).update(**requested_data)
-            # DUE TO AFFECT THE OVERTIME CALCULATION ON SAVE METHOD, SAVE THE INSTANCE ONCE MORE
-            attendance = Attendance.objects.get(id=attendance_id)
-            attendance.save()
-        if (
-            attendance.attendance_clock_out is None
-            or attendance.attendance_clock_out_date is None
-        ):
-            attendance.attendance_validated = True
-            activity = AttendanceActivity.objects.filter(
-                employee_id=attendance.employee_id,
-                attendance_date=prev_attendance_date,
-                clock_in_date=prev_attendance_clock_in_date,
-                clock_in=prev_attendance_clock_in,
-            )
-            if activity:
-                activity.update(
-                    employee_id=attendance.employee_id,
-                    attendance_date=attendance.attendance_date,
-                    clock_in_date=attendance.attendance_clock_in_date,
-                    clock_in=attendance.attendance_clock_in,
-                )
-
-            else:
-                AttendanceActivity.objects.create(
-                    employee_id=attendance.employee_id,
-                    attendance_date=attendance.attendance_date,
-                    clock_in_date=attendance.attendance_clock_in_date,
-                    clock_in=attendance.attendance_clock_in,
-                )
+        apply_attendance_correction(attendance)
+        reconcile_corrected_activity(attendance, prev_attendance_date)
 
         # Create late come or early out objects
         shift = attendance.shift_id
@@ -834,18 +854,16 @@ def bulk_reject_attendance_request(request):
     for attendance_id in ids:
         try:
             attendance = Attendance.objects.get(id=attendance_id)
-            if (
-                attendance.employee_id.employee_user_id == request.user
-                or is_reportingmanager(request)
-                or request.user.has_perm("attendance.change_attendance")
-            ):
+            from attendance.permissions import can_manage_attendance
+            if attendance.employee_id.employee_user_id == request.user or can_manage_attendance(request.user, attendance):
+                was_new_request = attendance.request_type == "create_request"
                 attendance.is_validate_request_approved = False
                 attendance.is_validate_request = False
                 attendance.request_description = None
                 attendance.requested_data = None
                 attendance.request_type = None
                 attendance.save()
-                if attendance.request_type == "create_request":
+                if was_new_request:
                     attendance.delete()
                     messages.success(request, _("The requested attendance is removed."))
                 else:
@@ -881,6 +899,10 @@ def edit_validate_attendance(request, attendance_id):
         return HorillaRedirect(
             request, message=_("No Attendance found matching the query.")
         )
+
+    from attendance.permissions import can_manage_attendance
+    if not can_manage_attendance(request.user, attendance):
+        return HttpResponse("You cannot edit this attendance request.", status=403)
 
     initial = attendance.serialize()
     if request.GET.get("previous_url"):

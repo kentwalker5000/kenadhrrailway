@@ -13,6 +13,7 @@
                             onmouseleave="$(this).find('span').hide();$(this).find('.time-runner').show()"
                         {% endif %}
                         hx-get="{% url 'clock-out' %}"
+                        {% if request.user|requires_clock_location %}hx-trigger="geo-clock" onclick="requestClockLocation(this)"{% endif %}
                         hx-target="#attendance-activity-container"
                         hx-swap="innerHTML"
                     >
@@ -42,6 +43,7 @@
                         {% endif %}
                         class="oh-btn oh-btn--success mr-2"
                         hx-get="{% url 'clock-in' %}"
+                        {% if request.user|requires_clock_location %}hx-trigger="geo-clock" onclick="requestClockLocation(this)"{% endif %}
                         hx-target="#attendance-activity-container"
                         hx-swap="innerHTML"
                     >
@@ -67,3 +69,17 @@
         {% endif %}
     {% endwith %}
 {% endif %}
+<script>
+function requestClockLocation(button) {
+    if (!navigator.geolocation) { alert('Location access is required to record attendance.'); return; }
+    button.disabled = true;
+    navigator.geolocation.getCurrentPosition(function (position) {
+        button.disabled = false;
+        button.setAttribute('hx-vals', JSON.stringify({latitude: position.coords.latitude, longitude: position.coords.longitude}));
+        htmx.trigger(button, 'geo-clock');
+    }, function () {
+        button.disabled = false;
+        alert('Please allow location access to record attendance.');
+    }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+}
+</script>

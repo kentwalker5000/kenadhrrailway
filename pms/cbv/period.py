@@ -56,6 +56,7 @@ class PeriodList(HorillaListView):
         (_("Title"), "period_name"),
         (_("Start Date"), "start_date"),
         (_("End date"), "end_date"),
+        (_("Open for reviews"), "is_open"),
     ]
 
     header_attrs = {

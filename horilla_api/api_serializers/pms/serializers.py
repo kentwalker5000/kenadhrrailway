@@ -40,6 +40,7 @@ class PeriodSerializer(serializers.ModelSerializer):
     class Meta:
         model = Period
         fields = "__all__"
+        read_only_fields = ["is_open"]
         extra_kwargs = {
             "company_id": {"read_only": True},
         }
@@ -434,6 +435,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
     class Meta:
         model = Feedback
         fields = "__all__"
+        read_only_fields = ["period"]
         extra_kwargs = {
             "colleague_id": {"read_only": True},
             "subordinate_id": {"read_only": True},
@@ -521,6 +523,12 @@ class FeedbackSerializer(serializers.ModelSerializer):
 
 
 class AnswerSerializer(serializers.ModelSerializer):
+    def validate(self, attrs):
+        feedback = attrs.get("feedback_id") or (self.instance.feedback_id if self.instance else None)
+        if (feedback and feedback.period_id) or (self.instance and self.instance.feedback_id.period_id):
+            raise serializers.ValidationError("Submit quarterly ratings together using the assigned review form. Submitted quarterly ratings cannot be edited individually.")
+        return super().validate(attrs)
+
     question_id = serializers.SerializerMethodField()
     question_id_write = serializers.PrimaryKeyRelatedField(
         queryset=Question.objects.all(),

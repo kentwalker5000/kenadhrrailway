@@ -82,6 +82,21 @@ class ContractSerializer(serializers.ModelSerializer):
         model = Contract
         fields = "__all__"
 
+    def validate(self, attrs):
+        import math
+
+        def current(name, default):
+            return attrs.get(name, getattr(self.instance, name, default))
+
+        amount = current("deduction_for_one_leave_amount", 0)
+        if amount is not None and (not math.isfinite(amount) or amount < 0):
+            raise serializers.ValidationError({"deduction_for_one_leave_amount": _("Enter a non-negative finite amount.")})
+        if (current("wage_type", "monthly") in ("daily", "monthly")
+                and current("enable_loss_of_pay", True)
+                and not current("calculate_daily_leave_amount", True) and amount is None):
+            raise serializers.ValidationError({"deduction_for_one_leave_amount": _("This field is required.")})
+        return attrs
+
 
 class MultipleConditionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -194,6 +209,20 @@ class LoanAccountSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanAccount
         fields = "__all__"
+        read_only_fields = ("installment_amount", "settled_date")
+
+    def validate(self, attrs):
+        from copy import copy
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        instance = copy(self.instance) if self.instance else LoanAccount()
+        for key, value in attrs.items():
+            setattr(instance, key, value)
+        try:
+            instance.clean()
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(getattr(exc, "message_dict", exc.messages))
+        return attrs
 
     def get_employee_profile_url(self, obj):
         try:

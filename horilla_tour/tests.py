@@ -94,6 +94,14 @@ class TourApiTests(TestCase):
         tours = self._active(page="employee-view")
         self.assertNotIn("getting-started", tours)  # only matches 'dashboard'
 
+    def test_every_page_has_the_manual_navigation_guide(self):
+        self.client.force_login(self.admin)
+        tours = self._active(page="an-uncovered-page")
+        guide = tours.get("page-navigation-guide")
+        self.assertIsNotNone(guide)
+        self.assertFalse(guide["auto_start"])
+        self.assertEqual(len(guide["steps"]), 4)
+
     def test_audience_filtering(self):
         # admins-only tour must not reach a non-admin user; an 'all' tour must.
         make_tour("admins-only", audience="admins")

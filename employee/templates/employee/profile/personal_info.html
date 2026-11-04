@@ -67,6 +67,12 @@
                     </div>
                 </div>
                 <div class="row">
+                    <div class="col-12 col-sm-12 col-md-12 col-lg-6">
+                        <label class="oh-label d-block" for="{{ form.shirt_size.id_for_label }}">{% trans "Shirt size" %}</label>
+                        {{ form.shirt_size }} {{ form.shirt_size.errors }}
+                    </div>
+                </div>
+                <div class="row">
                     <div class="col-12 col-sm-12 col-md-12 col-lg-12">
                         <label class="oh-label" for="address">{% trans "Address" %}</label>
                         {{ form.address }} {{ form.address.errors }}

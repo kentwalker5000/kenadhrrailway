@@ -145,7 +145,7 @@ def attendance_validate(attendance):
     if conditions.exists():
         condition_for_at_work = strtime_seconds(conditions[0].validation_at_work)
     at_work = strtime_seconds(attendance.attendance_worked_hour)
-    return condition_for_at_work >= at_work
+    return at_work >= condition_for_at_work
 
 
 @login_required
@@ -1383,6 +1383,11 @@ def validate_bulk_attendance(request):
         try:
             attendance = Attendance.objects.get(id=obj_id)
 
+            from attendance.permissions import can_manage_attendance
+            if not can_manage_attendance(request.user, attendance):
+                error_messages.append(_("You cannot validate this employee's attendance."))
+                continue
+
             if attendance.is_validate_request:
                 error_messages.append(
                     _(
@@ -1447,6 +1452,12 @@ def validate_this_attendance(request, obj_id):
     """
     try:
         attendance = Attendance.objects.get(id=obj_id)
+        from attendance.permissions import can_manage_attendance
+        if not can_manage_attendance(request.user, attendance):
+            return HttpResponse("You cannot validate this employee's attendance.", status=403)
+        if attendance.is_validate_request:
+            messages.error(request, _("Review the pending attendance correction before validating this attendance."))
+            return attendance_view_redirect(request)
         if not request.user.is_superuser:
             if attendance.employee_id.id == request.user.employee_get.id:
                 messages.error(request, _("You cannot validate your own attendance."))

@@ -22,13 +22,13 @@
                 <img style="width: 20px; height: 20px" src="{% static 'images/ui/writing.png' %}">
             </a>
         {% endif %}
-        <button
+        <a
             class="oh-btn oh-btn--light-bkg oh-btn--sq-sm"
             href="{% url 'feedback-answer-view' id=instance.id %}"
             title="{% trans 'Answer view' %}"
         >
             <ion-icon name="eye"></ion-icon>
-        </button>
+        </a>
     {% elif request.all_feedback %}
         {% if perms.pms.delete_feedback %}
             <form

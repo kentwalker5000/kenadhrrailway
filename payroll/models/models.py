@@ -5,14 +5,18 @@ Used to register models
 
 import calendar
 import logging
+import math
 import re
 from datetime import date, datetime, timedelta
+from decimal import Decimal
+
+from dateutil.relativedelta import relativedelta
 
 from django import forms
 from django.apps import apps
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.http import QueryDict
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -21,7 +25,6 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from base.horilla_company_manager import HorillaCompanyManager
-from base.methods import get_next_month_same_date
 from base.models import (
     Company,
     Department,
@@ -308,6 +311,11 @@ class Contract(HorillaModel):
         verbose_name=_("Notice Period"),
     )
     contract_document = models.FileField(upload_to=upload_path, null=True, blank=True)
+    enable_loss_of_pay = models.BooleanField(
+        default=True,
+        verbose_name=_("Apply loss of pay"),
+        help_text=_("Deduct for unpaid days and partially paid leave. Hourly wages continue to be based on hours worked."),
+    )
     deduct_leave_from_basic_pay = models.BooleanField(
         default=True,
         verbose_name=_("Deduct From Basic Pay"),
@@ -474,6 +482,9 @@ class Contract(HorillaModel):
     def __str__(self) -> str:
         return f"{self.contract_name} -{self.contract_start_date} - {self.contract_end_date}"
 
+    def loss_of_pay_status(self):
+        return _("Enabled") if self.enable_loss_of_pay else _("Disabled")
+
     def clean(self):
         if self.contract_end_date is not None:
             if self.contract_end_date < self.contract_start_date:
@@ -505,7 +516,10 @@ class Contract(HorillaModel):
                 _("A draft contract already exists for this employee.")
             )
 
-        if self.wage_type in ["daily", "monthly"]:
+        amount = self.deduction_for_one_leave_amount
+        if amount is not None and (not math.isfinite(amount) or amount < 0):
+            raise ValidationError({"deduction_for_one_leave_amount": _("Enter a non-negative finite amount.")})
+        if self.wage_type in ["daily", "monthly"] and self.enable_loss_of_pay:
             if not self.calculate_daily_leave_amount:
                 if self.deduction_for_one_leave_amount is None:
                     raise ValidationError(
@@ -1908,11 +1922,24 @@ class Deduction(HorillaModel):
     def __str__(self) -> str:
         return str(self.title)
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         from base.auth_backends import stamp_company_on_create
 
         if not self.id:
             stamp_company_on_create(self)
+        else:
+            previous = Deduction._base_manager.filter(pk=self.pk).first()
+            if previous and previous.is_installment:
+                employee_ids = previous.specific_employees.values("pk")
+                list(Employee._base_manager.select_for_update().filter(pk__in=employee_ids).order_by("pk"))
+                financial_fields = ("amount", "one_time_date", "is_installment", "is_fixed",
+                                    "is_pretax", "is_tax", "based_on", "rate", "update_compensation",
+                                    "if_choice", "if_condition", "if_amount")
+                if Payslip._base_manager.filter(installment_ids=self.pk).exists() and any(
+                    getattr(previous, field) != getattr(self, field) for field in financial_fields
+                ):
+                    raise ValidationError(_("Installments included in payroll cannot be changed."))
         super().save(*args, **kwargs)
 
 
@@ -2239,7 +2266,10 @@ class Payslip(HorillaModel):
         if self.start_date > today:
             raise ValidationError(_("The start date cannot be in the future."))
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        # Serialize status transitions with component reservation and loan edits.
+        Employee._base_manager.select_for_update().get(pk=self.employee_id_id)
         if self.pk:
             previous = Payslip._base_manager.filter(pk=self.pk).first()
             if previous and previous.status in ("confirmed", "paid"):
@@ -2354,6 +2384,11 @@ class LoanAccount(HorillaModel):
     type = models.CharField(default="loan", choices=loan_type, max_length=15)
     loan_amount = models.FloatField(default=0, verbose_name=_("Amount"))
     provided_date = models.DateField()
+    disbursed_externally = models.BooleanField(
+        default=False,
+        verbose_name=_("Already paid outside payroll"),
+        help_text=_("Enable if the employee has already received the money. Payroll will only collect repayments."),
+    )
     allowance_id = models.ForeignKey(
         Allowance, on_delete=models.SET_NULL, editable=False, null=True
     )
@@ -2387,10 +2422,14 @@ class LoanAccount(HorillaModel):
         return f"{self.title} - {self.employee_id}"
 
     def installment_paid(self):
-        installment_paid = Payslip.objects.filter(
-            installment_ids__in=self.deduction_ids.all()
-        ).count()
-        return installment_paid
+        from payroll.methods.loans import paid_installments
+
+        return paid_installments(self).count()
+
+    def paid_amount(self):
+        from payroll.methods.loans import paid_amount
+
+        return paid_amount(self)
 
     def total_installments(self):
         return self.installments
@@ -2463,55 +2502,105 @@ class LoanAccount(HorillaModel):
             dict: A dictionary representing the installment schedule with installment dates as keys
             and corresponding installment amounts as values.
         """
-        loan_amount = self.loan_amount
-        total_installments = self.installments
-        installment_amount = loan_amount / total_installments
-        installment_start_date = self.installment_start_date
+        from payroll.methods.loans import money
 
-        installment_schedule = {}
-
-        installment_date = installment_start_date
-        installment_schedule = {}
-        for _unused in range(total_installments):
-            installment_schedule[str(installment_date)] = installment_amount
-            installment_date = get_next_month_same_date(installment_date)
-
-        return installment_schedule
+        amount = money(self.loan_amount)
+        installment = money(amount / self.installments)
+        # Keep cents exact and anchor month-end dates to the original day.
+        return {
+            str(self.installment_start_date + relativedelta(months=index)): float(
+                installment if index < self.installments - 1
+                else amount - installment * (self.installments - 1)
+            )
+            for index in range(self.installments)
+        }
 
     def delete(self, *args, **kwargs):
         """
         Method to delete the instance and associated objects.
         """
-        self.deduction_ids.all().delete()
-        if self.allowance_id is not None:
-            self.allowance_id.delete()
-        if not Payslip.objects.filter(
-            installment_ids__in=list(self.deduction_ids.values_list("id", flat=True))
-        ).exists():
-            super().delete(*args, **kwargs)
-        return
+        from django.db.models.deletion import ProtectedError
+        from payroll.methods.loans import allowance_ids_on_payslips
+
+        with transaction.atomic():
+            Employee._base_manager.select_for_update().get(pk=self.employee_id_id)
+            slips = Payslip._base_manager.filter(employee_id=self.employee_id)
+            if slips.filter(installment_ids__in=self.deduction_ids.all()).exists() or (
+                self.allowance_id_id and self.allowance_id_id in allowance_ids_on_payslips(slips)
+            ):
+                raise ProtectedError("Loans referenced by payslips cannot be deleted.", [self])
+            deductions = list(self.deduction_ids.values_list("pk", flat=True))
+            allowance = self.allowance_id
+            result = super().delete(*args, **kwargs)
+            Deduction._base_manager.filter(pk__in=deductions).delete()
+            if allowance:
+                allowance.delete()
+            return result
 
     def installment_ratio(self):
         """
         Method to calculate the ratio of paid installments to total installments in loan account.
         """
-        total_installments = self.installments
-        installment_paid = Payslip.objects.filter(
-            installment_ids__in=self.deduction_ids.all()
-        ).count()
-        if not installment_paid:
-            return 0
-        ratio = (installment_paid / total_installments) * 100
+        return min(100, self.installment_paid() / self.installments * 100) if self.installments else 0
 
-        return ratio
+    def clean(self):
+        super().clean()
+        from payroll.methods.loans import allowance_ids_on_payslips, money
 
+        if self.loan_amount is None or not math.isfinite(self.loan_amount) or self.loan_amount <= 0:
+            raise ValidationError({"loan_amount": _("Enter a positive finite amount.")})
+        if money(self.loan_amount) != Decimal(str(self.loan_amount)):
+            raise ValidationError({"loan_amount": _("Use no more than two decimal places.")})
+        if not self.installments or self.installments <= 0:
+            raise ValidationError({"installments": _("Installments must be a positive integer.")})
+        if not self.installment_start_date or not self.provided_date:
+            return  # Required-field validation belongs to the form/serializer.
+        installment = money(money(self.loan_amount) / self.installments)
+        if installment <= 0 or money(self.loan_amount) - installment * (self.installments - 1) <= 0:
+            raise ValidationError({"installments": _("Each installment must be at least 0.01. Reduce the number of installments.")})
+        if self.installment_start_date < self.provided_date:
+            raise ValidationError({"installment_start_date": _("Repayments cannot start before the provided date.")})
+        if not self.pk:
+            return
+        previous = LoanAccount._base_manager.get(pk=self.pk)
+        slips = Payslip._base_manager.filter(employee_id=previous.employee_id)
+        reserved = slips.filter(installment_ids__in=previous.deduction_ids.all())
+        payout_used = previous.allowance_id_id and previous.allowance_id_id in allowance_ids_on_payslips(slips)
+        protected = ("employee_id_id", "loan_amount", "installments", "installment_start_date",
+                     "provided_date", "disbursed_externally", "type")
+        if (reserved.exists() or payout_used or previous.settled) and any(
+            getattr(previous, field) != getattr(self, field) for field in protected
+        ):
+            raise ValidationError(_("The loan is already included in payroll or settled. Its financial terms cannot be changed."))
+        if self.settled and not previous.settled and reserved.exclude(status="paid").exists():
+            raise ValidationError(_("Resolve unpaid payslips containing this loan before settling it."))
+        if previous.settled and not self.settled:
+            raise ValidationError(_("A settled loan cannot be reopened."))
+
+    @transaction.atomic
     def save(self, *args, **kwargs):
+        from payroll.methods.loans import money
 
-        if self.settled:
-            self.settled_date = timezone.now()
-        else:
-            self.settled_date = None
-
+        previous = LoanAccount._base_manager.filter(pk=self.pk).first() if self.pk else None
+        employee_ids = {self.employee_id_id}
+        if previous:
+            employee_ids.add(previous.employee_id_id)
+        list(Employee._base_manager.select_for_update().filter(pk__in=employee_ids).order_by("pk"))
+        if previous and kwargs.get("update_fields") is not None:
+            fields = set(kwargs["update_fields"])
+            for name in ("employee_id_id", "loan_amount", "installments", "installment_start_date",
+                         "provided_date", "disbursed_externally", "type", "settled", "title"):
+                if name not in fields and name.removesuffix("_id") not in fields:
+                    setattr(self, name, getattr(previous, name))
+        self.clean()
+        self._schedule_changed = previous is None or any(
+            getattr(previous, field) != getattr(self, field)
+            for field in ("employee_id_id", "loan_amount", "installments", "installment_start_date")
+        )
+        self.installment_amount = float(money(money(self.loan_amount) / self.installments))
+        self.settled_date = (self.settled_date or timezone.now()) if self.settled else None
+        if kwargs.get("update_fields") is not None:
+            kwargs["update_fields"] = set(kwargs["update_fields"]) | {"installment_amount", "settled_date"}
         super().save(*args, **kwargs)
 
 
@@ -2861,6 +2950,27 @@ class PayrollGeneralSetting(models.Model):
     )
     company_id = models.ForeignKey(Company, on_delete=models.CASCADE, null=True)
     objects = HorillaCompanyManager("company_id")
+
+
+class LossOfPayPolicy(models.Model):
+    company = models.OneToOneField(Company, on_delete=models.CASCADE, related_name="loss_of_pay_policy")
+    enabled = models.BooleanField(default=True, verbose_name=_("Apply loss of pay"))
+    rate_source = models.CharField(
+        max_length=20, default="contract", verbose_name=_("Amount calculation"),
+        choices=[("contract", _("Use existing contract rates")),
+                 ("calculated", _("Calculate from salary")),
+                 ("fixed", _("Fixed amount per day"))],
+    )
+    fixed_amount = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True,
+                                       verbose_name=_("Fixed amount per unpaid day"))
+    objects = HorillaCompanyManager("company")
+
+    def clean(self):
+        super().clean()
+        if self.fixed_amount is not None and (not Decimal(str(self.fixed_amount)).is_finite() or self.fixed_amount < 0):
+            raise ValidationError({"fixed_amount": _("Enter a non-negative amount.")})
+        if self.enabled and self.rate_source == "fixed" and self.fixed_amount is None:
+            raise ValidationError({"fixed_amount": _("Enter the fixed amount per unpaid day.")})
 
 
 class EncashmentGeneralSettings(models.Model):

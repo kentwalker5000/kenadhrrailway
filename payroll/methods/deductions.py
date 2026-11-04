@@ -62,6 +62,8 @@ def create_deductions(instance, amount, date):
     installment.include_active_employees = False
     installment.amount = amount
     installment.is_fixed = True
+    installment.is_pretax = False
+    installment.if_condition = "ge"
     installment.one_time_date = date
     installment.only_show_under_employee = True
     installment.is_installment = True

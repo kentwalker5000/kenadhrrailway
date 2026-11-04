@@ -6,7 +6,8 @@ register = template.Library()
 @register.filter(name="paid_amount")
 def paid_amount(installment):
     paid = [
-        deduction.amount for deduction in installment if deduction.installment_payslip
+        deduction.amount for deduction in installment
+        if deduction.installment_payslip and deduction.installment_payslip.status == "paid"
     ]
 
     return round(sum(paid), 2)

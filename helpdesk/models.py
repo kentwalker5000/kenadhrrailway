@@ -185,24 +185,50 @@ class Ticket(HorillaModel):
         verbose_name_plural = _("Tickets")
 
     def get_raised_on(self):
-        obj_id = self.raised_on
+        """Return a safe display label for the ticket recipient.
+
+        Older imports may contain a department or job-position *name* in
+        ``raised_on`` instead of its primary-key value.  A ticket list must
+        still render when that happens, rather than failing while resolving
+        the row's display column.
+        """
+        raised_on = self.get_raised_on_object()
+        if raised_on is None:
+            return self.raised_on
+
         if self.assigning_type == "department":
-            raised_on = Department.objects.get(id=obj_id).department
-        elif self.assigning_type == "job_position":
-            raised_on = JobPosition.objects.get(id=obj_id).job_position
-        elif self.assigning_type == "individual":
-            raised_on = Employee.objects.get(id=obj_id).get_full_name()
-        return raised_on
+            return raised_on.department
+        if self.assigning_type == "job_position":
+            return raised_on.job_position
+        if self.assigning_type == "individual":
+            return raised_on.get_full_name()
+        return self.raised_on
 
     def get_raised_on_object(self):
-        obj_id = self.raised_on
-        if self.assigning_type == "department":
-            raised_on = Department.objects.get(id=obj_id)
-        elif self.assigning_type == "job_position":
-            raised_on = JobPosition.objects.get(id=obj_id)
-        elif self.assigning_type == "individual":
-            raised_on = Employee.objects.get(id=obj_id)
-        return raised_on
+        """Return the ticket recipient object without letting stale data crash.
+
+        Current records keep the recipient ID in ``raised_on``.  For
+        compatibility with older imported records, department and job title
+        names are also accepted when an ID is not present.
+        """
+        obj_id = str(self.raised_on or "").strip()
+        if not obj_id:
+            return None
+
+        lookup = {
+            "department": (Department, "department"),
+            "job_position": (JobPosition, "job_position"),
+            "individual": (Employee, None),
+        }.get(self.assigning_type)
+        if lookup is None:
+            return None
+
+        model, legacy_name_field = lookup
+        if obj_id.isdigit():
+            return model.objects.filter(pk=int(obj_id)).first()
+        if legacy_name_field:
+            return model.objects.filter(**{legacy_name_field: obj_id}).first()
+        return None
 
     def get_ticket_id_col(self):
         """

@@ -53,6 +53,9 @@
               </div>
               {% else %} {{ field|add_class:"form-control" }} {% endif %}
               {{field.errors}}
+              {% if field.name == 'enable_loss_of_pay' or field.name == 'calculate_daily_leave_amount' or field.name == 'deduct_leave_from_basic_pay' %}
+                <small class="text-muted d-block mt-1">{{ field.help_text }}</small>
+              {% endif %}
             </div>
           {% endif %}
 

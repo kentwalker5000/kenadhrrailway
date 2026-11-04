@@ -15,6 +15,7 @@ from horilla.methods import get_horilla_model_class
 from payroll.methods.deductions import update_compensation_deduction
 from payroll.methods.limits import compute_limit
 from payroll.methods.policy import deductions_exempt, pension_ceiling
+from payroll.methods.loans import eligible_deductions, filter_loan_allowances
 from payroll.models import models
 from payroll.models.models import (
     Allowance,
@@ -313,6 +314,7 @@ def calculate_allowance(**kwargs):
         .exclude(one_time_date__gt=end_date)
         .distinct()
     )
+    allowances = filter_loan_allowances(allowances, employee, start_date, end_date)
 
     employee_allowances = []
     tax_allowances = []
@@ -537,13 +539,14 @@ def calculate_pre_tax_deduction(*_args, **kwargs):
     ).exclude(exclude_employees=employee)
 
     deductions = specific_deductions | conditional_deduction | active_employee_deduction
-    deductions = (
-        deductions.exclude(one_time_date__lt=start_date)
-        .exclude(one_time_date__gt=end_date)
-        .exclude(update_compensation__isnull=False)
+    deductions = eligible_deductions(
+        deductions.exclude(update_compensation__isnull=False), employee, start_date, end_date
     )
-    # Installment deductions
-    installments = deductions.filter(is_installment=True)
+    # Freeze selected IDs so later reservations cannot silently change the
+    # relationship while leaving the calculated payslip amounts unchanged.
+    installments = Deduction.objects.filter(pk__in=list(
+        deductions.filter(is_installment=True).values_list("pk", flat=True)
+    ))
 
     pre_tax_deductions = []
     pre_tax_deductions_amt = []
@@ -646,13 +649,14 @@ def calculate_post_tax_deduction(*_args, **kwargs):
         include_active_employees=True, is_pretax=False, is_tax=False
     ).exclude(exclude_employees=employee)
     deductions = specific_deductions | conditional_deduction | active_employee_deduction
-    deductions = (
-        deductions.exclude(one_time_date__lt=start_date)
-        .exclude(one_time_date__gt=end_date)
-        .exclude(update_compensation__isnull=False)
+    deductions = eligible_deductions(
+        deductions.exclude(update_compensation__isnull=False), employee, start_date, end_date
     )
-    # Installment deductions
-    installments = deductions.filter(is_installment=True)
+    # Freeze selected IDs so later reservations cannot silently change the
+    # relationship while leaving the calculated payslip amounts unchanged.
+    installments = Deduction.objects.filter(pk__in=list(
+        deductions.filter(is_installment=True).values_list("pk", flat=True)
+    ))
 
     post_tax_deductions = []
     post_tax_deductions_amt = []

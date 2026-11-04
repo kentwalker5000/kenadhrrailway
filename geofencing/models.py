@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
-from geopy.geocoders import Nominatim
+import math
 
 
 class GeoFencing(models.Model):
@@ -28,17 +28,12 @@ class GeoFencing(models.Model):
                     _("Only one GeoFencing can have a null company_id.")
                 )
 
-        geolocator = Nominatim(
-            user_agent="geo_checker_unique"
-        )  # Unique user-agent is important
-        try:
-            location = geolocator.reverse(
-                (self.latitude, self.longitude), exactly_one=True
-            )
-            if not location:
-                raise ValidationError(_("Invalid location coordinates."))
-        except Exception as e:
-            raise ValidationError(f"Geolocation error: {e}")
+        if self.latitude is None or not math.isfinite(self.latitude) or not -90 <= self.latitude <= 90:
+            raise ValidationError({"latitude": _("Enter a valid latitude.")})
+        if self.longitude is None or not math.isfinite(self.longitude) or not -180 <= self.longitude <= 180:
+            raise ValidationError({"longitude": _("Enter a valid longitude.")})
+        if self.radius_in_meters is None or self.radius_in_meters <= 0:
+            raise ValidationError({"radius_in_meters": _("Radius must be greater than zero.")})
 
         return super().clean()
 

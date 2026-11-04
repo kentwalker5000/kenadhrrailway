@@ -9,8 +9,6 @@ import logging
 from datetime import date, timedelta
 from django.core.exceptions import ValidationError
 
-from dateutil.relativedelta import relativedelta
-
 from horilla.scheduling import register_job
 from payroll.methods.methods import calculate_employer_contribution, save_payslip
 from payroll.views.component_views import payroll_calculation
@@ -55,15 +53,10 @@ def generate_payslip(date, companies, all):
     # Remove duplicates if an employee has multiple active contracts
     active_employees = active_employees.distinct()
     # find the date range
-    period_start = date - relativedelta(months=1)
-    period_end = date - timedelta(days=1)
+    period_end = date.replace(day=1) - timedelta(days=1)
+    period_start = period_end.replace(day=1)
     # Payslip creation
     for employee in active_employees:
-        payslip = Payslip.objects.filter(
-            employee_id=employee, start_date=period_start, end_date=period_end
-        ).first()
-        if payslip:
-            continue
         contract = Contract.objects.filter(
             employee_id=employee, contract_status="active"
         ).first()
@@ -72,6 +65,19 @@ def generate_payslip(date, companies, all):
         # A contract starting mid-period shortens only that employee's payslip,
         # so the adjusted start must stay local to this iteration.
         start_date = max(period_start, contract.contract_start_date)
+        payslip = Payslip.objects.filter(
+            employee_id=employee, start_date=start_date, end_date=period_end
+        ).first()
+        if payslip:
+            continue
+        if Payslip.objects.filter(
+            employee_id=employee, start_date__lte=period_end, end_date__gte=start_date
+        ).exists():
+            logging.getLogger(__name__).warning(
+                "Payroll skipped employee %s: an existing payslip overlaps %s to %s; review the period manually.",
+                employee.pk, start_date, period_end,
+            )
+            continue
         try:
             payslip_data = payroll_calculation(employee, start_date, period_end)
         except ValidationError as exc:

@@ -15,6 +15,7 @@ from employee.models import Employee
 from payroll.context_processors import get_active_employees
 from payroll.models.models import (
     Contract,
+    LossOfPayPolicy,
     EncashmentGeneralSettings,
     PayrollGeneralSetting,
     ReimbursementFile,
@@ -39,11 +40,18 @@ class ContractForm(ModelForm):
         fields = "__all__"
         exclude = [
             "is_active",
+            "enable_loss_of_pay",
+            "calculate_daily_leave_amount",
+            "deduction_for_one_leave_amount",
         ]
         model = Contract
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["deduct_leave_from_basic_pay"].label = _("Take loss of pay from basic pay")
+        self.fields["deduct_leave_from_basic_pay"].help_text = _(
+            "When off, the same loss of pay appears as a separate payslip deduction."
+        )
         self.fields["employee_id"].widget.attrs.update(
             {"onchange": "contractInitial(this)"}
         )
@@ -95,6 +103,16 @@ class ContractForm(ModelForm):
         Render the url for contract status update through hx request
         """
         return f"/payroll/update-contract-status/{instance.pk}"
+
+
+class LossOfPayPolicyForm(forms.ModelForm):
+    class Meta:
+        model = LossOfPayPolicy
+        fields = ("enabled", "rate_source", "fixed_amount")
+        widgets = {
+            "rate_source": forms.Select(attrs={"class": "oh-select w-100"}),
+            "fixed_amount": forms.NumberInput(attrs={"class": "oh-input w-100", "min": "0", "step": "0.01"}),
+        }
 
 
 class ReimbursementRequestCommentForm(ModelForm):

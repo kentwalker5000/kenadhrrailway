@@ -105,6 +105,12 @@ class Employee(models.Model):
     gender = models.CharField(
         max_length=10, null=True, choices=choice_gender, default="male"
     )
+    shirt_size = models.CharField(
+        max_length=3,
+        blank=True,
+        choices=[(size, size) for size in ("XXS", "XS", "S", "M", "L", "XL", "2XL", "3XL", "4XL", "5XL")],
+        verbose_name=_("Shirt size"),
+    )
     qualification = models.CharField(max_length=50, blank=True, null=True)
     experience = models.IntegerField(null=True, blank=True)
     marital_status = models.CharField(

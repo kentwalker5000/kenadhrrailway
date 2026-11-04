@@ -971,6 +971,8 @@ class AnswerGetUpdateDeleteAPIView(APIView):
         answer = object_check(Answer, pk)
         if answer is None:
             return Response({"error": _("Answer not found")}, status=404)
+        if answer.feedback_id.period_id:
+            return Response({"error": "Submitted quarterly ratings cannot be deleted individually."}, status=403)
         try:
             answer.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)

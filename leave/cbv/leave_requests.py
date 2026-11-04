@@ -65,8 +65,8 @@ class LeaveRequestsListView(HorillaListView):
         super().__init__(**kwargs)
         self.search_url = reverse("request-filter")
         self.view_id = "leaveRequest"
-        if self.request.user.has_perm("leave.change_leaverequest"):
-            self.bulk_update_fields = ["status"]
+        # Status changes must use the reviewed approval/rejection actions.
+        self.bulk_update_fields = []
 
     def handle_bulk_submission(self, request):
         instance_ids = request.POST.getlist("instance_ids")
@@ -109,6 +109,7 @@ class LeaveRequestsListView(HorillaListView):
         (_("Requested Days"), "requested_days"),
         (_("Leave Clash"), "leave_clash_col"),
         (_("Status"), "custom_status_col"),
+        (_("Approval stage"), "approval_stage"),
         (_("Comment"), "comment_sidebar"),
         (_("Penalities"), "penality_col"),
     ]
@@ -120,6 +121,7 @@ class LeaveRequestsListView(HorillaListView):
         (_("End Date"), "end_date"),
         (_("Requested Days"), "requested_days"),
         (_("Status"), "custom_status_col"),
+        (_("Approval stage"), "approval_stage"),
     ]
 
     row_attrs = """

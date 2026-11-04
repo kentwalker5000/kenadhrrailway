@@ -62,6 +62,11 @@
                                 {{ form.gender|add_class:"emp-input w-full h-9 px-3 text-xs border border-secondary-200 rounded-md bg-white text-dark-500 appearance-none" }}
                                 {{ form.gender.errors }}
                             </div>
+                            <div>
+                                <label class="block text-xs font-medium text-color-600 mb-1" for="{{ form.shirt_size.id_for_label }}">{% trans "Shirt size" %}</label>
+                                {{ form.shirt_size|add_class:"emp-input w-full h-9 px-3 text-xs border border-secondary-200 rounded-md bg-white text-dark-500 appearance-none" }}
+                                {{ form.shirt_size.errors }}
+                            </div>
                         </div>
                     </div>
 

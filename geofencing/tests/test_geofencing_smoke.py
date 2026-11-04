@@ -1,6 +1,4 @@
-"""Geofencing create smoke tests (Nominatim mocked)."""
-
-from unittest.mock import MagicMock, patch
+"""Geofencing configuration can be saved without a network lookup."""
 
 from django.test import TestCase
 
@@ -9,9 +7,7 @@ from horilla.testkit import make_company
 
 
 class GeoFencingSmokeTests(TestCase):
-    @patch("geofencing.models.Nominatim")
-    def test_create_with_mocked_geocoder(self, nominatim_cls):
-        nominatim_cls.return_value.reverse.return_value = MagicMock()
+    def test_create_without_network_geocoder(self):
         company = make_company("Geo Co")
         geo = GeoFencing(
             latitude=12.97,

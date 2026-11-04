@@ -127,6 +127,81 @@ class AttendanceLeavePayrollHandoffTests(TestCase):
         self.assertEqual(result["loss_of_pay"], 100)
         self.assertEqual(result["net_pay"], 300)
 
+    def test_loss_of_pay_can_be_disabled_for_daily_and_monthly_contracts(self):
+        self.mixed_days()
+        for wage_type, wage in (("daily", 100), ("monthly", 400)):
+            for from_basic in (True, False):
+                with self.subTest(wage_type=wage_type, from_basic=from_basic):
+                    self.contract.wage_type = wage_type
+                    self.contract.wage = wage
+                    self.contract.deduct_leave_from_basic_pay = from_basic
+                    self.contract.enable_loss_of_pay = False
+                    self.contract.save()
+                    result = payroll_calculation(self.employee, self.start, self.end, month_summary=self.summary())
+                    self.assertEqual(result["unpaid_days"], 1)
+                    self.assertEqual(result["loss_of_pay"], 0)
+                    self.assertEqual(result["net_pay"], 400)
+
+    def test_fixed_loss_of_pay_applies_to_summary_and_standard_calculations(self):
+        self.mixed_days()
+        self.contract.calculate_daily_leave_amount = False
+        self.contract.deduction_for_one_leave_amount = 40
+        for wage_type, wage in (("daily", 100), ("monthly", 400)):
+            self.contract.wage_type = wage_type
+            self.contract.wage = wage
+            for from_basic in (True, False):
+                self.contract.deduct_leave_from_basic_pay = from_basic
+                self.contract.save()
+                for use_summary in (True, False):
+                    with self.subTest(wage_type=wage_type, use_summary=use_summary, from_basic=from_basic):
+                        result = payroll_calculation(
+                            self.employee, self.start, self.end,
+                            month_summary=self.summary() if use_summary else None,
+                        )
+                        self.assertEqual(result["loss_of_pay"], 40)
+                        if use_summary:
+                            self.assertEqual(result["net_pay"], 360)
+
+    def test_loss_of_pay_switch_controls_partial_leave_and_conflict_holds(self):
+        self.fractional_leave(self.custom_type(50))
+        self.half_attendance()
+        self.fill_remaining_days()
+        self.contract.enable_loss_of_pay = False
+        self.contract.save()
+        for use_summary in (True, False):
+            with self.subTest(use_summary=use_summary):
+                result = payroll_calculation(
+                    self.employee, self.start, self.end,
+                    month_summary=self.summary() if use_summary else None,
+                )
+                self.assertEqual(result["custom_leave_deduction"], 0)
+                self.assertEqual(result["loss_of_pay"], 0)
+                self.assertEqual(result["net_pay"], 400)
+
+    def test_loss_of_pay_off_does_not_bypass_conflict_hold(self):
+        self.fractional_leave(self.paid)
+        self.attendance(self.start)
+        self.contract.enable_loss_of_pay = False
+        self.contract.calculate_daily_leave_amount = False
+        self.contract.deduction_for_one_leave_amount = 10
+        self.contract.save()
+        result = payroll_calculation(self.employee, self.start, self.end, month_summary=self.summary())
+        self.assertEqual(result["loss_of_pay"], 400)
+        self.assertEqual(result["net_pay"], 0)
+
+    def test_contract_form_and_api_validate_loss_of_pay_configuration(self):
+        from django.forms.models import model_to_dict
+        from horilla_api.api_serializers.payroll.serializers import ContractSerializer
+        from payroll.forms.forms import ContractForm
+
+        data = model_to_dict(self.contract)
+        form = ContractForm(data=data, instance=self.contract)
+        self.assertNotIn("enable_loss_of_pay", form.fields)
+        self.assertNotIn("deduction_for_one_leave_amount", form.fields)
+        self.assertTrue(form.is_valid(), form.errors)
+        serializer = ContractSerializer(self.contract, data={"deduction_for_one_leave_amount": -1}, partial=True)
+        self.assertFalse(serializer.is_valid())
+
     def test_monthly_loss_of_pay_is_not_deducted_again_from_net_pay(self):
         self.mixed_days()
         self.contract.wage_type = "monthly"

@@ -551,8 +551,13 @@ def update_payslip_status_no_id(request):
             return JsonResponse({"type": "error", "message": "Confirmed or paid payslips cannot be reopened."}, status=409)
         try:
             with transaction.atomic():
-                slips.update(status=status)
-        except IntegrityError:
+                # Model saves record actual loan repayments when status becomes paid.
+                employee_ids = slips.values("employee_id")
+                list(Employee._base_manager.select_for_update().filter(pk__in=employee_ids).order_by("pk"))
+                for slip in Payslip._base_manager.select_for_update().filter(pk__in=slips.values("pk")):
+                    slip.status = status
+                    slip.save(update_fields=["status"])
+        except (IntegrityError, ValidationError):
             return JsonResponse({"type": "error", "message": "Payslip status changed concurrently. Reload and try again."}, status=409)
         message = {
             "type": "success",

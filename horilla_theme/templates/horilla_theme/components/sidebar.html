@@ -1162,6 +1162,33 @@
           btn.setAttribute("aria-expanded", "true");
         }
 
+        // A submenu is a navigation action, not an instruction to collapse its
+        // parent.  HTMX keeps the sidebar shell in place, so retain the selected
+        // module's accordion while its page is swapped into the main area.
+        function keepSidebarMenuOpenForLink(link) {
+          var item = link && link.closest(".sidebar-item");
+          if (!item || !sidebarEl || !sidebarEl.classList.contains("sidebar-pinned")) return;
+          var btn = item.querySelector(".sideboxmain");
+          if (!btn) return;
+          closeSidebarMenus(item);
+          item.classList.add("sidebar-open");
+          btn.setAttribute("aria-expanded", "true");
+          hideFlyout();
+        }
+
+        // A few views legitimately use a full page navigation instead of an
+        // HTMX swap.  Restore the accordion for the current page after that
+        // new shell is initialised as well.
+        function openCurrentSidebarMenu() {
+          if (!sidebarEl || !sidebarEl.classList.contains("sidebar-pinned")) return;
+          var btn = document.querySelector(".sideboxmain.sidebox-current");
+          var item = btn && btn.closest(".sidebar-item");
+          if (!item) return;
+          closeSidebarMenus(item);
+          item.classList.add("sidebar-open");
+          btn.setAttribute("aria-expanded", "true");
+        }
+
         // Menus are click-controlled; pointer movement does not close them.
         document.addEventListener("click", function (e) {
           if (sidebarEl && sidebarEl.contains(e.target)) return;
@@ -1185,7 +1212,6 @@
             e.preventDefault();
             e.stopPropagation();
             var href = link.getAttribute("href") || link.getAttribute("hx-get") || "/";
-            hideFlyout();
             if (isStandaloneUrl(href)) { window.location.href = href; return; }
             var target = document.getElementById("ohMainContent");
             if (!target || !window.htmx) { window.location.href = href; return; }
@@ -1244,6 +1270,7 @@
 
         // Apply saved state immediately (no animation) to avoid layout flash
         applySidebarPin(sidebarPinned, false);
+        openCurrentSidebarMenu();
         window.matchMedia("(max-width: 991.98px)").addEventListener("change", function () {
           applySidebarPin(sidebarPinned, false);
         });
@@ -1290,7 +1317,9 @@
           }, 0);
         }
 
-        // The current page and the open menu are deliberately independent.
+        // Keep the active module open after every URL update. Some Attendance
+        // pages use a different HTMX/full-page response path, so relying only
+        // on the original click handler can leave their submenu collapsed.
         function syncSidebarToUrl() {
           var path = window.location.pathname;
           var matchedBtn = null;
@@ -1317,6 +1346,7 @@
           });
           setActiveSidebarMenu(matchedBtn);
           if (matchedBtn && matchedBtn.getAttribute("href")) matchedBtn.setAttribute("aria-current", "page");
+          openCurrentSidebarMenu();
         }
         document.addEventListener("htmx:pushedIntoHistory", syncSidebarToUrl);
         document.addEventListener("htmx:replacedInHistory", syncSidebarToUrl);
@@ -1344,6 +1374,8 @@
             e.preventDefault();
             e.stopPropagation();
             if (typeof e.stopImmediatePropagation === "function") e.stopImmediatePropagation();
+
+            keepSidebarMenuOpenForLink(link);
 
             var href = link.getAttribute("href") || link.getAttribute("hx-get") || "/";
             if (isStandaloneUrl(href)) { window.location.href = href; return; }
@@ -1461,7 +1493,9 @@
             window.location.reload();
             return;
           }
-          closeSidebarMenus();
+          // Preserve the current accordion through history restoration. The
+          // URL sync below will update the active module without a close/open
+          // flash (notably on Daily Work Status).
           hideFlyout();
           syncSidebarToUrl();
           updateSidebarBreadcrumbs(evt.detail.serverResponse);

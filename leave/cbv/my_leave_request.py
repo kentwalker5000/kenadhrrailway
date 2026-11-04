@@ -75,6 +75,7 @@ class MainParentListView(HorillaListView):
         (_("End Date"), "end_date"),
         (_("Requested Days"), "requested_days"),
         (_("Status"), "custom_status_col"),
+        (_("Approval stage"), "approval_stage"),
         (_("Comment"), "comment_action"),
     ]
 
@@ -84,6 +85,7 @@ class MainParentListView(HorillaListView):
         (_("End Date"), "end_date"),
         (_("Requested Days"), "requested_days"),
         (_("Status"), "custom_status_col"),
+        (_("Approval stage"), "approval_stage"),
     ]
 
     option_method = None

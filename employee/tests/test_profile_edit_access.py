@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from accessibility.models import DefaultAccessibility
+from employee.forms import EmployeeExportExcelForm
 from employee.models import ProfileEditFeature
 from horilla.testkit import (
     CompanyFilterTestMixin,
@@ -136,3 +137,56 @@ class StaffProfileEditAccessTests(CompanyFilterTestMixin, TestCase):
         self.assertEqual(self.other_employee.employee_first_name, "Test")
         self.assertFalse(self.user.is_staff)
         self.assertFalse(self.user.has_perm("employee.change_employee"))
+
+    def test_staff_can_choose_and_clear_shirt_size_on_profile(self):
+        editor = self.client.get(reverse("edit-profile"))
+        self.assertContains(editor, 'name="shirt_size"')
+        self.assertContains(editor, 'value="2XL"')
+        data = {
+            "employee_first_name": self.employee.employee_first_name,
+            "employee_last_name": self.employee.employee_last_name,
+            "email": self.employee.email,
+            "phone": self.employee.phone,
+            "gender": self.employee.gender,
+            "shirt_size": "2XL",
+            "employee_id": self.other_employee.pk,
+        }
+        response = self.client.post(reverse("edit-profile"), data)
+        self.assertFalse(response.context["form"].errors)
+        self.employee.refresh_from_db()
+        self.other_employee.refresh_from_db()
+        self.assertEqual(self.employee.shirt_size, "2XL")
+        self.assertEqual(self.other_employee.shirt_size, "")
+        about = self.client.get(reverse("about-tab", kwargs={"pk": self.employee.pk}), HTTP_HX_REQUEST="true")
+        self.assertContains(about, "Shirt size")
+        self.assertContains(about, "2XL")
+        data["shirt_size"] = ""
+        self.client.post(reverse("edit-profile"), data)
+        self.employee.refresh_from_db()
+        self.assertEqual(self.employee.shirt_size, "")
+
+    def test_invalid_or_omitted_shirt_size_does_not_overwrite_existing_value(self):
+        self.employee.shirt_size = "M"
+        self.employee.save()
+        data = {
+            "employee_first_name": self.employee.employee_first_name,
+            "employee_last_name": self.employee.employee_last_name,
+            "email": self.employee.email,
+            "phone": self.employee.phone,
+            "gender": self.employee.gender,
+        }
+        response = self.client.post(reverse("edit-profile"), {**data, "shirt_size": "invalid"})
+        self.assertIn("shirt_size", response.context["form"].errors)
+        self.employee.refresh_from_db()
+        self.assertEqual(self.employee.shirt_size, "M")
+        response = self.client.post(reverse("edit-profile"), data)
+        self.assertFalse(response.context["form"].errors)
+        self.employee.refresh_from_db()
+        self.assertEqual(self.employee.shirt_size, "M")
+
+    def test_hr_editor_and_export_include_shirt_size(self):
+        self.user.is_superuser = True
+        self.user.save()
+        response = self.client.get(reverse("employee-view-update", kwargs={"obj_id": self.employee.pk}))
+        self.assertContains(response, 'name="shirt_size"')
+        self.assertIn("shirt_size", dict(EmployeeExportExcelForm().fields["selected_fields"].choices))

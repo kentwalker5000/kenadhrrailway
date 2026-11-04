@@ -1,4 +1,8 @@
 {% load i18n %}
+<p class="text-sm mt-3"><strong>{% trans "Approval stage" %}:</strong> {{ instance.approval_stage }}</p>
+{% if instance.manager_review %}
+<p class="text-xs mt-1">{% trans "Manager review recorded by" %} {{ instance.manager_review.reviewed_by }} · {{ instance.manager_review.reviewed_at }}</p>
+{% endif %}
 
 {% if instance.multiple_approvals %}
     <div class="rounded-md p-3 ps-0 w-full mt-3">

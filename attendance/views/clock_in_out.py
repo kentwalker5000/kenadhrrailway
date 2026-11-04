@@ -260,18 +260,24 @@ def clock_in(request):
                 return HorillaRedirect(request)
 
         employee, work_info = employee_exists(request)
+        if not request.__dict__.get("datetime"):
+            from geofencing.checks import check_location
+            error = check_location(employee, request.GET)
+            if error:
+                messages.error(request, error)
+                return HorillaRedirect(request)
         datetime_now = timezone.localtime()
         if request.__dict__.get("datetime"):
             datetime_now = request.datetime
         if employee and work_info is not None:
             shift = work_info.shift_id
-            date_today = date.today()
+            date_today = datetime_now.date()
             if request.__dict__.get("date"):
                 date_today = request.date
             attendance_date = date_today
             day = date_today.strftime("%A").lower()
             day = EmployeeShiftDay.objects.get(day=day)
-            now = datetime.now().strftime("%H:%M")
+            now = datetime_now.strftime("%H:%M")
             if request.__dict__.get("time"):
                 now = request.time.strftime("%H:%M")
             now_sec = strtime_seconds(now)
@@ -598,8 +604,17 @@ def clock_out(request):
         if request.__dict__.get("datetime"):
             datetime_now = request.datetime
         employee, work_info = employee_exists(request)
+        if not employee or not work_info:
+            messages.error(request, _("Your employee profile or work information is incomplete."))
+            return HorillaRedirect(request)
+        if not request.__dict__.get("datetime"):
+            from geofencing.checks import check_location
+            error = check_location(employee, request.GET)
+            if error:
+                messages.error(request, error)
+                return HorillaRedirect(request)
         shift = work_info.shift_id
-        date_today = date.today()
+        date_today = datetime_now.date()
         if request.__dict__.get("date"):
             date_today = request.date
         day = date_today.strftime("%A").lower()
@@ -615,7 +630,7 @@ def clock_out(request):
                 attendance.attendance_day = EmployeeShiftDay.objects.get(day=day_name)
                 attendance.save(update_fields=["attendance_day"])
             day = attendance.attendance_day
-        now = datetime.now().strftime("%H:%M")
+        now = datetime_now.strftime("%H:%M")
         if request.__dict__.get("time"):
             now = request.time.strftime("%H:%M")
         minimum_hour, start_time_sec, end_time_sec = shift_schedule_today(

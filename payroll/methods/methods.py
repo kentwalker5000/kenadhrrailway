@@ -5,6 +5,7 @@ Payroll related module to write custom calculation methods
 """
 
 import calendar
+import math
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
@@ -261,6 +262,41 @@ def hourly_computation(employee, wage, start_date, end_date):
     }
 
 
+def loss_of_pay_policy(contract):
+    """Resolve the employee's company, independent of the active UI filter."""
+    if not hasattr(contract, "_loss_of_pay_policy"):
+        from employee.models import EmployeeWorkInformation
+        from payroll.models.models import LossOfPayPolicy
+
+        company_id = EmployeeWorkInformation._base_manager.filter(
+            employee_id=contract.employee_id_id
+        ).values_list("company_id_id", flat=True).first()
+        contract._loss_of_pay_policy = (
+            LossOfPayPolicy._base_manager.filter(company_id=company_id).first()
+            if company_id else None
+        )
+    return contract._loss_of_pay_policy
+
+
+def loss_of_pay_for_days(contract, unpaid_days, daily_rate, force_full=False):
+    """Apply the company policy, falling back to legacy contract settings."""
+    if force_full:
+        return unpaid_days * daily_rate
+    policy = loss_of_pay_policy(contract)
+    if not (policy.enabled if policy else contract.enable_loss_of_pay):
+        return 0.0
+    source = policy.rate_source if policy else "contract"
+    if source == "fixed":
+        rate = float(policy.fixed_amount) if policy.fixed_amount is not None else None
+    elif source == "calculated" or contract.calculate_daily_leave_amount:
+        rate = daily_rate
+    else:
+        rate = contract.deduction_for_one_leave_amount
+    if rate is None or not math.isfinite(rate) or rate < 0:
+        raise ValidationError("Configure a valid loss-of-pay amount in Payroll Configuration.")
+    return unpaid_days * rate
+
+
 def daily_computation(employee, wage, start_date, end_date):
     """
     Hourly salary computation for period.
@@ -285,11 +321,7 @@ def daily_computation(employee, wage, start_date, end_date):
     ).first()
 
     unpaid_leaves = leave_data["unpaid_leaves"]
-    if contract.calculate_daily_leave_amount:
-        loss_of_pay = unpaid_leaves * wage
-    else:
-        fixed_penalty = contract.deduction_for_one_leave_amount
-        loss_of_pay = unpaid_leaves * fixed_penalty
+    loss_of_pay = loss_of_pay_for_days(contract, unpaid_leaves, wage)
 
     custom_leave_deduction, custom_leave_breakdown = compute_custom_leave_deduction(
         leave_data, contract, wage
@@ -346,23 +378,13 @@ def compute_custom_leave_deduction(leave_data, contract, daily_computed_salary):
         units = [(day, pct, 1.0) for day, pct in leave_data.get("custom_leave_dates", [])]
     for _leave_date, pct, fraction in units:
         deductible_fraction = fraction * (1.0 - (pct / 100.0))
-        if contract.calculate_daily_leave_amount:
-            custom_leave_deduction += daily_computed_salary * deductible_fraction
-        else:
-            custom_leave_deduction += (
-                contract.deduction_for_one_leave_amount * deductible_fraction
-            )
+        custom_leave_deduction += loss_of_pay_for_days(contract, deductible_fraction, daily_computed_salary)
 
     custom_leave_breakdown = leave_data.get("custom_leave_breakdown", [])
     for entry in custom_leave_breakdown:
         deductible_fraction = 1.0 - (entry["percentage"] / 100.0)
-        per_day_basis = (
-            daily_computed_salary
-            if contract.calculate_daily_leave_amount
-            else contract.deduction_for_one_leave_amount
-        )
         entry["deduction_amount"] = round(
-            per_day_basis * deductible_fraction * entry["days"], 2
+            loss_of_pay_for_days(contract, deductible_fraction * entry["days"], daily_computed_salary), 2
         )
 
     return custom_leave_deduction, custom_leave_breakdown
@@ -506,11 +528,7 @@ def monthly_computation(employee, wage, start_date, end_date, *args, **kwargs):
     daily_computed_salary = get_daily_salary(wage=wage, wage_date=start_date)[
         "day_wage"
     ]
-    if contract.calculate_daily_leave_amount:
-        loss_of_pay = unpaid_leaves * daily_computed_salary
-    else:
-        fixed_penalty = contract.deduction_for_one_leave_amount
-        loss_of_pay = unpaid_leaves * fixed_penalty
+    loss_of_pay = loss_of_pay_for_days(contract, unpaid_leaves, daily_computed_salary)
 
     custom_leave_deduction, custom_leave_breakdown = compute_custom_leave_deduction(
         leave_data, contract, daily_computed_salary
@@ -605,7 +623,9 @@ def compute_salary_on_period(
             if month_summary.get("unresolved_conflicts", 0):
                 unpaid_days = total_days
             paid_days = float(total_days - unpaid_days)
-            loss_of_pay = unpaid_days * wage
+            loss_of_pay = loss_of_pay_for_days(
+                contract, unpaid_days, wage, force_full=bool(month_summary.get("unresolved_conflicts", 0))
+            )
 
             leave_data = month_summary.get("custom_leave_data")
             if month_summary.get("unresolved_conflicts", 0):
@@ -673,7 +693,9 @@ def compute_salary_on_period(
                 unpaid_days = total_days
             pay_period_days = month_summary.get("pay_period_days", total_days)
             per_day_amount = wage / pay_period_days if pay_period_days and wage else 0.0
-            loss_of_pay = unpaid_days * per_day_amount
+            loss_of_pay = loss_of_pay_for_days(
+                contract, unpaid_days, per_day_amount, force_full=bool(month_summary.get("unresolved_conflicts", 0))
+            )
 
             leave_data = month_summary.get("custom_leave_data")
             if month_summary.get("unresolved_conflicts", 0):
@@ -802,6 +824,15 @@ def save_payslip(**kwargs):
     instance = filtered_instance if filtered_instance is not None else Payslip()
     if filtered_instance and filtered_instance.status in ("confirmed", "paid"):
         raise ValidationError("Confirmed or paid payslips cannot be regenerated.")
+    from payroll.methods.loans import validate_loan_reservations
+
+    installments = list(kwargs["installments"])
+    validate_loan_reservations(
+        kwargs["employee"], kwargs["start_date"], kwargs["end_date"],
+        installments, kwargs["pay_data"],
+    )
+    if installments and round(kwargs["net_pay"], 2) < 0:
+        raise ValidationError("Loan repayments exceed available pay. Adjust the repayment schedule before generating payroll.")
     instance.employee_id = kwargs["employee"]
     instance.group_name = kwargs.get("group_name")
     instance.start_date = kwargs["start_date"]
@@ -813,6 +844,12 @@ def save_payslip(**kwargs):
     instance.deduction = round(kwargs["deduction"], 2)
     instance.net_pay = round(kwargs["net_pay"], 2)
     instance.pay_head_data = kwargs["pay_data"]
-    instance.save()
-    instance.installment_ids.set(kwargs["installments"])
+    instance._assigning_installments = True
+    try:
+        instance.save()
+        instance.installment_ids.set(installments)
+    finally:
+        instance._assigning_installments = False
+    from payroll.methods.loans import settle_repaid_loans
+    settle_repaid_loans(instance)
     return instance

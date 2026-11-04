@@ -282,30 +282,74 @@
     });
 </script>
 
-<script src="{% static 'dashboard/employeeChart.js' %}"></script>
-{% if "recruitment"|app_installed %}
-    {% if perms.recruitment.view_recruitment or request.user|is_stagemanager %}
-        <script src="{% static 'dashboard/recruitmentChart.js' %}"></script>
+<script>
+  // Dashboard widgets used to load every module script at once. Each script
+  // immediately issues one or more data requests, so a page with multiple
+  // enabled modules could overload both the browser and the database before
+  // the dashboard shell had painted. Load only cards near the viewport and
+  // serialise their script bootstrap for a responsive first view.
+  (function () {
+    if (window.__kenadDashboardChartLoader) return;
+    window.__kenadDashboardChartLoader = true;
+
+    var queue = [];
+    var isLoading = false;
+    var loaded = {};
+
+    function loadNext() {
+      if (isLoading || !queue.length) return;
+      var item = queue.shift();
+      if (loaded[item.src]) { loadNext(); return; }
+      isLoading = true;
+      loaded[item.src] = true;
+      var script = document.createElement("script");
+      script.src = item.src;
+      script.async = true;
+      script.onload = script.onerror = function () {
+        isLoading = false;
+        // Leave a short gap between module bootstraps so their data queries do
+        // not all contend with the initial dashboard request.
+        window.setTimeout(loadNext, 120);
+      };
+      document.body.appendChild(script);
+    }
+
+    function schedule(src, selector) {
+      var target = document.querySelector(selector);
+      if (!target) return;
+      var add = function () {
+        queue.push({ src: src });
+        loadNext();
+      };
+      if (!window.IntersectionObserver) { add(); return; }
+      var observer = new IntersectionObserver(function (entries) {
+        if (!entries.some(function (entry) { return entry.isIntersecting; })) return;
+        observer.disconnect();
+        add();
+      }, { rootMargin: "300px 0px" });
+      observer.observe(target);
+    }
+
+    schedule("{% static 'dashboard/employeeChart.js' %}", "#totalEmployees, #genderChart, #departmentChart");
+    {% if "recruitment"|app_installed %}
+      {% if perms.recruitment.view_recruitment or request.user|is_stagemanager %}
+        schedule("{% static 'dashboard/recruitmentChart.js' %}", "#recruitmentChart1");
+      {% endif %}
     {% endif %}
-{% endif %}
-
-{% if "pms"|app_installed %}
-    <!-- PMS chart -->
-    <script src="{% static 'src/dashboard/pmsChart.js' %}"></script>
-{% endif %}
-
-{% if "onboarding"|app_installed %}
-    <!-- onboarding dashboard -->
-    <script src="{% static 'dashboard/onboardChart.js' %}"></script>
-{% endif %}
-
-{% if "attendance"|app_installed %}
-    {% if perms.attendance.view_attendance or request.user|is_reportingmanager %}
-        <script src="{% static 'dashboard/attendanceChart.js' %}"></script>
+    {% if "pms"|app_installed %}
+      schedule("{% static 'src/dashboard/pmsChart.js' %}", "#objectiveChart, #keyResultChart, #feedbackChart");
     {% endif %}
-{% endif %}
-
-{% if "leave"|app_installed %}
-    <script src="{% static 'dashboard/onLeave.js' %}"></script>
-    <script src="{% static 'dashboard/leaveChart.js' %}"></script>
-{% endif %}
+    {% if "onboarding"|app_installed %}
+      schedule("{% static 'dashboard/onboardChart.js' %}", "#onboardCandidate, #hiredCandidate");
+    {% endif %}
+    {% if "attendance"|app_installed %}
+      {% if perms.attendance.view_attendance or request.user|is_reportingmanager %}
+        schedule("{% static 'dashboard/attendanceChart.js' %}", "#dailyAnalytic, #pendingHoursCanvas, #departmentOverChart");
+      {% endif %}
+    {% endif %}
+    {% if "leave"|app_installed %}
+      schedule("{% static 'dashboard/onLeave.js' %}", "#overAllLeave");
+      schedule("{% static 'dashboard/leaveChart.js' %}", "#overAllLeave");
+    {% endif %}
+  })();
+</script>
