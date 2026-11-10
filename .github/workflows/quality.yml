@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -76,7 +76,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -100,7 +100,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Need both sides of the range to diff a push or PR against its base.
           fetch-depth: 0
@@ -154,7 +154,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
