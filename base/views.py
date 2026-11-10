@@ -273,6 +273,10 @@ def initialize_database_condition():
     Returns:
         bool: True if the database needs to be initialized, False otherwise.
     """
+    # Public onboarding creates company-scoped administrators, not superusers.
+    # Once a company has an owner, the deployment bootstrap must stay closed.
+    if Company.objects.filter(created_by__isnull=False).exists():
+        return False
     init_database = not HorillaUser.objects.exists()
     if not init_database:
         init_database = True
@@ -901,9 +905,12 @@ def login_user(request):
             next_url += f"?{params}"
         return redirect(next_url)
 
-    return render(
-        request, "login.html", {"initialize_database": initialize_database_condition()}
-    )
+    from base.registration import registration_enabled
+
+    return render(request, "login.html", {
+        "initialize_database": initialize_database_condition(),
+        "company_registration_enabled": registration_enabled(),
+    })
 
 
 def include_employee_instance(request, form):

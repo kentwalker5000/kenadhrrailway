@@ -71,6 +71,7 @@
             payroll together in one beautifully simple workspace.
           </p>
           <div class="hero-actions">
+            {% if company_registration_enabled %}<a class="button" href="{% url 'company-register' %}">Register your company</a>{% endif %}
             <a class="button" href="{% url 'login' %}"
               >Sign in to your company <span aria-hidden="true">↗</span></a
             >
@@ -419,10 +420,16 @@
             <details name="homepage-faq">
               <summary>How do I get an account?</summary>
               <p>
+                {% if company_registration_enabled %}
+                Company administrators can <a href="{% url 'company-register' %}">register their company</a>
+                and create a workspace. Employees should ask their HR team to create their account,
+                then <a href="{% url 'login' %}">sign in</a>.
+                {% else %}
                 Ask your company’s HR team or administrator to set up your staff
                 account. Then use <a href="{% url 'login' %}">Sign in</a> to
                 access your workspace. This homepage does not create new company
                 accounts.
+                {% endif %}
               </p>
             </details>
             <details name="homepage-faq">

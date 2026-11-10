@@ -84,6 +84,7 @@ class PublicHomepageTests(SimpleTestCase):
                         resolve(destination.path).url_name,
                         (
                             "login",
+                            "company-register",
                             "product-home",
                             "forgot-password",
                             "open-source-notices",

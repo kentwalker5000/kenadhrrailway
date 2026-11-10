@@ -518,6 +518,8 @@ COMPANY_SCOPED_PERMISSIONS = env.bool("COMPANY_SCOPED_PERMISSIONS", default=True
 # Every account, including administrators, belongs to its Employee Work
 # Information company. This product does not offer cross-company logins.
 SINGLE_COMPANY_LOGIN = True
+KENADHR_COMPANY_REGISTRATION = env.bool("KENADHR_COMPANY_REGISTRATION", default=True)
+KENADHR_REGISTRATION_HOURLY_LIMIT = env.int("KENADHR_REGISTRATION_HOURLY_LIMIT", default=20)
 
 NO_PERMISSION_MODALS = [
     "companygroupassignment",

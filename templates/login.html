@@ -113,6 +113,9 @@
                             </small>
                         {% endif %}
                     </form>
+                    {% if company_registration_enabled %}
+                        <p class="text-center"><a href="{% url 'company-register' %}">{% trans "Register your company" %}</a></p>
+                    {% endif %}
                     {% if initialize_database %}
                         <div>
                             <div class="d-flex gap-2">

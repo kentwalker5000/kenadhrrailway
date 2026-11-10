@@ -84,6 +84,16 @@ def resolve_home_role(request) -> HomeRole:
     has_leave = user.has_perm("leave.view_leaverequest")
     has_recruitment = user.has_perm("recruitment.view_recruitment")
 
+    # Company setup owners need their onboarding checklist before they have
+    # enabled or delegated leave/recruitment modules. This grants no new data
+    # permissions and does not require global staff/superuser status.
+    if has_employee and user.has_perm("base.change_company") and user.has_perm("base.add_department"):
+        from base.auth_backends import get_home_company_id
+        from base.models import Company
+
+        if Company.objects.filter(pk=get_home_company_id(user), created_by=user).exists():
+            return "leadership"
+
     if has_employee and has_leave and has_recruitment:
         return "leadership"
 

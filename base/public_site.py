@@ -20,9 +20,11 @@ _public_templates = Engine(
 def welcome(request):
     # Bypass the app's database-backed template overrides and request context
     # processors. Public content must never depend on company/employee records.
+    from base.registration import registration_enabled
+
     return HttpResponse(
         _public_templates.get_template("home.html").render(
-            Context({"current_year": timezone.now().year})
+            Context({"current_year": timezone.now().year, "company_registration_enabled": registration_enabled()})
         )
     )
 

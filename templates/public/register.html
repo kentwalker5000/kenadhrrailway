@@ -1,0 +1,37 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Register your company · KenadHr</title>
+  <link rel="icon" href="{% static 'favicons/kenadhr-32.png' %}">
+  <link rel="stylesheet" href="{% static 'css/kenadhr-register.css' %}">
+</head>
+<body>
+  <header><a class="brand" href="{% url 'product-home' %}">Kenad<span>Hr</span></a><a href="{% url 'login' %}">Already registered? Sign in</a></header>
+  <main>
+    {% if unavailable %}
+      <h1>Company registration is currently closed</h1>
+      <p>Please contact the platform administrator, or <a href="{% url 'login' %}">sign in to an existing account</a>.</p>
+    {% else %}
+      <p class="eyebrow">YOUR COMPANY’S HR WORKSPACE</p>
+      <h1>Set up your company</h1>
+      <p class="intro">Create your administrator account and company together. You can add your team and finish HR setup after signing up.</p>
+      <form method="post" action="{% url 'company-register' %}">
+        {% csrf_token %}
+        {% if form.errors %}<div class="error-summary" role="alert"><strong>Please check the details below.</strong>{{ form.non_field_errors }}{% for field in form %}{% if field.errors %}<p><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ field.errors|striptags }}</a></p>{% endif %}{% endfor %}</div>{% endif %}
+        <fieldset><legend>Company details</legend><div class="grid">
+        {% for field in form %}
+          {% if forloop.counter == 5 %}</div></fieldset><fieldset><legend>Your administrator account</legend><div class="grid">{% endif %}
+          {% if field.is_hidden %}{{ field }}{% else %}
+          <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small id="{{ field.auto_id }}_helptext">{{ field.help_text }}</small>{% endif %}{{ field.errors }}</div>
+          {% endif %}
+        {% endfor %}
+        </div></fieldset>
+        <button type="submit">Create company workspace <span aria-hidden="true">→</span></button>
+        <p class="note">Use your work email and password to return to your workspace.</p>
+      </form>
+    {% endif %}
+  </main>
+</body>
+</html>

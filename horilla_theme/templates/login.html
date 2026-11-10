@@ -185,6 +185,9 @@
                 <p class="text-center text-sm mt-4">
                     <a href="{% url 'product-home' %}" class="underline">{% trans "KenadHr homepage" %}</a>
                 </p>
+                {% if company_registration_enabled %}
+                    <p class="text-center text-sm mt-4"><a class="underline" href="{% url 'company-register' %}">{% trans "Register your company" %}</a></p>
+                {% endif %}
                 {% if initialize_database %}
                     <div>
                         <div class="d-flex gap-2">

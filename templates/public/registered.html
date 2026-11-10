@@ -1,0 +1,13 @@
+{% load static %}
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your company is ready · KenadHr</title>
+<link rel="stylesheet" href="{% static 'css/kenadhr-register.css' %}">
+</head><body>
+<header><a class="brand" href="{% url 'product-home' %}">Kenad<span>Hr</span></a></header>
+<main><p class="eyebrow">WORKSPACE CREATED</p><h1>Welcome to {{ company.company }}</h1>
+<p class="intro">Your administrator account is ready. You’re signed in as <strong>{{ email }}</strong>.</p>
+<ol class="steps"><li>Set up your departments and job positions.</li><li>Add your employees and their work details.</li><li>Configure shifts and company preferences.</li></ol>
+<a class="button" href="/">Open your dashboard <span aria-hidden="true">→</span></a>
+<p class="note">Your dashboard includes a checklist to guide you through setup.</p>
+</main></body></html>

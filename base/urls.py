@@ -4,6 +4,7 @@ from django.utils.translation import gettext_lazy as _
 
 from base import announcement
 from base import developer_dashboard
+from base import registration
 from base import dashboard as dashboard_module
 from base import ess_dashboard, public_site, request_and_approve, staff_portal, views
 from base.cbv import (
@@ -414,6 +415,8 @@ urlpatterns = [
         name="initialize-job-position-delete",
     ),
     path("404/", views.custom404, name="404"),
+    path("register/", registration.register_company, name="company-register"),
+    path("register/complete/", registration.registration_complete, name="company-registration-complete"),
     path("login/", views.login_user, name="login"),
     path(
         "forgot-password/",
